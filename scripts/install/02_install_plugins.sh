@@ -5,14 +5,21 @@
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 . "$SCRIPT_DIR/../lib.sh"
+# See lib.sh: exports ASDF_DATA_DIR and prepends its shims dir to PATH for
+# THIS process, since nothing upstream is guaranteed to have done it yet.
 ensure_asdf_on_path
 
 REPO_ROOT="$(repo_root_from "${BASH_SOURCE[0]}")"
+# TOOL_VERSIONS_FILE is set by main.sh to whatever 00_select.sh produced
+# (the user's picks); fall back to the repo's own .tool-versions when this
+# script is run standalone, outside the normal orchestrated flow.
 CONFIG_FILE="${TOOL_VERSIONS_FILE:-$REPO_ROOT/.tool-versions}"
 [[ -f "$CONFIG_FILE" ]] || die "Config file not found: $CONFIG_FILE"
 
 step "Phase 2: Installing asdf plugins"
 
+# Refresh every already-installed plugin's own git checkout. `|| true`:
+# a stale/unreachable plugin repo shouldn't abort the whole install.
 run asdf plugin update --all || true
 
 # Capture once, up front, instead of piping straight into `grep -q` inside
@@ -20,12 +27,15 @@ run asdf plugin update --all || true
 # matches, which can SIGPIPE `asdf` mid-write and make the pipeline report
 # failure even though grep found what it was looking for — intermittently
 # misreporting an installed plugin as missing. A plain variable has no pipe
-# to race.
+# to race. (`|| true`: an empty plugin list, e.g. right after installing
+# asdf for the first time, is not an error.)
 existing_plugins="$(asdf plugin list 2>/dev/null || true)"
 
 # fd 3, not stdin: keeps this loop's own `read` isolated from anything a
 # future edit to the loop body might do with stdin.
 while read -r plugin version <&3; do
+  # -x: exact whole-line match, so "python" doesn't accidentally match a
+  # plugin named e.g. "python-build".
   if printf '%s\n' "$existing_plugins" | grep -qx "$plugin"; then
     log "Plugin already present: $plugin"
   else

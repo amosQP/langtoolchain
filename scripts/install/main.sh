@@ -11,6 +11,9 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 DRY_RUN=false
+# Flags meant for 00_select.sh get collected here as a plain string (not an
+# array) and passed through unquoted below — simple and safe since these
+# are always single, space-free flag words.
 SELECT_OPTS=""
 for arg in "$@"; do
   case "$arg" in
@@ -20,17 +23,29 @@ for arg in "$@"; do
     *) echo "Unknown option: $arg" >&2; exit 1 ;;
   esac
 done
+# Exported so every phase script (each launched as its own `bash` process
+# below) can see it via lib.sh's `DRY_RUN="${DRY_RUN:-false}"`.
 export DRY_RUN
 
 echo "langtoolchain installer"
 
+# 00_select.sh writes prompts to /dev/tty and its actual result (a file
+# path) to stdout, so command substitution here captures just that path.
+# If the user backs out (answers "n" to everything, or declines the final
+# confirmation), it exits non-zero and prints nothing — the `if` catches
+# that instead of letting `set -e` kill this script with a confusing error.
 if SELECTION_FILE="$(bash "$SCRIPT_DIR/00_select.sh" $SELECT_OPTS)"; then
+  # Every later phase reads $TOOL_VERSIONS_FILE instead of the repo's own
+  # .tool-versions, so they only touch what the user actually picked.
   export TOOL_VERSIONS_FILE="$SELECTION_FILE"
 else
   echo "설치가 취소되었습니다."
   exit 1
 fi
 
+# Each phase runs as its OWN `bash` process (not sourced) — this is what
+# makes them independent: none of them can accidentally rely on a variable
+# or exported PATH change that only happened in a sibling phase's process.
 for phase in \
   01_bootstrap_asdf.sh \
   02_install_plugins.sh \
@@ -43,6 +58,8 @@ do
   bash "$SCRIPT_DIR/$phase"
 done
 
+# The selection file was only ever a temporary hand-off between 00_select.sh
+# and the phases above — clean it up now that they're done with it.
 rm -f "$SELECTION_FILE"
 
 echo ""

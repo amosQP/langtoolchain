@@ -15,7 +15,13 @@ step "Phase 6: Setting global versions"
 # fd 3, not stdin — see 02_install_plugins.sh for why.
 while read -r plugin version <&3; do
   log "Setting global $plugin -> $version"
+  # `-u` = user/global scope: writes/updates the plugin's line in
+  # $HOME/.tool-versions (NOT this repo's own .tool-versions), so the
+  # chosen version applies everywhere on the machine, not just this repo
+  # directory.
   run asdf set -u "$plugin" "$version"
 done 3< <(each_tool "$CONFIG_FILE")
 
+# Regenerates every shim under $ASDF_DATA_DIR/shims (node, python, ...) so
+# they point at the versions just installed/selected.
 run asdf reshim
