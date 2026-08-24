@@ -28,15 +28,34 @@ curl -fsSL https://raw.githubusercontent.com/amosQP/langtoolchain/main/install.s
 - 🍺 **Homebrew 없어도 OK** — 없으면 공식 스크립트로 자동 설치 (sudo 비밀번호만 직접 입력)
 - ☑️ **체크박스 같은 대화형 설치** — 언어별로 설치 여부와 버전을 확인하고 골라서 설치
 - 🌐 **`curl | bash` 완전 지원** — 로컬에 아무것도 없어도 원격 저장소를 알아서 clone해서 실행
+- 🌍 **전역 or 디렉토리별 버전 고정** — 시스템 전체 기본값으로도, 특정 프로젝트에만도 자유롭게
 - 🧩 **독립적인 모듈 구조** — 각 단계가 서로 의존하지 않아서, 필요한 부분만 골라 읽고 고치기 쉬움
 - 🔙 **깔끔한 제거** — 설치한 건 전부 되돌릴 수 있음 (`.bak` 백업까지 남김)
 - 🖥️ **bash 3.2 호환** — macOS 기본 셸에서도 그대로 동작
 
 <br>
 
+## 🧭 철학: Homebrew는 자유, langtoolchain은 언어만
+
+> **"컴파일러는 langtoolchain이 챙긴다. 나머지는 전부 당신 마음대로."**
+
+langtoolchain이 실제로 소유하고 책임지는 영역은 **Node.js·Java·Python·Rust·Go, 이 5개 언어뿐**입니다.
+당신의 Mac에 있는 다른 Homebrew 패키지, 다른 버전 관리자, 다른 무엇이든 — langtoolchain은 절대 건드리지
+않고, 절대 참견하지 않습니다. 실제로 이번 프로젝트 개발 중 실기기에 asdf와 무관하게 따로 설치돼 있던
+Homebrew node를 정리하면서 세운 원칙이 그대로 코드에 박혀 있습니다.
+
+| | langtoolchain의 영역 | 당신의 영역 |
+|---|---|---|
+| 🍺 **Homebrew** | asdf 자체 + 컴파일용 시스템 패키지 6개(`openssl` 등)만 설치 | 그 외 뭘 `brew install`하든 완전 자유, 절대 안 건드림 |
+| 🧬 **asdf** | `nodejs`/`java`/`python`/`rust`/`golang` 5개 플러그인만 관리 | 다른 언어·도구용 asdf 플러그인은 손도 안 댐 |
+| 🗂️ **버전 고정** | 딱 당신이 고른 언어를, 딱 고른 범위(전역/디렉토리)에만 | 나머지 프로젝트·설정은 원래 하던 대로 |
+
+<br>
+
 ## 목차
 
 - [빠른 시작](#-빠른-시작)
+- [철학](#-철학-homebrew는-자유-langtoolchain은-언어만)
 - [사전 요구사항](#-사전-요구사항)
 - [설치되는 것](#-설치되는-것)
 - [어떻게 동작하는가](#%EF%B8%8F-어떻게-동작하는가)
@@ -174,6 +193,9 @@ asdf는 언어 런타임을 **한 번만 설치**하고(`~/.asdf/installs/<plugi
 
 예: 평소엔 최신 Node.js를 쓰다가, 레거시 프로젝트 하나만 Node 18을 써야 할 때 그 프로젝트 디렉토리에만
 로컬로 고정하면 다른 곳엔 영향 없이 그 프로젝트에서만 Node 18이 적용됩니다.
+
+> 💡 **비유로 설명하면**: nvm의 `.nvmrc`, pyenv의 `.python-version` 같은 "이 폴더는 이 버전 써" 파일을
+> asdf는 언어 상관없이 전부 `.tool-versions` 하나로 통일한 것뿐입니다. 전역은 그게 없을 때의 기본값.
 
 ### 사용법
 
@@ -414,6 +436,20 @@ macOS 기본 `/bin/bash`는 여전히 3.2입니다(라이선스 문제로 Apple�
 <br>
 
 셸이 파일을 위에서부터 소싱하면서 매번 `export PATH="X:$PATH"`로 앞에 붙이기 때문에, **더 나중에 소싱되는 줄이 PATH 우선순위가 더 높습니다.** `brew shellenv`처럼 "제일 먼저 소싱되어야 하는" 줄은 `append_env_var`(파일 끝에 추가)가 아니라 `prepend_env_var`(파일 맨 앞에 추가)로 넣어야, 그 뒤에 오는 asdf shim PATH 줄이 항상 마지막에 prepend되어 우선순위를 가져갑니다.
+</details>
+
+<details>
+<summary><b>6. 정리용 EXIT trap이 있는 스크립트에서는 exec를 쓰지 않습니다</b></summary>
+<br>
+
+`exec cmd`는 `execve`로 현재 프로세스 이미지를 통째로 교체합니다 — 셸의 정상 종료 절차(등록해둔 `trap ... EXIT` 포함)를 그대로 건너뜁니다. `install.sh`/`uninstall.sh`가 `curl | bash`로 실행될 때 임시 clone을 지우는 `trap 'rm -rf "$WORKDIR"' EXIT`가 있는 이유가 이겁니다 — 그 뒤에서 진짜 설치 스크립트를 실행할 땐 `exec`가 아니라 일반 호출 + `exit $?`를 씁니다. (반대로 로컬 클론 실행 경로처럼 정리할 게 없는 곳에선 `exec`를 그대로 씁니다 — 불필요한 프로세스 하나를 아낄 수 있어서.)
+</details>
+
+<details>
+<summary><b>7. sed 스크립트는 macOS 기본 sed(BSD sed) 기준으로 씁니다</b></summary>
+<br>
+
+macOS의 `/usr/bin/sed`는 BSD sed로, GNU sed와 정규식 문법이 다릅니다. 특히 `\(a\|b\)` 같은 대체(alternation) 문법은 GNU sed 확장이라 BSD sed의 기본 모드(POSIX BRE)에서는 **조용히 아무것도 매칭하지 않습니다** — 에러도 안 나고 그냥 무시됩니다. 대체 문법이 필요하면 `-E`(확장 정규식) 플래그를 켜고 `\(`/`\)`/`\|` 대신 그냥 `(`/`)`/`|`를 쓰세요.
 </details>
 
 <br>
