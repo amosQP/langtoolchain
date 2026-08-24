@@ -16,6 +16,8 @@ for arg in "$@"; do
     *) echo "Unknown option: $arg" >&2; exit 1 ;;
   esac
 done
+# Exported so every phase script below (each its own `bash` process) can
+# see it via lib.sh.
 export DRY_RUN
 
 echo "langtoolchain uninstaller"
@@ -23,6 +25,8 @@ echo "asdf, 모든 asdf 런타임, 관련 Homebrew 패키지, 이 도구가 추�
 
 if ! $AUTO_YES; then
   printf "계속할까요? [y/N] > "
+  # Read straight from the terminal device, not this script's own stdin —
+  # matters when this file itself was piped in via `curl | bash`.
   read -r reply < /dev/tty || reply=""
   case "$reply" in
     y|Y|yes|YES) ;;
@@ -30,6 +34,8 @@ if ! $AUTO_YES; then
   esac
 fi
 
+# Each phase runs as its own `bash` process, independent of the others —
+# same reasoning as scripts/install/main.sh.
 for phase in \
   01_uninstall_runtimes.sh \
   02_remove_plugins.sh \
@@ -41,6 +47,10 @@ do
 done
 
 echo ""
+# Temporarily allow the validation phase to fail without killing this
+# script outright — its exit code is meaningful (0 = clean, 1 = stale
+# session state) and we want to report on it ourselves below rather than
+# letting `set -e` abort mid-way.
 set +e
 bash "$SCRIPT_DIR/06_validate_teardown.sh"
 VALIDATION_EXIT_CODE=$?

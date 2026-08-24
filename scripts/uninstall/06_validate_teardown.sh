@@ -6,6 +6,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 step "Phase 6: Validating teardown"
 
+# Under --dry-run nothing was actually removed, so every check below would
+# report FAIL against a machine that's still fully intact — skip instead.
 if [[ "${DRY_RUN:-false}" == "true" ]]; then
   log "(dry-run: nothing was actually removed, skipping validation)"
   exit 0
@@ -20,6 +22,8 @@ else
   log "  OK:   asdf removed from PATH."
 fi
 
+# Colons bracket the check so ".asdf/shims" can't false-positive-match a
+# differently named path that merely contains that substring.
 case ":$PATH:" in
   *".asdf/shims"*) log "  FAIL: .asdf/shims is still in this session's PATH."; OK=false ;;
   *) log "  OK:   PATH has no asdf shims." ;;
@@ -37,6 +41,9 @@ if $OK; then
   log "검증 통과: 정리가 완료되었습니다."
   exit 0
 else
+  # A still-open shell keeps the OLD PATH/JAVA_HOME cached even after the
+  # underlying files are gone — this isn't a real failure, just stale state
+  # in the current process's environment.
   log "위 FAIL 항목은 현재 셸 세션에 남은 캐시입니다. 'exec \$SHELL' (또는 새 터미널) 후 다시 확인하세요."
   exit 1
 fi

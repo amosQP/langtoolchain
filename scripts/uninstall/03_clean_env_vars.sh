@@ -10,12 +10,15 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 step "Phase 3: Cleaning shell environment variables"
 
 for rc in "$HOME/.zshrc" "$HOME/.bash_profile" "$HOME/.bashrc"; do
-  [[ -f "$rc" ]] || continue
+  [[ -f "$rc" ]] || continue   # nothing to clean if this rc file doesn't exist
   log "Cleaning $rc ..."
   if [[ "$DRY_RUN" == "true" ]]; then
     log "  + remove asdf/build-flag lines (sed -i.bak) from $rc"
     continue
   fi
+  # macOS's BSD sed requires an explicit (even if empty) backup suffix
+  # argument to -i; '.bak' also means we never destructively edit the rc
+  # file without a recovery copy sitting right next to it.
   sed -i '.bak' \
     -e '/set-java-home\.\(zsh\|bash\)/d' \
     -e '/ASDF_DATA_DIR/d' \
