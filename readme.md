@@ -1,12 +1,19 @@
 #### langtoolchain
 
-- macOS + Homebrew 환경에서, 여러 프로그래밍 언어의 컴파일러/런타임(Node.js, Java, Python, Rust, Go)을 asdf로 설치하고 셸 환경변수까지 잡아주는 개인용 부트스트랩 도구입니다.
+- macOS + Homebrew 환경에서, 여러 프로그래밍 언어의 컴파일러/런타임(Node.js, Java, Python, Rust, Go)을 asdf로 설치하고 셸 환경변수까지 잡아주는 오픈소스 부트스트랩 도구입니다.
 - 목적: GitHub에서 한 줄 명령으로 받아서, 원하는 언어를 체크하듯 골라 컴파일러/빌드도구를 한 번에 깔고 환경변수 설정까지 끝내는 것.
+- MIT 라이선스 — 누구나 자유롭게 가져다 쓰고 고칠 수 있습니다. ([LICENSE](LICENSE))
 
 #### 빠른 시작
 
 ```zsh
 curl -fsSL https://raw.githubusercontent.com/amosQP/langtoolchain/main/install.sh | bash
+```
+
+로컬에 이미 클론해뒀다면:
+
+```zsh
+./install.sh
 ```
 
 실행하면 언어별로 설치할지 물어보고(Enter = 예), 버전을 확인/수정할 수 있게 한 뒤, 마지막에 "설치할까요?"로 한 번 더 확인하고 나서 실제 설치를 시작합니다.
@@ -22,18 +29,13 @@ java (java) 설치할까요? [Y/n] >
 설치할까요? [Y/n] >
 ```
 
-로컬에 이미 클론해뒀다면 그냥:
+**옵션** (`install.sh`/`uninstall.sh` 둘 다 지원, `curl | bash -s -- <옵션>` 형태로 전달 가능)
 
-```zsh
-./install.sh
-```
-
-**옵션**
-| 플래그 | 동작 |
-|---|---|
-| `--all` | 언어 선택 화면 없이 `.tool-versions`에 있는 걸 전부 설치 |
-| `--yes` | 마지막 "설치할까요?" 확인을 건너뜀 |
-| `--dry-run` | 실제로 아무것도 바꾸지 않고, 뭘 할지만 출력 |
+| 플래그 | 대상 | 동작 |
+|---|---|---|
+| `--all` | install | 언어 선택 화면 없이 `.tool-versions`에 있는 걸 전부 설치 |
+| `--yes` | install/uninstall | 마지막 확인 프롬프트를 건너뜀 |
+| `--dry-run` | install/uninstall | 실제로 아무것도 바꾸지 않고, 뭘 할지만 출력 |
 
 터미널(tty)이 없는 환경(CI 등)에서 실행하면 자동으로 `--all`처럼 동작합니다 — 입력을 기다리다 멈추지 않습니다.
 
@@ -59,6 +61,60 @@ asdf 자체는 설치기가 알아서 `brew install asdf`로 설치합니다.
 
 Python 컴파일에 필요한 Homebrew 패키지(`openssl`, `readline`, `sqlite3`, `xz`, `zlib`, `tcl-tk`)도 함께 설치됩니다.
 
+#### 어떻게 동작하는가
+
+1. **진입점 (`install.sh`)**: 로컬에 클론된 상태로 실행됐으면(`scripts/install/` 디렉토리가 옆에 있으면) 바로 그걸 실행합니다. `curl | bash`로 stdin을 통해 실행된 경우엔(로컬에 아무 파일도 없는 경우) `git clone --depth 1`로 임시 디렉토리(`mktemp -d`)에 저장소를 내려받은 뒤 그 안의 스크립트를 실행하고, 끝나면 `trap`으로 임시 디렉토리를 지웁니다.
+2. **언어 선택 (`00_select.sh`)**: 언어별로 설치 여부(Y/n)와 버전을 물어봅니다. 모든 프롬프트/출력은 `/dev/tty`에 직접 쓰고 읽어서, `curl | bash`처럼 표준입력이 이미 스크립트 내용으로 막혀 있어도 정상적으로 사용자 입력을 받습니다. 결과는 `.tool-versions` 형식의 임시 파일로 저장되고, 그 파일 경로만 표준출력으로 반환됩니다. 터미널이 없으면(CI 등) 자동으로 전체 설치로 폴백합니다.
+3. **asdf 부트스트랩 (`01_bootstrap_asdf.sh`)**: Homebrew가 있는지 확인하고, `asdf`가 없으면 `brew install asdf`로 설치합니다.
+4. **플러그인 설치 (`02_install_plugins.sh`)**: 선택된 언어마다 `asdf plugin add`.
+5. **시스템 의존성 (`03_install_system_deps.sh`)**: Python 컴파일에 필요한 Homebrew 패키지 설치.
+6. **셸 환경변수 (`04_configure_shell_env.sh`)**: `~/.zshrc` 또는 `~/.bash_profile`(사용자의 로그인 셸에 따라 자동 판단)에 asdf shim PATH, Java 홈, 컴파일러 플래그를 멱등적으로(중복 없이) 추가합니다.
+7. **런타임 설치 (`05_install_runtimes.sh`)**: `asdf install <plugin> <version>` — 실제로 시간이 오래 걸리는 컴파일/다운로드 단계.
+8. **전역 버전 지정 (`06_set_globals.sh`)**: `asdf set -u`로 전역 버전을 고정하고 `asdf reshim`으로 shim을 재생성.
+9. **검증 (`07_validate.sh`)**: 각 언어의 바이너리가 PATH에서 실제로 asdf shim을 통해 잡히는지, 버전이 올바른지 확인.
+
+각 단계는 `main.sh`가 별도의 `bash` 프로세스로 순서대로 실행합니다. **어느 한 단계도 다른 단계가 먼저 실행되어 뭔가를 `export`해뒀을 거라고 가정하지 않습니다** — 예를 들어 5번(런타임 설치)은 4번이 `.zshrc`에 PATH를 써놨다고 믿는 대신, 스스로 `ensure_asdf_on_path`/`ensure_build_flags`를 호출해 필요한 환경을 그 자리에서 만듭니다. 그래서 특정 단계 하나만 따로 실행해도(`bash scripts/install/05_install_runtimes.sh`) 정상 동작합니다.
+
+#### 설치하면 어디에 뭐가 생기는가 (파일시스템 명세)
+
+**언어별 실제 설치 위치** — 전부 asdf가 관리하며, 아래 두 경로 규칙을 따릅니다:
+
+| 언어 | plugin 이름 | 설치 디렉토리 (`asdf install`) | shim (PATH에 실제로 잡히는 실행파일) |
+|---|---|---|---|
+| Node.js | `nodejs` | `~/.asdf/installs/nodejs/<version>/` | `~/.asdf/shims/node`, `npm`, `npx` 등 |
+| Java | `java` | `~/.asdf/installs/java/<version>/` | `~/.asdf/shims/java`, `javac` 등 |
+| Python | `python` | `~/.asdf/installs/python/<version>/` | `~/.asdf/shims/python`, `pip` 등 |
+| Rust | `rust` | `~/.asdf/installs/rust/<version>/` | `~/.asdf/shims/rustc`, `cargo` 등 |
+| Go | `golang` | `~/.asdf/installs/golang/<version>/` | `~/.asdf/shims/go`, `gofmt` 등 |
+
+(`<version>`은 `.tool-versions`에 적힌 그대로의 문자열입니다 — 예: `nodejs`는 실제로 `~/.asdf/installs/nodejs/lts/`처럼 "lts"라는 이름의 디렉토리가 생깁니다. 각 언어 플러그인 자체의 소스는 `~/.asdf/plugins/<plugin>/`에 따로 있습니다.)
+
+**공용 asdf 상태** (`$ASDF_DATA_DIR`, 기본값 `~/.asdf/`):
+
+| 경로 | 내용 |
+|---|---|
+| `~/.asdf/plugins/` | 각 언어 플러그인의 git 체크아웃 |
+| `~/.asdf/installs/` | 실제 컴파일된 런타임들 (위 표) |
+| `~/.asdf/downloads/` | 설치 중 받은 소스/바이너리 캐시 |
+| `~/.asdf/shims/` | PATH가 실제로 가리키는 얇은 래퍼 실행파일들 |
+
+**설정이 저장되는 곳**:
+
+| 파일 | 무엇이 들어가는가 | 어느 스크립트가 쓰는가 |
+|---|---|---|
+| `~/.tool-versions` (전역, 이 저장소의 `.tool-versions`와는 다른 파일) | 언어별 전역 기본 버전 | `06_set_globals.sh`의 `asdf set -u` |
+| `~/.zshrc` 또는 `~/.bash_profile` (로그인 셸에 따라 자동 선택) | `ASDF_DATA_DIR`/PATH shim export, Java 홈 훅, `LDFLAGS`/`CPPFLAGS`/`PKG_CONFIG_PATH` | `04_configure_shell_env.sh` |
+| 이 저장소의 `.tool-versions` | **읽기 전용** — 언어/기본 버전 목록의 소스. 설치기가 여기에 쓰지 않음 | 모든 phase 스크립트가 읽기만 함 |
+
+**Homebrew로 설치되는 것** (`/opt/homebrew/` 아래, macOS Apple Silicon 기준):
+`asdf`, `openssl`, `readline`, `sqlite3`, `xz`, `zlib`, `tcl-tk`
+
+**임시로만 쓰이는 것**:
+- 언어 선택 결과 파일: `mktemp -t langtoolchain-selection`으로 시스템 임시 디렉토리(`$TMPDIR`)에 생성, 설치 완료 후 `main.sh`가 삭제
+- `curl | bash`로 실행 시의 저장소 클론: `mktemp -d`로 임시 디렉토리에 clone, 스크립트 종료 시 `trap`으로 자동 삭제
+
+**제거 시 지워지는 것** (`uninstall.sh`): `~/.asdf/` 전체(위 표의 모든 내용), Homebrew로 설치된 `asdf`/`openssl`/`readline`/`sqlite3`/`xz`/`zlib`/`tcl-tk`, `~/.tool-versions`(전역), 그리고 `~/.zshrc`/`~/.bash_profile`/`~/.bashrc`에 추가됐던 줄들(`sed -i '.bak'`로 지우며 백업은 `<파일>.bak`로 남김). **이 저장소 자신의 `.tool-versions`는 절대 건드리지 않습니다.**
+
 #### 설치 확인
 
 ```zsh
@@ -73,23 +129,85 @@ which node java python rustc go   # ~/.asdf/shims/... 아래를 가리켜야 정
 curl -fsSL https://raw.githubusercontent.com/amosQP/langtoolchain/main/uninstall.sh | bash
 ```
 
-asdf, 설치된 런타임, 관련 Homebrew 패키지, 이 도구가 `.zshrc`/`.bash_profile`/`.bashrc`에 추가한 설정을 모두 제거합니다. 실행 전 한 번 확인을 물으며(`--yes`로 생략 가능), `--dry-run`도 동일하게 지원합니다. 제거 후에는 `exec $SHELL`로 새 셸 세션을 열어야 PATH 등 캐시된 상태가 완전히 사라집니다.
+실행 전 한 번 확인을 물으며(`--yes`로 생략 가능), `--dry-run`도 동일하게 지원합니다. 제거 후에는 `exec $SHELL`로 새 셸 세션을 열어야 PATH 등 캐시된 상태가 완전히 사라집니다.
 
-#### 코드 구조
+#### 코드 구조 (파일별 설명)
 
 ```
-install.sh              curl로 받는 진입점. 로컬 클론이면 바로 실행, 아니면 git clone 후 실행
-uninstall.sh             위와 동일한 패턴의 제거용 진입점
-.tool-versions           기본 언어/버전 목록 (asdf 포맷)
-scripts/lib.sh           공용 유틸(로깅, dry-run, asdf PATH 보장 등) — 각 phase가 가져다 쓰는 모듈
-scripts/install/         설치 단계, 역할별로 파일 분리 (00_select ~ 07_validate + main.sh)
-scripts/uninstall/       제거 단계, 동일한 패턴 (01_uninstall_runtimes ~ 06_validate_teardown + main.sh)
+install.sh, uninstall.sh   curl로 받는 진입점 (루트)
+.tool-versions              기본 언어/버전 목록 (asdf 포맷, 이 저장소 안에서만 쓰이는 "읽기 전용" 소스)
+LICENSE                     MIT
+scripts/lib.sh               공용 유틸리티 모듈
+scripts/install/              설치 단계 (역할별 파일 분리)
+scripts/uninstall/            제거 단계 (동일한 패턴)
 ```
 
-`scripts/install`, `scripts/uninstall` 아래 각 파일은 서로 `source`하거나 순서에 의존하지 않고 독립적으로 실행 가능하도록 만들어져 있습니다(각자 asdf PATH를 스스로 보장). `main.sh`는 이 파일들을 순서대로 호출하는 오케스트레이터일 뿐입니다. 특정 단계만 고치거나 디버깅할 땐 `bash scripts/install/05_install_runtimes.sh`처럼 개별 실행해도 됩니다.
+**루트**
+
+| 파일 | 역할 |
+|---|---|
+| `install.sh` | curl 진입점. 로컬 클론이면 `scripts/install/main.sh`를 바로 실행, 아니면 `git clone`으로 임시 디렉토리에 받아서 실행 |
+| `uninstall.sh` | 위와 동일한 패턴의 제거용 진입점 (`scripts/uninstall/main.sh` 호출) |
+| `.tool-versions` | 기본으로 설치할 언어/버전 목록. asdf의 표준 포맷(`플러그인 버전`)을 그대로 씀 — 언어를 추가/변경하려면 이 파일 한 줄만 고치면 됨 |
+
+**`scripts/lib.sh`** — 모든 phase 스크립트가 공유하는 순수 함수 모음. 이 파일 하나를 소스(source)하는 것 외에는 phase 스크립트끼리 서로 의존하지 않음.
+
+| 함수 | 역할 |
+|---|---|
+| `log`, `step`, `die` | 로그 출력, 섹션 헤더 출력, 에러 후 즉시 종료 |
+| `run` | `--dry-run`이면 명령을 출력만 하고, 아니면 실제로 실행 |
+| `repo_root_from` | 스크립트 자기 자신의 경로로부터 저장소 루트를 역산 |
+| `each_tool` | `.tool-versions` 형식 파일을 `플러그인 버전` 쌍으로 파싱 |
+| `detect_rc_file` | `$SHELL` 기준으로 `.zshrc`/`.bash_profile` 중 무엇을 고칠지 결정 |
+| `append_env_var` | rc 파일에 줄을 멱등적으로(중복 없이) 추가 |
+| `ensure_asdf_on_path` | 이 프로세스에서 asdf/shim이 PATH에 잡히도록 보장 |
+| `ensure_build_flags` | Python 등 컴파일에 필요한 `LDFLAGS`/`CPPFLAGS`/`PKG_CONFIG_PATH`를 이 프로세스에 export |
+| `binary_for_plugin`, `flag_for_binary` | plugin 이름 ↔ 실제 실행파일 이름 ↔ 버전 확인 플래그 매핑 (bash 3.2엔 연관 배열이 없어서 `case`로 구현) |
+
+**`scripts/install/`**
+
+| 파일 | 역할 |
+|---|---|
+| `00_select.sh` | 언어별 설치 여부/버전을 물어보는 대화형 선택기. `/dev/tty`로 직접 읽고 써서 `curl \| bash`에서도 동작. 결과를 임시 `.tool-versions` 파일로 반환 |
+| `01_bootstrap_asdf.sh` | Homebrew 존재 확인, `asdf` 없으면 설치 |
+| `02_install_plugins.sh` | 선택된 언어마다 `asdf plugin add` |
+| `03_install_system_deps.sh` | Python 컴파일용 Homebrew 패키지 설치 |
+| `04_configure_shell_env.sh` | rc 파일에 asdf/빌드 환경변수 기록 |
+| `05_install_runtimes.sh` | `asdf install` — 실제 컴파일/다운로드 |
+| `06_set_globals.sh` | `asdf set -u` + `asdf reshim` |
+| `07_validate.sh` | 설치 결과 검증 (바이너리 경로, 버전 출력) |
+| `main.sh` | 위 스크립트들을 순서대로 실행하는 오케스트레이터. `--dry-run`/`--all`/`--yes` 플래그 처리 |
+
+**`scripts/uninstall/`** — 설치의 역순, 동일한 독립 실행 원칙.
+
+| 파일 | 역할 |
+|---|---|
+| `01_uninstall_runtimes.sh` | `asdf uninstall`로 설치된 런타임 제거 |
+| `02_remove_plugins.sh` | 설치된 모든 asdf 플러그인 제거 |
+| `03_clean_env_vars.sh` | rc 파일들에서 이 도구가 추가한 줄 제거 (`.bak` 백업 남김) |
+| `04_remove_system_deps.sh` | Homebrew 시스템 패키지 제거 |
+| `05_purge_asdf_core.sh` | `asdf` 자체와 `~/.asdf/`, 전역 `~/.tool-versions` 제거 |
+| `06_validate_teardown.sh` | 제거 결과 검증 |
+| `main.sh` | 위를 순서대로 실행 + 실행 전 확인 프롬프트 |
+
+**설계 원칙 (기여하기 전에 알아두면 좋은 것)**
+- 각 phase 스크립트는 `main.sh`가 별도의 `bash` 프로세스로 실행합니다. 즉 한 phase에서 `export`한 값은 다음 phase로 자동으로 넘어가지 않습니다 — 그래서 `asdf`나 빌드 플래그가 필요한 스크립트는 각자 `ensure_asdf_on_path`/`ensure_build_flags`를 직접 호출합니다. 이 원칙 덕분에 아무 phase나 단독으로(`bash scripts/install/05_install_runtimes.sh`) 실행해도 정상 동작하고, 순서를 바꾸거나 phase를 추가/삭제하기도 쉽습니다.
+- `.tool-versions`를 파싱해서 `while read ...; do ... done` 루프를 도는 코드는 항상 `3< <(each_tool "$CONFIG_FILE")` 형태로 파일디스크립터 3번을 씁니다(표준입력이 아니라). 루프 안에서 `asdf` 같은 외부 명령을 또 실행하기 때문인데, 표준입력을 그대로 쓰면 그 명령이 실수로 루프용 입력을 가로챌 수 있어서입니다.
+- `asdf plugin list | grep -q ...`처럼 "명령 출력을 곧장 grep -q로 파이프"하는 패턴은 `set -o pipefail`과 함께 쓰면 위험합니다 — `grep -q`가 매치되자마자 파이프를 일찍 닫아버리는데, 그 타이밍에 상류 명령이 아직 출력 중이면 SIGPIPE로 죽고 파이프라인 전체가 실패로 보고됩니다(실제로 이 버그 때문에 설치된 플러그인을 간헐적으로 "없음"으로 오판했었습니다). 명령 출력은 변수에 먼저 담고, 그 변수를 grep하세요.
+- bash 3.2(macOS 기본 `/bin/bash`) 호환을 유지합니다 — 연관 배열(`declare -A`) 같은 bash 4+ 전용 문법을 쓰지 않습니다. `curl | bash`로 실행될 때 어떤 `bash`가 PATH에 잡힐지 보장할 수 없기 때문입니다.
+
+#### 기여하기
+
+- 언어/버전을 바꾸려면 `.tool-versions` 한 줄만 수정하면 됩니다.
+- 특정 단계만 고치거나 디버깅할 땐 개별 실행: `DRY_RUN=true bash scripts/install/05_install_runtimes.sh`
+- 전체 문법 검사: `for f in install.sh uninstall.sh scripts/lib.sh scripts/install/*.sh scripts/uninstall/*.sh; do bash -n "$f"; done`
+- 실제로 아무것도 바꾸지 않고 전체 흐름 확인: `./install.sh --dry-run --all --yes`, `./uninstall.sh --dry-run --yes`
 
 #### To-Do
 
-- [ ] GitHub 레포 이름을 `langtoolchain`으로 맞추기 (현재 remote는 `amosQP/EasyEnv`)
-- [ ] 실제 머신(클린 VM 등)에서 `--dry-run` 없이 전체 설치 1회 검증
-- [ ] 언어 추가/제거 시 `.tool-versions`만 고치면 되는지 재확인
+- [ ] 실제 클린 머신에서 `--dry-run` 없이 전체 설치 1회 검증
+- [ ] Apple Silicon 외 Intel Mac(`/usr/local` 접두사) 경로 처리 확인
+
+#### 라이선스
+
+[MIT](LICENSE)
