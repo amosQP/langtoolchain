@@ -4,10 +4,13 @@ title: 진짜 클린 macOS(VM/새 계정)에서 전체 검증
 status: To Do
 assignee: []
 created_date: '2026-08-24 08:05'
+updated_date: '2026-08-24 08:12'
 labels:
   - test
   - platform
-dependencies: []
+dependencies:
+  - TASK-6
+  - TASK-20
 priority: high
 ordinal: 35000
 ---

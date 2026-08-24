@@ -4,10 +4,12 @@ title: Intel Mac(x86_64) 실기기 검증
 status: To Do
 assignee: []
 created_date: '2026-08-24 08:05'
+updated_date: '2026-08-24 08:12'
 labels:
   - test
   - platform
-dependencies: []
+dependencies:
+  - TASK-20
 priority: high
 ordinal: 34000
 ---

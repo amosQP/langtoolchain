@@ -4,10 +4,12 @@ title: 완전 설치 → 완전 제거 풀 사이클
 status: To Do
 assignee: []
 created_date: '2026-08-24 08:05'
+updated_date: '2026-08-24 08:12'
 labels:
   - test
   - uninstall
-dependencies: []
+dependencies:
+  - TASK-9
 priority: medium
 ordinal: 23000
 ---

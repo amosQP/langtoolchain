@@ -4,10 +4,12 @@ title: curl | bash 중 git 없는 환경
 status: To Do
 assignee: []
 created_date: '2026-08-24 08:05'
+updated_date: '2026-08-24 08:12'
 labels:
   - test
   - edge-case
-dependencies: []
+dependencies:
+  - TASK-6
 priority: low
 ordinal: 31000
 ---
