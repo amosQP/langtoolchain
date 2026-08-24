@@ -96,10 +96,14 @@ tty_prompt() { printf '%s' "$*" > /dev/tty; }   # no trailing newline: prompt st
 # predictable prefix under the system temp dir (e.g. /tmp on Linux,
 # $TMPDIR on macOS) with a random unique suffix.
 OUT_FILE="$(mktemp -t langtoolchain-selection)"
-# Clean up on ANY exit path (success, error, or the user backing out) —
-# but only if we're leaving it empty; a populated file is the return value
-# the caller still needs to read.
-trap '[[ -s "$OUT_FILE" ]] || rm -f "$OUT_FILE"' EXIT
+# Clean up on every exit path except the one deliberate success below.
+# Emptiness alone isn't a reliable signal here: the interactive scope
+# prompt can `die` (e.g. on an invalid --local directory) *after*
+# language selections are already written to $OUT_FILE, which would look
+# "successful" to an emptiness check and leak the file. SUCCESS is only
+# ever set true right before the two real `echo "$OUT_FILE"` handoffs.
+SUCCESS=false
+trap '$SUCCESS || rm -f "$OUT_FILE"' EXIT
 
 # Non-interactive session, or the caller explicitly asked for everything:
 # skip the language menu entirely and use the default config as-is. Scope
@@ -107,6 +111,7 @@ trap '[[ -s "$OUT_FILE" ]] || rm -f "$OUT_FILE"' EXIT
 # it defaults to global (scope_line() already does this when SCOPE="").
 if ! $INTERACTIVE || $SELECT_ALL; then
   write_with_scope "$DEFAULT_CONFIG" "$OUT_FILE"
+  SUCCESS=true
   echo "$OUT_FILE"   # the one line of "real" stdout output
   exit 0
 fi
@@ -196,4 +201,5 @@ mv "$SCOPE_TMP" "$OUT_FILE"
 
 # The ONLY thing written to real stdout: the path main.sh should read the
 # final selection from.
+SUCCESS=true
 echo "$OUT_FILE"

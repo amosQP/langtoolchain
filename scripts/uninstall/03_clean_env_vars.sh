@@ -19,9 +19,15 @@ for rc in "$HOME/.zshrc" "$HOME/.bash_profile" "$HOME/.bashrc"; do
   # macOS's BSD sed requires an explicit (even if empty) backup suffix
   # argument to -i; '.bak' also means we never destructively edit the rc
   # file without a recovery copy sitting right next to it.
-  sed -i '.bak' \
+  #
+  # -E (extended regex): without it, `\(zsh\|bash\)` is silently NOT
+  # alternation on BSD sed (macOS's stock /usr/bin/sed) — `\|` is a GNU
+  # extension to POSIX basic regex, not something BSD sed honors, so that
+  # pattern never matched anything and the java hook line was never
+  # actually removed by uninstall. Confirmed empirically; -E fixes it.
+  sed -E -i '.bak' \
     -e '/brew shellenv/d' \
-    -e '/set-java-home\.\(zsh\|bash\)/d' \
+    -e '/set-java-home\.(zsh|bash)/d' \
     -e '/ASDF_DATA_DIR/d' \
     -e '/opt\/sqlite\/bin/d' \
     -e '/LDFLAGS.*openssl/d' \

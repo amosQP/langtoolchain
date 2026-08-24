@@ -28,8 +28,12 @@ command -v git >/dev/null 2>&1 || {
   exit 1
 }
 
+# Deliberately NOT `exec`d below — see install.sh for why: exec replaces
+# this process image outright, which skips the trap on the successful
+# path entirely (only fires on an early failure before we get here).
 WORKDIR="$(mktemp -d)"
 trap 'rm -rf "$WORKDIR"' EXIT
 
 git clone --depth 1 --branch "$BRANCH" "$REPO_URL" "$WORKDIR/langtoolchain" >/dev/null
-exec bash "$WORKDIR/langtoolchain/scripts/uninstall/main.sh" "$@"
+bash "$WORKDIR/langtoolchain/scripts/uninstall/main.sh" "$@"
+exit $?

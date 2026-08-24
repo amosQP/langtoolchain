@@ -40,10 +40,17 @@ command -v git >/dev/null 2>&1 || {
 # A scratch directory for the throwaway clone.
 WORKDIR="$(mktemp -d)"
 # Clean it up no matter how this script exits (success, error, Ctrl-C).
+#
+# Deliberately NOT `exec`d below: exec replaces this process image outright
+# (execve), which skips the shell's own exit sequence entirely — so a trap
+# registered here would never fire on the common (successful) path, only
+# on an early failure before we ever get there. Confirmed empirically.
+# Plain invocation + explicit exit lets this trap actually run every time.
 trap 'rm -rf "$WORKDIR"' EXIT
 
 # --depth 1: only the latest commit, not the full history — this clone is
 # thrown away right after, so there's no reason to download more than
 # necessary.
 git clone --depth 1 --branch "$BRANCH" "$REPO_URL" "$WORKDIR/langtoolchain" >/dev/null
-exec bash "$WORKDIR/langtoolchain/scripts/install/main.sh" "$@"
+bash "$WORKDIR/langtoolchain/scripts/install/main.sh" "$@"
+exit $?
