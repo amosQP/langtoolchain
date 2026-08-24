@@ -42,10 +42,9 @@ java (java) 설치할까요? [Y/n] >
 #### 사전 요구사항
 
 - macOS
-- [Homebrew](https://brew.sh) — 없으면 설치기가 바로 에러를 내고 안내합니다.
 - (원격 설치 시) `git` — macOS에 Xcode Command Line Tools가 있으면 기본 포함
 
-asdf 자체는 설치기가 알아서 `brew install asdf`로 설치합니다.
+Homebrew와 asdf 자체는 설치기가 알아서 설치합니다. Homebrew가 없으면 공식 설치 스크립트를 그대로 실행하는데, 이 과정에서 딱 한 번 sudo 비밀번호를 물어봅니다(이 부분만은 자동화할 수 없고, 자동화해서도 안 되는 부분입니다).
 
 #### 설치되는 것
 
@@ -65,7 +64,7 @@ Python 컴파일에 필요한 Homebrew 패키지(`openssl`, `readline`, `sqlite3
 
 1. **진입점 (`install.sh`)**: 로컬에 클론된 상태로 실행됐으면(`scripts/install/` 디렉토리가 옆에 있으면) 바로 그걸 실행합니다. `curl | bash`로 stdin을 통해 실행된 경우엔(로컬에 아무 파일도 없는 경우) `git clone --depth 1`로 임시 디렉토리(`mktemp -d`)에 저장소를 내려받은 뒤 그 안의 스크립트를 실행하고, 끝나면 `trap`으로 임시 디렉토리를 지웁니다.
 2. **언어 선택 (`00_select.sh`)**: 언어별로 설치 여부(Y/n)와 버전을 물어봅니다. 모든 프롬프트/출력은 `/dev/tty`에 직접 쓰고 읽어서, `curl | bash`처럼 표준입력이 이미 스크립트 내용으로 막혀 있어도 정상적으로 사용자 입력을 받습니다. 결과는 `.tool-versions` 형식의 임시 파일로 저장되고, 그 파일 경로만 표준출력으로 반환됩니다. 터미널이 없으면(CI 등) 자동으로 전체 설치로 폴백합니다.
-3. **asdf 부트스트랩 (`01_bootstrap_asdf.sh`)**: Homebrew가 있는지 확인하고, `asdf`가 없으면 `brew install asdf`로 설치합니다.
+3. **Homebrew/asdf 부트스트랩 (`01_bootstrap_asdf.sh`)**: Homebrew가 없으면 공식 설치 스크립트를 `NONINTERACTIVE=1`로 실행해 직접 설치합니다(sudo 비밀번호 입력은 그대로 필요). `asdf`가 없으면 `brew install asdf`로 설치합니다.
 4. **플러그인 설치 (`02_install_plugins.sh`)**: 선택된 언어마다 `asdf plugin add`.
 5. **시스템 의존성 (`03_install_system_deps.sh`)**: Python 컴파일에 필요한 Homebrew 패키지 설치.
 6. **셸 환경변수 (`04_configure_shell_env.sh`)**: `~/.zshrc` 또는 `~/.bash_profile`(사용자의 로그인 셸에 따라 자동 판단)에 asdf shim PATH, Java 홈, 컴파일러 플래그를 멱등적으로(중복 없이) 추가합니다.
@@ -103,7 +102,7 @@ Python 컴파일에 필요한 Homebrew 패키지(`openssl`, `readline`, `sqlite3
 | 파일 | 무엇이 들어가는가 | 어느 스크립트가 쓰는가 |
 |---|---|---|
 | `~/.tool-versions` (전역, 이 저장소의 `.tool-versions`와는 다른 파일) | 언어별 전역 기본 버전 | `06_set_globals.sh`의 `asdf set -u` |
-| `~/.zshrc` 또는 `~/.bash_profile` (로그인 셸에 따라 자동 선택) | `ASDF_DATA_DIR`/PATH shim export, Java 홈 훅, `LDFLAGS`/`CPPFLAGS`/`PKG_CONFIG_PATH` | `04_configure_shell_env.sh` |
+| `~/.zshrc` 또는 `~/.bash_profile` (로그인 셸에 따라 자동 선택) | `eval "$(brew shellenv)"`(파일 맨 위에 prepend — 아래 설계 원칙 참고), `ASDF_DATA_DIR`/PATH shim export, Java 홈 훅, `LDFLAGS`/`CPPFLAGS`/`PKG_CONFIG_PATH` | `04_configure_shell_env.sh` |
 | 이 저장소의 `.tool-versions` | **읽기 전용** — 언어/기본 버전 목록의 소스. 설치기가 여기에 쓰지 않음 | 모든 phase 스크립트가 읽기만 함 |
 
 **Homebrew로 설치되는 것** (`/opt/homebrew/` 아래, macOS Apple Silicon 기준):
@@ -159,8 +158,10 @@ scripts/uninstall/            제거 단계 (동일한 패턴)
 | `repo_root_from` | 스크립트 자기 자신의 경로로부터 저장소 루트를 역산 |
 | `each_tool` | `.tool-versions` 형식 파일을 `플러그인 버전` 쌍으로 파싱 |
 | `detect_rc_file` | `$SHELL` 기준으로 `.zshrc`/`.bash_profile` 중 무엇을 고칠지 결정 |
-| `append_env_var` | rc 파일에 줄을 멱등적으로(중복 없이) 추가 |
+| `append_env_var` | rc 파일 맨 **끝**에 줄을 멱등적으로(중복 없이) 추가 |
+| `prepend_env_var` | rc 파일 맨 **앞**에 줄을 멱등적으로 추가 — PATH 우선순위가 중요한 줄(`brew shellenv`)에 사용 |
 | `ensure_asdf_on_path` | 이 프로세스에서 asdf/shim이 PATH에 잡히도록 보장 |
+| `ensure_brew_on_path` | 이 프로세스에서 `brew`가 PATH에 잡히도록 보장 (Apple Silicon/Intel 설치 경로 자동 판단) |
 | `ensure_build_flags` | Python 등 컴파일에 필요한 `LDFLAGS`/`CPPFLAGS`/`PKG_CONFIG_PATH`를 이 프로세스에 export |
 | `binary_for_plugin`, `flag_for_binary` | plugin 이름 ↔ 실제 실행파일 이름 ↔ 버전 확인 플래그 매핑 (bash 3.2엔 연관 배열이 없어서 `case`로 구현) |
 
@@ -169,7 +170,7 @@ scripts/uninstall/            제거 단계 (동일한 패턴)
 | 파일 | 역할 |
 |---|---|
 | `00_select.sh` | 언어별 설치 여부/버전을 물어보는 대화형 선택기. `/dev/tty`로 직접 읽고 써서 `curl \| bash`에서도 동작. 결과를 임시 `.tool-versions` 파일로 반환 |
-| `01_bootstrap_asdf.sh` | Homebrew 존재 확인, `asdf` 없으면 설치 |
+| `01_bootstrap_asdf.sh` | Homebrew 없으면 공식 스크립트로 설치(sudo 필요), `asdf` 없으면 `brew install asdf` |
 | `02_install_plugins.sh` | 선택된 언어마다 `asdf plugin add` |
 | `03_install_system_deps.sh` | Python 컴파일용 Homebrew 패키지 설치 |
 | `04_configure_shell_env.sh` | rc 파일에 asdf/빌드 환경변수 기록 |
@@ -195,6 +196,7 @@ scripts/uninstall/            제거 단계 (동일한 패턴)
 - `.tool-versions`를 파싱해서 `while read ...; do ... done` 루프를 도는 코드는 항상 `3< <(each_tool "$CONFIG_FILE")` 형태로 파일디스크립터 3번을 씁니다(표준입력이 아니라). 루프 안에서 `asdf` 같은 외부 명령을 또 실행하기 때문인데, 표준입력을 그대로 쓰면 그 명령이 실수로 루프용 입력을 가로챌 수 있어서입니다.
 - `asdf plugin list | grep -q ...`처럼 "명령 출력을 곧장 grep -q로 파이프"하는 패턴은 `set -o pipefail`과 함께 쓰면 위험합니다 — `grep -q`가 매치되자마자 파이프를 일찍 닫아버리는데, 그 타이밍에 상류 명령이 아직 출력 중이면 SIGPIPE로 죽고 파이프라인 전체가 실패로 보고됩니다(실제로 이 버그 때문에 설치된 플러그인을 간헐적으로 "없음"으로 오판했었습니다). 명령 출력은 변수에 먼저 담고, 그 변수를 grep하세요.
 - bash 3.2(macOS 기본 `/bin/bash`) 호환을 유지합니다 — 연관 배열(`declare -A`) 같은 bash 4+ 전용 문법을 쓰지 않습니다. `curl | bash`로 실행될 때 어떤 `bash`가 PATH에 잡힐지 보장할 수 없기 때문입니다.
+- rc 파일에 PATH를 바꾸는 줄을 추가할 땐 순서가 실제로 중요합니다 — 셸이 파일을 위에서부터 소싱하면서 매번 `export PATH="X:$PATH"`로 앞에 붙이기 때문에, **더 나중에 소싱되는 줄이 PATH 우선순위가 더 높습니다.** `append_env_var`(파일 끝에 추가)로 `brew shellenv`를 넣었더니, 이미 rc 파일 뒷부분에 있던 다른 PATH 설정 때문에 asdf shim보다 Homebrew 쪽이 먼저 잡히는 회귀가 실기기 테스트에서 실제로 재현된 적이 있습니다. `brew shellenv`처럼 "제일 먼저 소싱되어야 하는" 줄은 `prepend_env_var`로 파일 맨 위에 넣으세요.
 
 #### 기여하기
 
@@ -205,8 +207,9 @@ scripts/uninstall/            제거 단계 (동일한 패턴)
 
 #### To-Do
 
-- [ ] 실제 클린 머신에서 `--dry-run` 없이 전체 설치 1회 검증
-- [ ] Apple Silicon 외 Intel Mac(`/usr/local` 접두사) 경로 처리 확인
+- [x] 실기기에서 `--dry-run` 없이 실제 설치 검증 (새 Node 버전을 실제로 설치/제거하며 phase 1~5, 7 검증 — 진짜 클린 머신은 아니고, 기존 설정이 있는 이 개발 머신에서 진행)
+- [ ] 진짜 클린 macOS(VM 또는 새 계정)에서 Homebrew 자동 설치 경로까지 포함해 처음부터 전체 검증
+- [ ] Intel Mac(`/usr/local` 접두사) 경로 처리 확인 — 코드는 `uname -m` 분기로 처리해뒀지만 Intel 기기에서 직접 검증은 안 함
 
 #### 라이선스
 
