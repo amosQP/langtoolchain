@@ -35,27 +35,24 @@ curl -fsSL https://raw.githubusercontent.com/amosQP/langtoolchain/main/install.s
 
 <br>
 
-## 🧭 철학: Homebrew는 자유, langtoolchain은 언어만
+## 📦 관리 범위
 
-> **"컴파일러는 langtoolchain이 챙긴다. 나머지는 전부 당신 마음대로."**
+langtoolchain이 설치·관리하는 건 **Node.js·Java·Python·Rust·Go 5개 언어**와 그걸 위한 Homebrew 패키지
+6개(`asdf`, `openssl` 등)뿐입니다. 그 외에 Mac에 이미 있거나 앞으로 `brew install`할 다른 패키지,
+다른 언어의 asdf 플러그인, 다른 버전 관리자는 전혀 건드리지 않습니다.
 
-langtoolchain이 실제로 소유하고 책임지는 영역은 **Node.js·Java·Python·Rust·Go, 이 5개 언어뿐**입니다.
-당신의 Mac에 있는 다른 Homebrew 패키지, 다른 버전 관리자, 다른 무엇이든 — langtoolchain은 절대 건드리지
-않고, 절대 참견하지 않습니다. 실제로 이번 프로젝트 개발 중 실기기에 asdf와 무관하게 따로 설치돼 있던
-Homebrew node를 정리하면서 세운 원칙이 그대로 코드에 박혀 있습니다.
-
-| | langtoolchain의 영역 | 당신의 영역 |
+| | langtoolchain이 관리 | 관리 안 함 |
 |---|---|---|
-| 🍺 **Homebrew** | asdf 자체 + 컴파일용 시스템 패키지 6개(`openssl` 등)만 설치 | 그 외 뭘 `brew install`하든 완전 자유, 절대 안 건드림 |
-| 🧬 **asdf** | `nodejs`/`java`/`python`/`rust`/`golang` 5개 플러그인만 관리 | 다른 언어·도구용 asdf 플러그인은 손도 안 댐 |
-| 🗂️ **버전 고정** | 딱 당신이 고른 언어를, 딱 고른 범위(전역/디렉토리)에만 | 나머지 프로젝트·설정은 원래 하던 대로 |
+| 🍺 Homebrew | `asdf` + 컴파일용 시스템 패키지 6개 | 그 외 모든 `brew` 패키지 |
+| 🧬 asdf | `nodejs`/`java`/`python`/`rust`/`golang` 플러그인 | 다른 언어·도구용 플러그인 |
+| 🗂️ 버전 고정 | 고른 언어를, 고른 범위(전역/디렉토리)에만 | 나머지 프로젝트·설정 |
 
 <br>
 
 ## 목차
 
 - [빠른 시작](#-빠른-시작)
-- [철학](#-철학-homebrew는-자유-langtoolchain은-언어만)
+- [관리 범위](#-관리-범위)
 - [사전 요구사항](#-사전-요구사항)
 - [설치되는 것](#-설치되는-것)
 - [어떻게 동작하는가](#%EF%B8%8F-어떻게-동작하는가)
