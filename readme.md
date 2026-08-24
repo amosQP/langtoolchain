@@ -4,7 +4,7 @@
 
 **macOS 한 줄 명령으로 Node.js · Java · Python · Rust · Go 컴파일러를 통째로 설치**
 
-[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![Platform](https://img.shields.io/badge/platform-macOS-000000?logo=apple&logoColor=white)](#-사전-요구사항)
 [![Shell](https://img.shields.io/badge/shell-bash%203.2%2B-4EAA25?logo=gnubash&logoColor=white)](#-설계-원칙)
 [![Powered by asdf](https://img.shields.io/badge/powered%20by-asdf-F16436)](https://asdf-vm.com)
@@ -469,7 +469,7 @@ macOS의 `/usr/bin/sed`는 BSD sed로, GNU sed와 정규식 문법이 다릅니�
 
 <div align="center">
 
-[MIT](LICENSE) — 누구나 자유롭게 가져다 쓰고 고칠 수 있습니다.
+[MIT](https://opensource.org/licenses/MIT) — 누구나 자유롭게 가져다 쓰고 고칠 수 있습니다. (이 저장소의 [LICENSE](LICENSE) 파일도 동일한 내용입니다.)
 
 Made with 🧉 by [amosQP](https://github.com/amosQP)
 
