@@ -8,6 +8,7 @@ labels:
   - test
   - shell
 dependencies: []
+parent_task_id: TASK-44
 priority: medium
 ordinal: 18000
 ---

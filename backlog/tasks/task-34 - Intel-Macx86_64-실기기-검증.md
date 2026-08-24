@@ -10,6 +10,7 @@ labels:
   - platform
 dependencies:
   - TASK-20
+parent_task_id: TASK-50
 priority: high
 ordinal: 34000
 ---

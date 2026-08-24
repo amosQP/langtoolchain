@@ -8,6 +8,7 @@ labels:
   - test
   - homebrew
 dependencies: []
+parent_task_id: TASK-45
 priority: medium
 ordinal: 19000
 ---

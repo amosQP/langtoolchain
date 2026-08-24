@@ -10,6 +10,7 @@ labels:
   - uninstall
 dependencies:
   - TASK-9
+parent_task_id: TASK-46
 priority: medium
 ordinal: 23000
 ---

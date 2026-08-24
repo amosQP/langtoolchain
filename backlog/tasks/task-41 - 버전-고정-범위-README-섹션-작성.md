@@ -4,8 +4,10 @@ title: 버전 고정 범위 README 섹션 작성
 status: Done
 assignee: []
 created_date: '2026-08-24 08:05'
+updated_date: '2026-08-24 12:48'
 labels:
   - docs
+milestone: m-4
 dependencies: []
 modified_files:
   - readme.md

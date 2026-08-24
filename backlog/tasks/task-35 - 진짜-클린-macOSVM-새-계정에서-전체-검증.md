@@ -11,6 +11,7 @@ labels:
 dependencies:
   - TASK-6
   - TASK-20
+parent_task_id: TASK-50
 priority: high
 ordinal: 35000
 ---
