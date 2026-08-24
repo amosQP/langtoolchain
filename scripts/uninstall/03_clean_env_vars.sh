@@ -20,13 +20,13 @@ for rc in "$HOME/.zshrc" "$HOME/.bash_profile" "$HOME/.bashrc"; do
   # argument to -i; '.bak' also means we never destructively edit the rc
   # file without a recovery copy sitting right next to it.
   sed -i '.bak' \
+    -e '/brew shellenv/d' \
     -e '/set-java-home\.\(zsh\|bash\)/d' \
     -e '/ASDF_DATA_DIR/d' \
     -e '/opt\/sqlite\/bin/d' \
     -e '/LDFLAGS.*openssl/d' \
     -e '/CPPFLAGS.*openssl/d' \
     -e '/PKG_CONFIG_PATH.*openssl/d' \
-    -e '/libexec\/asdf\.sh/d' \
     "$rc"
   log "  Backup preserved at ${rc}.bak"
 done

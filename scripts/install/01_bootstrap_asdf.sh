@@ -27,19 +27,31 @@ if command -v brew >/dev/null 2>&1; then
   log "Homebrew found: $(command -v brew)"
 else
   log "Homebrew not found — installing (this will ask for your password once, via sudo)..."
-  # The official installer. NONINTERACTIVE=1 skips its "Press RETURN to
-  # continue" confirmation prompt; it still runs `sudo` internally to
-  # create /opt/homebrew (or /usr/local on Intel) the first time, which
-  # will prompt for the account password in the terminal as normal — that
-  # part can't be automated away, and shouldn't be.
-  run env NONINTERACTIVE=1 bash -c \
-    "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+  if [[ "$DRY_RUN" == "true" ]]; then
+    # `run` alone can't gate this: `$(curl ...)` is a command substitution,
+    # which bash expands *before* `run` ever sees the result — piping it
+    # straight into `run env ... bash -c "$(curl ...)"` would still fetch
+    # the real installer (and, if printed, dump its entire multi-KB source
+    # into the dry-run output) even though nothing gets executed. Gate the
+    # fetch itself, not just the execution.
+    log "  + curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh | NONINTERACTIVE=1 bash"
+  else
+    # The official installer. NONINTERACTIVE=1 skips its "Press RETURN to
+    # continue" confirmation prompt; it still runs `sudo` internally to
+    # create /opt/homebrew (or /usr/local on Intel) the first time, which
+    # will prompt for the account password in the terminal as normal — that
+    # part can't be automated away, and shouldn't be.
+    env NONINTERACTIVE=1 bash -c \
+      "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+  fi
   # The installer just placed `brew` at a fixed location but didn't add it
   # to this process's PATH — do that now so the rest of THIS run can use it.
   ensure_brew_on_path
-  command -v brew >/dev/null 2>&1 || die \
-    "Homebrew install finished but 'brew' still isn't on PATH. Open a new terminal and re-run this installer."
-  log "Homebrew installed: $(command -v brew)"
+  if [[ "$DRY_RUN" != "true" ]]; then
+    command -v brew >/dev/null 2>&1 || die \
+      "Homebrew install finished but 'brew' still isn't on PATH. Open a new terminal and re-run this installer."
+    log "Homebrew installed: $(command -v brew)"
+  fi
 fi
 
 if command -v asdf >/dev/null 2>&1; then
