@@ -7,12 +7,15 @@
 # (`SELECTION_FILE="$(bash 00_select.sh)"`).
 #
 # Flags:
-#   --all   skip the menu, select every language at its default version
-#   --yes   skip the final "install these?" confirmation
+#   --all         skip the menu, select every language at its default version
+#   --yes         skip the final "install these?" confirmation
+#   --local[=DIR] pin to DIR (default: current directory) instead of asking;
+#                 skips the interactive global/local prompt too
 #
 # If there is no controlling terminal at all (CI, fully non-interactive
 # pipes), falls back to --all behavior automatically instead of hanging on
-# a `read` that can never return.
+# a `read` that can never return. Pin scope likewise defaults to global
+# when there's no tty to ask.
 
 # -e: any unhandled non-zero exit kills the script. -u: referencing an
 # unset variable is an error. -o pipefail: a pipeline fails if ANY stage
@@ -35,13 +38,44 @@ DEFAULT_CONFIG="$REPO_ROOT/.tool-versions"
 # Flags default to off; the loop below flips them on if passed.
 SELECT_ALL=false
 AUTO_YES=false
+# SCOPE is empty until either a --local flag or the interactive prompt
+# (further below) sets it to "global" or "local".
+SCOPE=""
+SCOPE_DIR=""
 for arg in "$@"; do
   case "$arg" in
     --all) SELECT_ALL=true ;;
     --yes) AUTO_YES=true ;;
+    --local) SCOPE="local"; SCOPE_DIR="$(pwd)" ;;
+    --local=*) SCOPE="local"; SCOPE_DIR="${arg#--local=}" ;;
     # (unrecognized flags are silently ignored here — main.sh validates them)
   esac
 done
+
+if [[ "$SCOPE" == "local" ]]; then
+  [[ -d "$SCOPE_DIR" ]] || die "Directory not found: $SCOPE_DIR"
+  # Resolve to an absolute path now, once, so 06_set_globals.sh (running
+  # later, as its own process, possibly with a different cwd) gets an
+  # unambiguous path regardless of where it happens to be invoked from.
+  SCOPE_DIR="$(cd "$SCOPE_DIR" && pwd)"
+fi
+
+# scope_line: the "# scope: ..." line written as the first line of the
+# output file — a comment, so each_tool's plugin/version parsing (which
+# skips lines starting with '#') never has to know this exists.
+scope_line() {
+  if [[ "$SCOPE" == "local" ]]; then
+    printf '# scope: local %s\n' "$SCOPE_DIR"
+  else
+    printf '# scope: global\n'
+  fi
+}
+
+# write_with_scope <source-file> <dest-file>: prepends the scope line
+# ahead of <source-file>'s content into <dest-file>.
+write_with_scope() {
+  { scope_line; cat "$1"; } > "$2"
+}
 
 # Probe for a controlling terminal. `: < /dev/tty` tries to open /dev/tty
 # for reading and does nothing with it (`:` is the no-op builtin); if that
@@ -68,9 +102,11 @@ OUT_FILE="$(mktemp -t langtoolchain-selection)"
 trap '[[ -s "$OUT_FILE" ]] || rm -f "$OUT_FILE"' EXIT
 
 # Non-interactive session, or the caller explicitly asked for everything:
-# skip the menu entirely and just copy the default config as-is.
+# skip the language menu entirely and use the default config as-is. Scope
+# still comes from --local if given; otherwise there's no tty to ask, so
+# it defaults to global (scope_line() already does this when SCOPE="").
 if ! $INTERACTIVE || $SELECT_ALL; then
-  cp "$DEFAULT_CONFIG" "$OUT_FILE"
+  write_with_scope "$DEFAULT_CONFIG" "$OUT_FILE"
   echo "$OUT_FILE"   # the one line of "real" stdout output
   exit 0
 fi
@@ -126,6 +162,25 @@ while read -r plugin version; do
 done < "$OUT_FILE"
 tty_out ""
 
+# Ask where to pin these versions, unless --local[=DIR] already decided it.
+if [[ -z "$SCOPE" ]]; then
+  tty_prompt "전역으로 고정할까요, 이 디렉토리에만 고정할까요? [전역/로컬] > "
+  read -r scope_answer < /dev/tty || scope_answer=""
+  case "$scope_answer" in
+    로컬|local|Local|l|L)
+      tty_prompt "  어느 디렉토리에 고정할까요? [기본값: 현재 디렉토리] > "
+      read -r scope_dir_answer < /dev/tty || scope_dir_answer=""
+      SCOPE_DIR="${scope_dir_answer:-$(pwd)}"
+      [[ -d "$SCOPE_DIR" ]] || die "Directory not found: $SCOPE_DIR"
+      SCOPE_DIR="$(cd "$SCOPE_DIR" && pwd)"
+      SCOPE="local"
+      ;;
+    *)
+      SCOPE="global"
+      ;;
+  esac
+fi
+
 if ! $AUTO_YES; then
   tty_prompt "설치할까요? [Y/n] > "
   read -r confirm < /dev/tty || confirm=""
@@ -133,6 +188,11 @@ if ! $AUTO_YES; then
     n|N|no|NO) tty_out "취소되었습니다."; exit 1 ;;
   esac
 fi
+
+# Prepend the scope line now that it's finally settled (flag or prompt).
+SCOPE_TMP="$(mktemp)"
+write_with_scope "$OUT_FILE" "$SCOPE_TMP"
+mv "$SCOPE_TMP" "$OUT_FILE"
 
 # The ONLY thing written to real stdout: the path main.sh should read the
 # final selection from.

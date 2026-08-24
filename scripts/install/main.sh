@@ -4,22 +4,25 @@
 # script exists only for the convenience of running all of them at once.
 #
 # Flags:
-#   --dry-run   print what would happen, change nothing
-#   --all       skip the language picker, install everything in .tool-versions
-#   --yes       skip the final "install these?" confirmation
+#   --dry-run     print what would happen, change nothing
+#   --all         skip the language picker, install everything in .tool-versions
+#   --yes         skip the final "install these?" confirmation
+#   --local[=DIR] pin versions to DIR (default: current directory) instead
+#                 of globally; also skips the interactive global/local prompt
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 DRY_RUN=false
-# Flags meant for 00_select.sh get collected here as a plain string (not an
-# array) and passed through unquoted below — simple and safe since these
-# are always single, space-free flag words.
-SELECT_OPTS=""
+# Flags meant for 00_select.sh get collected into an array (not a plain
+# string) so a --local=<dir with spaces> survives the trip intact.
+SELECT_OPTS=()
 for arg in "$@"; do
   case "$arg" in
     --dry-run) DRY_RUN=true ;;
-    --all) SELECT_OPTS="$SELECT_OPTS --all" ;;
-    --yes) SELECT_OPTS="$SELECT_OPTS --yes" ;;
+    --all) SELECT_OPTS+=("--all") ;;
+    --yes) SELECT_OPTS+=("--yes") ;;
+    --local) SELECT_OPTS+=("--local") ;;
+    --local=*) SELECT_OPTS+=("$arg") ;;
     *) echo "Unknown option: $arg" >&2; exit 1 ;;
   esac
 done
@@ -34,7 +37,10 @@ echo "langtoolchain installer"
 # If the user backs out (answers "n" to everything, or declines the final
 # confirmation), it exits non-zero and prints nothing — the `if` catches
 # that instead of letting `set -e` kill this script with a confusing error.
-if SELECTION_FILE="$(bash "$SCRIPT_DIR/00_select.sh" $SELECT_OPTS)"; then
+# "${SELECT_OPTS[@]+"${SELECT_OPTS[@]}"}": expands the array, or nothing at
+# all if it's empty — plain "${SELECT_OPTS[@]}" would error under `set -u`
+# on an empty array in bash 3.2 (this only became array-safe in bash 4.4+).
+if SELECTION_FILE="$(bash "$SCRIPT_DIR/00_select.sh" "${SELECT_OPTS[@]+"${SELECT_OPTS[@]}"}")"; then
   # Every later phase reads $TOOL_VERSIONS_FILE instead of the repo's own
   # .tool-versions, so they only touch what the user actually picked.
   export TOOL_VERSIONS_FILE="$SELECTION_FILE"

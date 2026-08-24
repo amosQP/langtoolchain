@@ -86,9 +86,6 @@ append_env_var() {
   grep -q "$search" "$rc_file" 2>/dev/null || printf '%s\n' "$line" >> "$rc_file"
 }
 
-# ensure_asdf_on_path: makes `asdf` and every asdf shim (node, python, ...)
-# callable from *this* process.
-#
 # prepend_env_var <rc_file> <search> <line>: like append_env_var, but
 # inserts <line> at the very TOP of the file instead of the bottom.
 #
@@ -115,6 +112,21 @@ prepend_env_var() {
   # while also reading from it.
   { printf '%s\n' "$line"; cat "$rc_file"; } > "$tmp"
   mv "$tmp" "$rc_file"
+}
+
+# read_scope <config_file>: reads the optional "# scope: ..." first line a
+# selection file from 00_select.sh may carry, and prints either "global" or
+# "local:<dir>". A config file with no such line (including this repo's own
+# .tool-versions, which nothing ever adds this line to) defaults to
+# "global" — keeps every phase working unmodified when TOOL_VERSIONS_FILE
+# isn't set.
+read_scope() {
+  local config_file="$1" first_line
+  first_line="$(head -n 1 "$config_file" 2>/dev/null)"
+  case "$first_line" in
+    "# scope: local "*) echo "local:${first_line#"# scope: local "}" ;;
+    *)                  echo "global" ;;
+  esac
 }
 
 # Modern Homebrew asdf (v0.16+, the Go rewrite) is a single binary with no
