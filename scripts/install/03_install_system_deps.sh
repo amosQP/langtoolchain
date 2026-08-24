@@ -6,6 +6,9 @@
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 . "$SCRIPT_DIR/../lib.sh"
+# Phase 1 may have installed Homebrew moments ago in a different process —
+# make sure `brew` is resolvable in THIS one too.
+ensure_brew_on_path
 
 step "Phase 3: Installing system build dependencies (Homebrew)"
 

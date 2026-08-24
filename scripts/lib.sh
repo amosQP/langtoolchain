@@ -89,6 +89,34 @@ append_env_var() {
 # ensure_asdf_on_path: makes `asdf` and every asdf shim (node, python, ...)
 # callable from *this* process.
 #
+# prepend_env_var <rc_file> <search> <line>: like append_env_var, but
+# inserts <line> at the very TOP of the file instead of the bottom.
+#
+# Order matters for PATH: whichever export runs LAST at shell startup wins
+# (each `export PATH="X:$PATH"` prepends X ahead of everything already
+# there). `brew shellenv` needs to run before asdf's shim PATH line — not
+# after — or a Homebrew formula that happens to share a name with
+# something asdf manages (e.g. a `node` formula installed some other way)
+# would silently shadow the asdf shim. append_env_var can't guarantee this
+# on a machine with a pre-existing rc file, since it only ever adds to the
+# bottom; this guarantees first-in-file, and therefore correct priority,
+# regardless of what else already lives in the rc file.
+prepend_env_var() {
+  local rc_file="$1" search="$2" line="$3"
+  if [[ "$DRY_RUN" == "true" ]]; then
+    printf '  + prepend to %s if missing: %s\n' "$rc_file" "$line"
+    return
+  fi
+  grep -q "$search" "$rc_file" 2>/dev/null && return
+  local tmp
+  tmp="$(mktemp)"
+  # New line first, then the file's existing content, all written to a
+  # temp file, then swapped into place — `cat` never edits a file in place
+  # while also reading from it.
+  { printf '%s\n' "$line"; cat "$rc_file"; } > "$tmp"
+  mv "$tmp" "$rc_file"
+}
+
 # Modern Homebrew asdf (v0.16+, the Go rewrite) is a single binary with no
 # libexec/asdf.sh to source — shell integration is just putting
 # $ASDF_DATA_DIR/shims on PATH. Every phase that shells out to `asdf` or an
@@ -109,6 +137,31 @@ ensure_asdf_on_path() {
   esac
 }
 
+# ensure_brew_on_path: makes `brew` callable from *this* process, even if
+# Homebrew was only just installed moments ago by a DIFFERENT phase's
+# process (main.sh runs every phase as its own `bash` child, so nothing
+# exported by phase 01's Homebrew install carries over automatically).
+#
+# Homebrew's own installer never edits PATH itself — it prints an
+# `eval "$(brew shellenv)"` line for the user to add to their rc file by
+# hand, which only takes effect in brand-new shells. Since our own rc-file
+# write for that line (see 04_configure_shell_env.sh) doesn't help THIS
+# still-running install either, this falls back to Homebrew's two
+# fixed, architecture-specific install locations directly.
+ensure_brew_on_path() {
+  if command -v brew >/dev/null 2>&1; then
+    return
+  fi
+  local brew_bin
+  case "$(uname -m)" in
+    arm64) brew_bin="/opt/homebrew/bin" ;;   # Apple Silicon
+    *)     brew_bin="/usr/local/bin" ;;      # Intel
+  esac
+  if [[ -x "$brew_bin/brew" ]]; then
+    export PATH="$brew_bin:$PATH"
+  fi
+}
+
 # ensure_build_flags: re-exports the Homebrew build flags Python (and
 # friends) need to compile against keg-only openssl/readline/sqlite3/zlib.
 # Homebrew deliberately doesn't put keg-only formulas on PATH/in the
@@ -117,6 +170,8 @@ ensure_asdf_on_path() {
 # `asdf install` calls this itself rather than trusting an earlier phase's
 # export to still be in scope (again: separate child processes).
 ensure_build_flags() {
+  # `brew --prefix` below needs `brew` itself resolvable first.
+  ensure_brew_on_path
   export PATH="/opt/homebrew/opt/sqlite/bin:$PATH"
   export LDFLAGS="-L$(brew --prefix openssl)/lib -L$(brew --prefix readline)/lib -L$(brew --prefix sqlite3)/lib -L$(brew --prefix zlib)/lib"
   export CPPFLAGS="-I$(brew --prefix openssl)/include -I$(brew --prefix readline)/include -I$(brew --prefix sqlite3)/include -I$(brew --prefix zlib)/include"
