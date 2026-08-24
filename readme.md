@@ -40,6 +40,7 @@ curl -fsSL https://raw.githubusercontent.com/amosQP/langtoolchain/main/install.s
 - [사전 요구사항](#-사전-요구사항)
 - [설치되는 것](#-설치되는-것)
 - [어떻게 동작하는가](#%EF%B8%8F-어떻게-동작하는가)
+- [버전 고정 범위: 전역 vs 디렉토리별](#-버전-고정-범위-전역-vs-디렉토리별)
 - [파일시스템 명세](#-설치하면-어디에-뭐가-생기는가-파일시스템-명세)
 - [설치 확인 / 제거](#-설치-확인)
 - [코드 구조](#-코드-구조-파일별-설명)
@@ -81,8 +82,13 @@ python (python) 설치할까요? [Y/n] > ⏎
   rust    1.94.0
   golang  1.26.1
 
+전역으로 고정할까요, 이 디렉토리에만 고정할까요? [전역/로컬] > ⏎
+
 설치할까요? [Y/n] > ⏎
 ```
+
+> 마지막 프롬프트는 이번에 설치한 버전을 **어디에** 활성화할지 고릅니다 — 자세한 내용은
+> 바로 아래 [버전 고정 범위](#-버전-고정-범위-전역-vs-디렉토리별) 참고.
 
 <details>
 <summary><b>옵션 플래그</b> (<code>curl | bash -s -- &lt;옵션&gt;</code> 형태로 전달 가능)</summary>
@@ -93,6 +99,7 @@ python (python) 설치할까요? [Y/n] > ⏎
 | `--all` | install | 언어 선택 화면 없이 `.tool-versions`에 있는 걸 전부 설치 |
 | `--yes` | install / uninstall | 마지막 확인 프롬프트를 건너뜀 |
 | `--dry-run` | install / uninstall | 실제로 아무것도 바꾸지 않고, 뭘 할지만 출력 |
+| `--local` / `--local=<dir>` | install | 전역 대신 현재(또는 지정한) 디렉토리에만 버전 고정. [자세히 보기](#-버전-고정-범위-전역-vs-디렉토리별) |
 
 > 터미널(tty)이 없는 환경(CI 등)에서 실행하면 자동으로 `--all`처럼 동작합니다 — 입력을 기다리다 멈추지 않습니다.
 
@@ -137,21 +144,78 @@ flowchart TD
     D --> E["03_install_system_deps.sh<br/>Python 빌드 의존성"]
     E --> F["04_configure_shell_env.sh<br/>.zshrc / .bash_profile"]
     F --> G["05_install_runtimes.sh<br/>asdf install (컴파일/다운로드)"]
-    G --> H["06_set_globals.sh<br/>asdf set -u + reshim"]
+    G --> H["06_set_globals.sh<br/>asdf set (전역/로컬) + reshim"]
     H --> I["07_validate.sh<br/>설치 검증"]
 ```
 
 1. **진입점 (`install.sh`)** — 로컬에 클론된 상태로 실행됐으면(`scripts/install/` 디렉토리가 옆에 있으면) 바로 그걸 실행합니다. `curl | bash`로 stdin을 통해 실행된 경우엔(로컬에 아무 파일도 없는 경우) `git clone --depth 1`로 임시 디렉토리(`mktemp -d`)에 저장소를 내려받은 뒤 그 안의 스크립트를 실행하고, 끝나면 `trap`으로 임시 디렉토리를 지웁니다.
-2. **언어 선택 (`00_select.sh`)** — 언어별로 설치 여부(Y/n)와 버전을 물어봅니다. 모든 프롬프트/출력은 `/dev/tty`에 직접 쓰고 읽어서, `curl | bash`처럼 표준입력이 이미 스크립트 내용으로 막혀 있어도 정상적으로 사용자 입력을 받습니다. 결과는 `.tool-versions` 형식의 임시 파일로 저장되고, 그 파일 경로만 표준출력으로 반환됩니다. 터미널이 없으면(CI 등) 자동으로 전체 설치로 폴백합니다.
+2. **언어 선택 (`00_select.sh`)** — 언어별로 설치 여부(Y/n)와 버전, 그리고 이걸 전역으로 고정할지 특정 디렉토리에만 고정할지를 물어봅니다. 모든 프롬프트/출력은 `/dev/tty`에 직접 쓰고 읽어서, `curl | bash`처럼 표준입력이 이미 스크립트 내용으로 막혀 있어도 정상적으로 사용자 입력을 받습니다. 결과는 `.tool-versions` 형식의 임시 파일로 저장되고, 그 파일 경로만 표준출력으로 반환됩니다. 터미널이 없으면(CI 등) 자동으로 전체 설치로 폴백하고, 고정 범위도 `--local`이 없으면 전역으로 기본 설정됩니다.
 3. **Homebrew/asdf 부트스트랩 (`01_bootstrap_asdf.sh`)** — Homebrew가 없으면 공식 설치 스크립트를 `NONINTERACTIVE=1`로 실행해 직접 설치합니다(sudo 비밀번호 입력은 그대로 필요). `asdf`가 없으면 `brew install asdf`로 설치합니다.
 4. **플러그인 설치 (`02_install_plugins.sh`)** — 선택된 언어마다 `asdf plugin add`.
 5. **시스템 의존성 (`03_install_system_deps.sh`)** — Python 컴파일에 필요한 Homebrew 패키지 설치.
 6. **셸 환경변수 (`04_configure_shell_env.sh`)** — `~/.zshrc` 또는 `~/.bash_profile`(사용자의 로그인 셸에 따라 자동 판단)에 asdf shim PATH, Java 홈, 컴파일러 플래그를 멱등적으로(중복 없이) 추가합니다.
 7. **런타임 설치 (`05_install_runtimes.sh`)** — `asdf install <plugin> <version>` — 실제로 시간이 오래 걸리는 컴파일/다운로드 단계.
-8. **전역 버전 지정 (`06_set_globals.sh`)** — `asdf set -u`로 전역 버전을 고정하고 `asdf reshim`으로 shim을 재생성.
+8. **버전 고정 (`06_set_globals.sh`)** — 2번에서 정한 범위에 따라 `asdf set -u`(전역) 또는 `asdf set`(지정 디렉토리)을 실행하고 `asdf reshim`으로 shim을 재생성.
 9. **검증 (`07_validate.sh`)** — 각 언어의 바이너리가 PATH에서 실제로 asdf shim을 통해 잡히는지, 버전이 올바른지 확인.
 
 > **핵심 설계 원칙**: 각 단계는 `main.sh`가 별도의 `bash` 프로세스로 순서대로 실행합니다. **어느 한 단계도 다른 단계가 먼저 실행되어 뭔가를 `export`해뒀을 거라고 가정하지 않습니다.** 예를 들어 5번(런타임 설치)은 4번이 `.zshrc`에 PATH를 써놨다고 믿는 대신, 스스로 `ensure_asdf_on_path`/`ensure_build_flags`를 호출해 필요한 환경을 그 자리에서 만듭니다. 그래서 특정 단계 하나만 따로 실행해도(`bash scripts/install/05_install_runtimes.sh`) 정상 동작합니다.
+
+<br>
+
+## 🌍 버전 고정 범위: 전역 vs 디렉토리별
+
+asdf는 언어 런타임을 **한 번만 설치**하고(`~/.asdf/installs/<plugin>/<version>/`), `.tool-versions`
+파일로 "지금 어떤 설치된 버전을 쓸지"만 결정합니다. 이 고정에는 두 가지 범위가 있습니다.
+
+| 범위 | 저장 위치 | 실행되는 명령 | 적용 범위 |
+|---|---|---|---|
+| **전역 (Global)** | `~/.tool-versions` | `asdf set -u <plugin> <version>` | 딱히 지정 안 된 모든 디렉토리의 기본값 |
+| **디렉토리별 (Local)** | `<지정 디렉토리>/.tool-versions` | `asdf set <plugin> <version>` (`-u` 없음) | 그 디렉토리(와 하위 디렉토리) 안에서만, 전역값보다 우선 |
+
+예: 평소엔 최신 Node.js를 쓰다가, 레거시 프로젝트 하나만 Node 18을 써야 할 때 그 프로젝트 디렉토리에만
+로컬로 고정하면 다른 곳엔 영향 없이 그 프로젝트에서만 Node 18이 적용됩니다.
+
+### 사용법
+
+**대화형**: 설치 마지막 확인 직전에 물어봅니다 (Enter = 전역).
+```text
+전역으로 고정할까요, 이 디렉토리에만 고정할까요? [전역/로컬] > 로컬
+  어느 디렉토리에 고정할까요? [기본값: 현재 디렉토리] > ⏎
+```
+
+**플래그** (비대화형, 프롬프트를 건너뜀):
+```zsh
+./install.sh --local                    # 현재 디렉토리에 고정
+./install.sh --local=/path/to/project    # 지정한 디렉토리에 고정
+./install.sh                             # (기본값) 전역에 고정
+```
+
+### 구현 방식
+
+새 phase 스크립트를 추가하지 않고 기존 구조를 그대로 재사용합니다. `00_select.sh`가 언어 선택과 함께
+고정 범위도 물어본 뒤, 선택 결과 파일의 **첫 줄에 주석으로 기록**합니다:
+
+```
+# scope: global
+nodejs lts
+python 3.12.13
+```
+또는
+```
+# scope: local /Users/me/myproject
+nodejs lts
+```
+
+`each_tool`의 파싱 패턴(`#`으로 시작하는 줄은 무시)이 이 줄을 자동으로 건너뛰므로 언어/버전 파싱 로직은
+전혀 안 바뀝니다. `06_set_globals.sh`가 `read_scope()`(`scripts/lib.sh`)로 이 줄을 읽어 분기합니다 —
+줄이 아예 없으면(예: 이 저장소의 `.tool-versions`를 직접 쓰는 경우) 항상 전역으로 동작해 기존 동작과
+100% 호환됩니다.
+
+### 이미 로컬로 고정된 걸 나중에 직접 다루고 싶다면
+
+langtoolchain은 이 표준 asdf 명령을 대신 실행해주는 것뿐입니다 — 그 디렉토리의 `.tool-versions`를
+직접 열어보거나, `asdf current`로 확인하거나, 직접 `asdf set <plugin> <version>`을 실행해도 됩니다.
+별도로 배워야 할 langtoolchain 전용 명령은 없습니다.
 
 <br>
 
@@ -184,7 +248,8 @@ flowchart TD
 
 | 파일 | 무엇이 들어가는가 | 어느 스크립트가 쓰는가 |
 |---|---|---|
-| `~/.tool-versions` (전역 — 이 저장소의 `.tool-versions`와는 다른 파일) | 언어별 전역 기본 버전 | `06_set_globals.sh`의 `asdf set -u` |
+| `~/.tool-versions` (전역 — 이 저장소의 `.tool-versions`와는 다른 파일) | 언어별 전역 기본 버전 | `06_set_globals.sh`의 `asdf set -u` (기본, 또는 `--local` 없이 실행 시) |
+| `<지정 디렉토리>/.tool-versions` (`--local` 사용 시에만) | 그 디렉토리 안에서만 적용되는 버전 | `06_set_globals.sh`의 `asdf set` — [버전 고정 범위](#-버전-고정-범위-전역-vs-디렉토리별) 참고 |
 | `~/.zshrc` 또는 `~/.bash_profile` (로그인 셸에 따라 자동 선택) | `eval "$(brew shellenv)"`(파일 맨 위에 prepend), `ASDF_DATA_DIR`/PATH shim export, Java 홈 훅, `LDFLAGS`/`CPPFLAGS`/`PKG_CONFIG_PATH` | `04_configure_shell_env.sh` |
 | 이 저장소의 `.tool-versions` | **읽기 전용** — 언어/기본 버전 목록의 소스. 설치기가 여기에 쓰지 않음 | 모든 phase 스크립트가 읽기만 함 |
 
@@ -276,6 +341,7 @@ langtoolchain/
 | `detect_rc_file` | `$SHELL` 기준으로 `.zshrc`/`.bash_profile` 중 무엇을 고칠지 결정 |
 | `append_env_var` | rc 파일 맨 **끝**에 줄을 멱등적으로(중복 없이) 추가 |
 | `prepend_env_var` | rc 파일 맨 **앞**에 줄을 멱등적으로 추가 — PATH 우선순위가 중요한 줄(`brew shellenv`)에 사용 |
+| `read_scope` | 선택 파일의 `# scope: ...` 줄을 읽어 "global" 또는 "local:\<dir\>"을 반환 (줄이 없으면 "global") |
 | `ensure_asdf_on_path` | 이 프로세스에서 asdf/shim이 PATH에 잡히도록 보장 |
 | `ensure_brew_on_path` | 이 프로세스에서 `brew`가 PATH에 잡히도록 보장 (Apple Silicon/Intel 설치 경로 자동 판단) |
 | `ensure_build_flags` | Python 등 컴파일에 필요한 `LDFLAGS`/`CPPFLAGS`/`PKG_CONFIG_PATH`를 이 프로세스에 export |
@@ -285,13 +351,13 @@ langtoolchain/
 
 | 파일 | 역할 |
 |---|---|
-| `00_select.sh` | 언어별 설치 여부/버전을 물어보는 대화형 선택기. `/dev/tty`로 직접 읽고 써서 `curl \| bash`에서도 동작. 결과를 임시 `.tool-versions` 파일로 반환 |
+| `00_select.sh` | 언어별 설치 여부/버전, 그리고 버전 고정 범위(전역/로컬)를 물어보는 대화형 선택기. `/dev/tty`로 직접 읽고 써서 `curl \| bash`에서도 동작. 결과를 임시 `.tool-versions` 파일(첫 줄에 `# scope: ...` 포함)로 반환 |
 | `01_bootstrap_asdf.sh` | Homebrew 없으면 공식 스크립트로 설치(sudo 필요), `asdf` 없으면 `brew install asdf` |
 | `02_install_plugins.sh` | 선택된 언어마다 `asdf plugin add` |
 | `03_install_system_deps.sh` | Python 컴파일용 Homebrew 패키지 설치 |
 | `04_configure_shell_env.sh` | rc 파일에 asdf/빌드 환경변수 기록 |
 | `05_install_runtimes.sh` | `asdf install` — 실제 컴파일/다운로드 |
-| `06_set_globals.sh` | `asdf set -u` + `asdf reshim` |
+| `06_set_globals.sh` | 선택 파일의 `# scope:` 줄에 따라 `asdf set -u`(전역) 또는 `asdf set`(로컬) 실행 + `asdf reshim` |
 | `07_validate.sh` | 설치 결과 검증 (바이너리 경로, 버전 출력) |
 | `main.sh` | 위 스크립트들을 순서대로 실행하는 오케스트레이터. `--dry-run`/`--all`/`--yes` 플래그 처리 |
 
