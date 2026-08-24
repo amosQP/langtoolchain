@@ -20,6 +20,18 @@ RC_FILE="$(detect_rc_file)"
 run touch "$RC_FILE"
 log "Using rc file: $RC_FILE"
 
+# Homebrew's own installer never edits shell config itself — it just prints
+# this line as a suggested next step. Write it in for the user — at the
+# TOP of the file (prepend, not append): this needs to run before asdf's
+# shim PATH line so asdf can correctly win over any same-named Homebrew
+# formula (e.g. a separately brew-installed `node`) rather than being
+# silently shadowed by it.
+case "$(uname -m)" in
+  arm64) BREW_BIN="/opt/homebrew/bin/brew" ;;   # Apple Silicon
+  *)     BREW_BIN="/usr/local/bin/brew" ;;       # Intel
+esac
+prepend_env_var "$RC_FILE" "brew shellenv" "eval \"\$($BREW_BIN shellenv)\""
+
 # The two lines modern asdf actually needs: where its data lives, and
 # putting its shim directory ahead of everything else on PATH so `node`,
 # `python`, etc. resolve to the asdf-managed versions.
