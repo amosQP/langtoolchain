@@ -313,7 +313,7 @@ langtoolchain/
 
 ## 🧠 설계 원칙
 
-기여하기 전에 알아두면 좋은 것들 — 대부분 실기기 테스트로 실제 버그를 잡으면서 굳어진 규칙입니다.
+기여하기 전에 알아두면 좋은 것들입니다.
 
 <details>
 <summary><b>1. 각 phase는 서로 독립적입니다 — export에 의존하지 않음</b></summary>
@@ -333,7 +333,7 @@ langtoolchain/
 <summary><b>3. 파이프를 곧장 grep -q로 넘기지 않습니다 (pipefail + SIGPIPE)</b></summary>
 <br>
 
-`asdf plugin list | grep -q ...`처럼 "명령 출력을 곧장 `grep -q`로 파이프"하는 패턴은 `set -o pipefail`과 함께 쓰면 위험합니다 — `grep -q`가 매치되자마자 파이프를 일찍 닫아버리는데, 그 타이밍에 상류 명령이 아직 출력 중이면 SIGPIPE로 죽고 파이프라인 전체가 실패로 보고됩니다. **실제로 이 버그 때문에 설치된 플러그인을 간헐적으로 "없음"으로 오판했었습니다.** 명령 출력은 변수에 먼저 담고, 그 변수를 grep하세요.
+`asdf plugin list | grep -q ...`처럼 "명령 출력을 곧장 `grep -q`로 파이프"하는 패턴은 `set -o pipefail`과 함께 쓰면 위험합니다 — `grep -q`가 매치되자마자 파이프를 일찍 닫아버리는데, 그 타이밍에 상류 명령이 아직 출력 중이면 SIGPIPE로 죽고 파이프라인 전체가 실패로 보고됩니다. 명령 출력은 변수에 먼저 담고, 그 변수를 grep하세요.
 </details>
 
 <details>
@@ -347,7 +347,7 @@ macOS 기본 `/bin/bash`는 여전히 3.2입니다(라이선스 문제로 Apple�
 <summary><b>5. rc 파일에 PATH 줄을 추가할 땐 순서가 실제로 우선순위를 결정합니다</b></summary>
 <br>
 
-셸이 파일을 위에서부터 소싱하면서 매번 `export PATH="X:$PATH"`로 앞에 붙이기 때문에, **더 나중에 소싱되는 줄이 PATH 우선순위가 더 높습니다.** `append_env_var`(파일 끝에 추가)로 `brew shellenv`를 넣었더니, 이미 rc 파일 뒷부분에 있던 다른 PATH 설정 때문에 asdf shim보다 Homebrew 쪽이 먼저 잡히는 회귀가 실기기 테스트에서 실제로 재현된 적이 있습니다. `brew shellenv`처럼 "제일 먼저 소싱되어야 하는" 줄은 `prepend_env_var`로 파일 맨 위에 넣으세요.
+셸이 파일을 위에서부터 소싱하면서 매번 `export PATH="X:$PATH"`로 앞에 붙이기 때문에, **더 나중에 소싱되는 줄이 PATH 우선순위가 더 높습니다.** `brew shellenv`처럼 "제일 먼저 소싱되어야 하는" 줄은 `append_env_var`(파일 끝에 추가)가 아니라 `prepend_env_var`(파일 맨 앞에 추가)로 넣어야, 그 뒤에 오는 asdf shim PATH 줄이 항상 마지막에 prepend되어 우선순위를 가져갑니다.
 </details>
 
 <br>
