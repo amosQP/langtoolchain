@@ -185,9 +185,20 @@ ensure_build_flags() {
   # `brew --prefix` below needs `brew` itself resolvable first.
   ensure_brew_on_path
   export PATH="/opt/homebrew/opt/sqlite/bin:$PATH"
-  export LDFLAGS="-L$(brew --prefix openssl)/lib -L$(brew --prefix readline)/lib -L$(brew --prefix sqlite3)/lib -L$(brew --prefix zlib)/lib"
-  export CPPFLAGS="-I$(brew --prefix openssl)/include -I$(brew --prefix readline)/include -I$(brew --prefix sqlite3)/include -I$(brew --prefix zlib)/include"
-  export PKG_CONFIG_PATH="$(brew --prefix openssl)/lib/pkgconfig:$(brew --prefix readline)/lib/pkgconfig:$(brew --prefix sqlite3)/lib/pkgconfig"
+  # Declared and assigned separately (not inline inside the export) so a
+  # failing `brew --prefix` (e.g. the formula somehow isn't actually
+  # installed) trips `set -e` here instead of being silently swallowed —
+  # `export LDFLAGS="...$(cmd)..."` always "succeeds" as a command even if
+  # the command substitution inside it failed, masking the real error and
+  # leaving LDFLAGS built from an empty/wrong path.
+  local openssl_prefix readline_prefix sqlite_prefix zlib_prefix
+  openssl_prefix="$(brew --prefix openssl)"
+  readline_prefix="$(brew --prefix readline)"
+  sqlite_prefix="$(brew --prefix sqlite3)"
+  zlib_prefix="$(brew --prefix zlib)"
+  export LDFLAGS="-L$openssl_prefix/lib -L$readline_prefix/lib -L$sqlite_prefix/lib -L$zlib_prefix/lib"
+  export CPPFLAGS="-I$openssl_prefix/include -I$readline_prefix/include -I$sqlite_prefix/include -I$zlib_prefix/include"
+  export PKG_CONFIG_PATH="$openssl_prefix/lib/pkgconfig:$readline_prefix/lib/pkgconfig:$sqlite_prefix/lib/pkgconfig"
 }
 
 # binary_for_plugin <asdf-plugin-name>: prints the primary CLI command that

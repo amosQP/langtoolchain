@@ -45,7 +45,7 @@ while read -r plugin version <&3; do
 
   # Some tools (java) print their version to stderr, hence 2>&1; `head -n 1`
   # keeps the log to one line even for multi-line version banners.
-  version_line="$("$cmd" $flag 2>&1 | head -n 1)"
+  version_line="$("$cmd" "$flag" 2>&1 | head -n 1)"
   log "        $version_line"
 done 3< <(each_tool "$CONFIG_FILE")
 
