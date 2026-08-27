@@ -53,6 +53,25 @@ lt_homebrew_prefix() {
 LT_ASDF_DATA_DIR_NAME=".asdf"
 LT_ASDF_DATA_DIR_DEFAULT="$HOME/$LT_ASDF_DATA_DIR_NAME"
 
+# LT_RC_FILE_ZSH / LT_RC_FILE_BASH / LT_RC_FILE_BASH_INTERACTIVE /
+# LT_KNOWN_RC_FILES (TASK-66): the rc filenames (bare, relative to $HOME)
+# this tool knows how to write into or clean up.
+#
+# detect_rc_file() (below) picks exactly ONE of these at install time,
+# based on the current $SHELL — the installer only ever writes into the rc
+# file matching whichever shell is actually running it.
+#
+# uninstall/03_clean_env_vars.sh instead sweeps ALL of LT_KNOWN_RC_FILES:
+# the $SHELL active when uninstall runs isn't necessarily the same one that
+# was active when install ran, so it can't assume which single file was
+# written to and has to check every rc file this tool has ever been able to
+# write. This install-picks-one vs. uninstall-sweeps-all asymmetry is
+# intentional, not an oversight.
+LT_RC_FILE_ZSH=".zshrc"
+LT_RC_FILE_BASH=".bash_profile"          # macOS Terminal runs login shells
+LT_RC_FILE_BASH_INTERACTIVE=".bashrc"    # never picked by detect_rc_file; swept by uninstall only
+LT_KNOWN_RC_FILES="$LT_RC_FILE_ZSH $LT_RC_FILE_BASH $LT_RC_FILE_BASH_INTERACTIVE"
+
 # lt_env_var_defs [java_hook_file] (TASK-64): prints one line per rc-file
 # entry this tool's installer manages, formatted
 # "<search-pattern>|||<line-to-write>" (a triple-pipe separator, since none
