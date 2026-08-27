@@ -1,9 +1,10 @@
 ---
 id: TASK-67
 title: install.sh/uninstall.sh의 REPO_URL·BRANCH 중복 정리 (진입점 특수 케이스)
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-08-27 09:27'
+updated_date: '2026-08-27 09:41'
 labels:
   - code-quality
   - constants-refactor
@@ -22,5 +23,5 @@ install.sh:15-16과 uninstall.sh:12-13이 동일한 REPO_URL/BRANCH를 각자 �
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 REPO_URL/BRANCH 값이 한 곳에서 관리되거나, 두 곳에 남더라도 반드시 동기화해야 한다는 게 명확히 문서화된다
+- [x] #1 REPO_URL/BRANCH 값이 한 곳에서 관리되거나, 두 곳에 남더라도 반드시 동기화해야 한다는 게 명확히 문서화된다
 <!-- AC:END -->
