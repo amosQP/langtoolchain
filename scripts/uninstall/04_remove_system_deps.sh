@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# Removes the Homebrew build-dependency formulas (LT_BUILD_DEPS in lib.sh)
+# this tool installed for Python's C extensions — mirrors the install side's
+# 03_install_system_deps.sh.
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 . "$SCRIPT_DIR/../lib.sh"

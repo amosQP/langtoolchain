@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# Removes every installed asdf plugin (not just this repo's own languages —
+# see below), ahead of asdf itself being purged in phase 5.
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 . "$SCRIPT_DIR/../lib.sh"

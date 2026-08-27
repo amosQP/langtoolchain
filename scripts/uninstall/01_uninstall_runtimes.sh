@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# Uninstalls each asdf-managed language runtime listed in .tool-versions.
+# Ensures asdf/shims are on PATH itself, same reasoning as every other
+# phase script — main.sh runs each phase as its own process.
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 . "$SCRIPT_DIR/../lib.sh"
