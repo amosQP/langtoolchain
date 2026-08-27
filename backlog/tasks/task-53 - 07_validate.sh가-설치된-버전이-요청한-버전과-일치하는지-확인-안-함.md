@@ -1,7 +1,7 @@
 ---
 id: TASK-53
 title: 07_validate.sh가 설치된 버전이 요청한 버전과 일치하는지 확인 안 함
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-08-24 12:53'
 labels:
@@ -22,5 +22,5 @@ ordinal: 53000
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 각 언어의 실제 실행 버전 문자열을 .tool-versions에 적힌 버전과 비교해서 불일치 시 명확히 WARN 하도록 개선
+- [x] #1 각 언어의 실제 실행 버전 문자열을 .tool-versions에 적힌 버전과 비교해서 불일치 시 명확히 WARN 하도록 개선
 <!-- AC:END -->

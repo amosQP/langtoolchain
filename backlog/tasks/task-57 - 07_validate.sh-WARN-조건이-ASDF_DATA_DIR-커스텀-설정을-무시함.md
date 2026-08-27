@@ -1,7 +1,7 @@
 ---
 id: TASK-57
 title: 07_validate.sh WARN 조건이 ASDF_DATA_DIR 커스텀 설정을 무시함
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-08-24 13:03'
 labels:
@@ -22,5 +22,5 @@ ordinal: 57000
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 '.asdf/shims/' 하드코딩 대신 실제 $ASDF_DATA_DIR/shims/ 값과 비교하도록 수정
+- [x] #1 '.asdf/shims/' 하드코딩 대신 실제 $ASDF_DATA_DIR/shims/ 값과 비교하도록 수정
 <!-- AC:END -->
