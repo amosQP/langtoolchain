@@ -1,9 +1,10 @@
 ---
 id: TASK-61
 title: Homebrew arch별 경로 리터럴을 lib.sh 상수로 통합 (Intel sqlite PATH 버그 포함)
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-08-27 09:27'
+updated_date: '2026-08-27 09:40'
 labels:
   - code-quality
   - constants-refactor
@@ -23,7 +24,7 @@ lib.sh의 ensure_brew_on_path()와 install/04_configure_shell_env.sh가 각자 �
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 lib.sh에 Homebrew prefix를 반환하는 단일 함수(또는 상수)가 생기고 ensure_brew_on_path/ensure_build_flags/04_configure_shell_env.sh가 전부 이걸 참조한다
-- [ ] #2 sqlite PATH 라인이 Intel(/usr/local)과 Apple Silicon(/opt/homebrew) 양쪽에서 올바른 경로를 가리킨다
-- [ ] #3 uname -m 기반 arch 분기 case문이 저장소 전체에서 정확히 1곳만 남는다
+- [x] #1 lib.sh에 Homebrew prefix를 반환하는 단일 함수(또는 상수)가 생기고 ensure_brew_on_path/ensure_build_flags/04_configure_shell_env.sh가 전부 이걸 참조한다
+- [x] #2 sqlite PATH 라인이 Intel(/usr/local)과 Apple Silicon(/opt/homebrew) 양쪽에서 올바른 경로를 가리킨다
+- [x] #3 uname -m 기반 arch 분기 case문이 저장소 전체에서 정확히 1곳만 남는다
 <!-- AC:END -->
