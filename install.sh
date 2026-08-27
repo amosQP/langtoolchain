@@ -1,15 +1,15 @@
-#!/usr/bin/env bash
+#!/usr/bin/env sh
 # langtoolchain — one-line installer
 #
-#   curl -fsSL https://raw.githubusercontent.com/amosQP/langtoolchain/main/install.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/amosQP/langtoolchain/main/install.sh | sh
 #
 # This file only gets the real installer onto disk and runs it. The actual
 # logic lives in scripts/install/*.sh (one file per responsibility) so it's
 # easy to read, test, and modify one phase at a time — see readme.md.
 #
 # Any flags you pass are forwarded, e.g.:
-#   curl -fsSL .../install.sh | bash -s -- --all --yes
-set -euo pipefail
+#   curl -fsSL .../install.sh | sh -s -- --all --yes
+set -eu
 
 # Where to fetch a fresh checkout from, when there isn't one on disk already.
 # NOTE: kept in sync by hand with uninstall.sh's copy of these same two
@@ -20,20 +20,24 @@ set -euo pipefail
 REPO_URL="https://github.com/amosQP/langtoolchain.git"
 BRANCH="main"
 
-# ${BASH_SOURCE[0]:-} is this file's own path *if* bash knows it (i.e. it
-# was executed/sourced from an actual file on disk) — it's empty when the
-# script's content was streamed straight into bash's stdin, which is
-# exactly what `curl | bash` does.
-SELF_PATH="${BASH_SOURCE[0]:-}"
-if [[ -n "$SELF_PATH" && -f "$SELF_PATH" ]]; then
+# $0 is this file's own path when it was executed from an actual file on
+# disk — but POSIX sh has no BASH_SOURCE, and unlike bash, $0 is USUALLY
+# non-empty even when the script's content was streamed straight into sh's
+# stdin (curl | sh sets it to something like "sh", not empty). The `-f`
+# check below is what actually does the discrimination: a real on-disk
+# invocation gives a $0 that resolves to an existing file, while the
+# piped-stdin case gives a bare interpreter name with no such file in the
+# current directory. Verified empirically for both cases.
+SELF_PATH="$0"
+if [ -n "$SELF_PATH" ] && [ -f "$SELF_PATH" ]; then
   SELF_DIR="$(cd "$(dirname "$SELF_PATH")" && pwd)"
 fi
 
-if [[ -n "${SELF_DIR:-}" && -d "$SELF_DIR/scripts/install" ]]; then
+if [ -n "${SELF_DIR:-}" ] && [ -d "$SELF_DIR/scripts/install" ]; then
   # Running from an existing local clone — use it as-is, no network needed.
   # `exec` replaces this process instead of spawning a child, so there's no
   # extra shell left dangling once the real installer takes over.
-  exec bash "$SELF_DIR/scripts/install/main.sh" "$@"
+  exec sh "$SELF_DIR/scripts/install/main.sh" "$@"
 fi
 
 # Running via `curl | bash` — there is no local checkout, so fetch one.
@@ -57,5 +61,5 @@ trap 'rm -rf "$WORKDIR"' EXIT
 # thrown away right after, so there's no reason to download more than
 # necessary.
 git clone --depth 1 --branch "$BRANCH" "$REPO_URL" "$WORKDIR/langtoolchain" >/dev/null
-bash "$WORKDIR/langtoolchain/scripts/install/main.sh" "$@"
+sh "$WORKDIR/langtoolchain/scripts/install/main.sh" "$@"
 exit $?
