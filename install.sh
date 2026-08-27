@@ -12,6 +12,11 @@
 set -euo pipefail
 
 # Where to fetch a fresh checkout from, when there isn't one on disk already.
+# NOTE: kept in sync by hand with uninstall.sh's copy of these same two
+# lines. This file runs via `curl | bash` before any repo is on disk, so it
+# can't `source` lib.sh for a shared constant (chicken-and-egg: lib.sh lives
+# inside the very repo this script's job is to fetch). If you change
+# REPO_URL/BRANCH here, change uninstall.sh too.
 REPO_URL="https://github.com/amosQP/langtoolchain.git"
 BRANCH="main"
 
