@@ -171,9 +171,9 @@ each_tool() {
 # user actually uses day to day).
 detect_rc_file() {
   case "$(basename "${SHELL:-}")" in
-    zsh)  echo "$HOME/.zshrc" ;;
-    bash) echo "$HOME/.bash_profile" ;;  # macOS Terminal runs login shells
-    *)    echo "$HOME/.zshrc" ;;         # unknown shell: default to zsh (macOS's own default since Catalina)
+    zsh)  echo "$HOME/$LT_RC_FILE_ZSH" ;;
+    bash) echo "$HOME/$LT_RC_FILE_BASH" ;;
+    *)    echo "$HOME/$LT_RC_FILE_ZSH" ;;  # unknown shell: default to zsh (macOS's own default since Catalina)
   esac
 }
 
