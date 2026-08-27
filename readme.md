@@ -6,7 +6,7 @@
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![Platform](https://img.shields.io/badge/platform-macOS-000000?logo=apple&logoColor=white)](#-사전-요구사항)
-[![Shell](https://img.shields.io/badge/shell-bash%203.2%2B-4EAA25?logo=gnubash&logoColor=white)](#-설계-원칙)
+[![Shell](https://img.shields.io/badge/shell-POSIX%20sh-4EAA25?logo=gnubash&logoColor=white)](#-설계-원칙)
 [![Powered by asdf](https://img.shields.io/badge/powered%20by-asdf-F16436)](https://asdf-vm.com)
 
 `git clone`도, 수동 설치도 필요 없습니다. 터미널에 한 줄 붙여넣으면 끝.
@@ -16,7 +16,7 @@
 <br>
 
 ```zsh
-curl -fsSL https://raw.githubusercontent.com/amosQP/langtoolchain/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/amosQP/langtoolchain/main/install.sh | sh
 ```
 
 <br>
@@ -27,11 +27,11 @@ curl -fsSL https://raw.githubusercontent.com/amosQP/langtoolchain/main/install.s
 
 - 🍺 **Homebrew 없어도 OK** — 없으면 공식 스크립트로 자동 설치 (sudo 비밀번호만 직접 입력)
 - ☑️ **체크박스 같은 대화형 설치** — 언어별로 설치 여부와 버전을 확인하고 골라서 설치
-- 🌐 **`curl | bash` 완전 지원** — 로컬에 아무것도 없어도 원격 저장소를 알아서 clone해서 실행
+- 🌐 **`curl | sh` 완전 지원** — 로컬에 아무것도 없어도 원격 저장소를 알아서 clone해서 실행
 - 🌍 **전역 or 디렉토리별 버전 고정** — 시스템 전체 기본값으로도, 특정 프로젝트에만도 자유롭게
 - 🧩 **독립적인 모듈 구조** — 각 단계가 서로 의존하지 않아서, 필요한 부분만 골라 읽고 고치기 쉬움
 - 🔙 **깔끔한 제거** — 설치한 건 전부 되돌릴 수 있음 (`.bak` 백업까지 남김)
-- 🖥️ **bash 3.2 호환** — macOS 기본 셸에서도 그대로 동작
+- 🖥️ **POSIX sh 호환** — macOS 기본 셸(`/bin/sh`)에서도 그대로 동작, bash 특수문법 없음
 
 <br>
 
@@ -69,7 +69,7 @@ langtoolchain이 설치·관리하는 건 **Node.js·Java·Python·Rust·Go 5개
 ## 🚀 빠른 시작
 
 ```zsh
-curl -fsSL https://raw.githubusercontent.com/amosQP/langtoolchain/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/amosQP/langtoolchain/main/install.sh | sh
 ```
 
 로컬에 이미 클론해뒀다면:
@@ -107,7 +107,7 @@ python (python) 설치할까요? [Y/n] > ⏎
 > 바로 아래 [버전 고정 범위](#-버전-고정-범위-전역-vs-디렉토리별) 참고.
 
 <details>
-<summary><b>옵션 플래그</b> (<code>curl | bash -s -- &lt;옵션&gt;</code> 형태로 전달 가능)</summary>
+<summary><b>옵션 플래그</b> (<code>curl | sh -s -- &lt;옵션&gt;</code> 형태로 전달 가능)</summary>
 <br>
 
 | 플래그 | 대상 | 동작 |
@@ -164,8 +164,8 @@ flowchart TD
     H --> I["07_validate.sh<br/>설치 검증"]
 ```
 
-1. **진입점 (`install.sh`)** — 로컬에 클론된 상태로 실행됐으면(`scripts/install/` 디렉토리가 옆에 있으면) 바로 그걸 실행합니다. `curl | bash`로 stdin을 통해 실행된 경우엔(로컬에 아무 파일도 없는 경우) `git clone --depth 1`로 임시 디렉토리(`mktemp -d`)에 저장소를 내려받은 뒤 그 안의 스크립트를 실행하고, 끝나면 `trap`으로 임시 디렉토리를 지웁니다.
-2. **언어 선택 (`00_select.sh`)** — 언어별로 설치 여부(Y/n)와 버전, 그리고 이걸 전역으로 고정할지 특정 디렉토리에만 고정할지를 물어봅니다. 모든 프롬프트/출력은 `/dev/tty`에 직접 쓰고 읽어서, `curl | bash`처럼 표준입력이 이미 스크립트 내용으로 막혀 있어도 정상적으로 사용자 입력을 받습니다. 결과는 `.tool-versions` 형식의 임시 파일로 저장되고, 그 파일 경로만 표준출력으로 반환됩니다. 터미널이 없으면(CI 등) 자동으로 전체 설치로 폴백하고, 고정 범위도 `--local`이 없으면 전역으로 기본 설정됩니다.
+1. **진입점 (`install.sh`)** — 로컬에 클론된 상태로 실행됐으면(`scripts/install/` 디렉토리가 옆에 있으면) 바로 그걸 실행합니다. `curl | sh`로 stdin을 통해 실행된 경우엔(로컬에 아무 파일도 없는 경우) `git clone --depth 1`로 임시 디렉토리(`mktemp -d`)에 저장소를 내려받은 뒤 그 안의 스크립트를 실행하고, 끝나면 `trap`으로 임시 디렉토리를 지웁니다.
+2. **언어 선택 (`00_select.sh`)** — 언어별로 설치 여부(Y/n)와 버전, 그리고 이걸 전역으로 고정할지 특정 디렉토리에만 고정할지를 물어봅니다. 모든 프롬프트/출력은 `/dev/tty`에 직접 쓰고 읽어서, `curl | sh`처럼 표준입력이 이미 스크립트 내용으로 막혀 있어도 정상적으로 사용자 입력을 받습니다. 결과는 `.tool-versions` 형식의 임시 파일로 저장되고, 그 파일 경로만 표준출력으로 반환됩니다. 터미널이 없으면(CI 등) 자동으로 전체 설치로 폴백하고, 고정 범위도 `--local`이 없으면 전역으로 기본 설정됩니다.
 3. **Homebrew/asdf 부트스트랩 (`01_bootstrap_asdf.sh`)** — Homebrew가 없으면 공식 설치 스크립트를 `NONINTERACTIVE=1`로 실행해 직접 설치합니다(sudo 비밀번호 입력은 그대로 필요). `asdf`가 없으면 `brew install asdf`로 설치합니다.
 4. **플러그인 설치 (`02_install_plugins.sh`)** — 선택된 언어마다 `asdf plugin add`.
 5. **시스템 의존성 (`03_install_system_deps.sh`)** — Python 컴파일에 필요한 Homebrew 패키지 설치.
@@ -174,7 +174,7 @@ flowchart TD
 8. **버전 고정 (`06_set_globals.sh`)** — 2번에서 정한 범위에 따라 `asdf set -u`(전역) 또는 `asdf set`(지정 디렉토리)을 실행하고 `asdf reshim`으로 shim을 재생성.
 9. **검증 (`07_validate.sh`)** — 각 언어의 바이너리가 PATH에서 실제로 asdf shim을 통해 잡히는지, 버전이 올바른지 확인.
 
-> **핵심 설계 원칙**: 각 단계는 `main.sh`가 별도의 `bash` 프로세스로 순서대로 실행합니다. **어느 한 단계도 다른 단계가 먼저 실행되어 뭔가를 `export`해뒀을 거라고 가정하지 않습니다.** 예를 들어 5번(런타임 설치)은 4번이 `.zshrc`에 PATH를 써놨다고 믿는 대신, 스스로 `ensure_asdf_on_path`/`ensure_build_flags`를 호출해 필요한 환경을 그 자리에서 만듭니다. 그래서 특정 단계 하나만 따로 실행해도(`bash scripts/install/05_install_runtimes.sh`) 정상 동작합니다.
+> **핵심 설계 원칙**: 각 단계는 `main.sh`가 별도의 `sh` 프로세스로 순서대로 실행합니다. **어느 한 단계도 다른 단계가 먼저 실행되어 뭔가를 `export`해뒀을 거라고 가정하지 않습니다.** 예를 들어 5번(런타임 설치)은 4번이 `.zshrc`에 PATH를 써놨다고 믿는 대신, 스스로 `ensure_asdf_on_path`/`ensure_build_flags`를 호출해 필요한 환경을 그 자리에서 만듭니다. 그래서 특정 단계 하나만 따로 실행해도(`sh scripts/install/05_install_runtimes.sh`) 정상 동작합니다.
 
 <br>
 
@@ -279,7 +279,7 @@ langtoolchain은 이 표준 asdf 명령을 대신 실행해주는 것뿐입니�
 ### 임시로만 쓰이는 것
 
 - **언어 선택 결과 파일**: `mktemp -t langtoolchain-selection`으로 시스템 임시 디렉토리(`$TMPDIR`)에 생성, 설치 완료 후 `main.sh`가 삭제
-- **`curl | bash` 실행 시의 저장소 클론**: `mktemp -d`로 임시 디렉토리에 clone, 스크립트 종료 시 `trap`으로 자동 삭제
+- **`curl | sh` 실행 시의 저장소 클론**: `mktemp -d`로 임시 디렉토리에 clone, 스크립트 종료 시 `trap`으로 자동 삭제
 
 ### 제거 시 지워지는 것 (`uninstall.sh`)
 
@@ -302,7 +302,7 @@ which node java python rustc go   # ~/.asdf/shims/... 아래를 가리켜야 정
 ## 🗑️ 제거
 
 ```zsh
-curl -fsSL https://raw.githubusercontent.com/amosQP/langtoolchain/main/uninstall.sh | bash
+curl -fsSL https://raw.githubusercontent.com/amosQP/langtoolchain/main/uninstall.sh | sh
 ```
 
 실행 전 한 번 확인을 물으며(`--yes`로 생략 가능), `--dry-run`도 동일하게 지원합니다. 제거 후에는 `exec $SHELL`로 새 셸 세션을 열어야 PATH 등 캐시된 상태가 완전히 사라집니다.
@@ -364,13 +364,13 @@ langtoolchain/
 | `ensure_asdf_on_path` | 이 프로세스에서 asdf/shim이 PATH에 잡히도록 보장 |
 | `ensure_brew_on_path` | 이 프로세스에서 `brew`가 PATH에 잡히도록 보장 (Apple Silicon/Intel 설치 경로 자동 판단) |
 | `ensure_build_flags` | Python 등 컴파일에 필요한 `LDFLAGS`/`CPPFLAGS`/`PKG_CONFIG_PATH`를 이 프로세스에 export |
-| `binary_for_plugin`, `flag_for_binary` | plugin 이름 ↔ 실제 실행파일 이름 ↔ 버전 확인 플래그 매핑 (bash 3.2엔 연관 배열이 없어서 `case`로 구현) |
+| `binary_for_plugin`, `flag_for_binary` | plugin 이름 ↔ 실제 실행파일 이름 ↔ 버전 확인 플래그 매핑 (POSIX sh엔 연관 배열이 없어서 `case`로 구현) |
 
 ### `scripts/install/`
 
 | 파일 | 역할 |
 |---|---|
-| `00_select.sh` | 언어별 설치 여부/버전, 그리고 버전 고정 범위(전역/로컬)를 물어보는 대화형 선택기. `/dev/tty`로 직접 읽고 써서 `curl \| bash`에서도 동작. 결과를 임시 `.tool-versions` 파일(첫 줄에 `# scope: ...` 포함)로 반환 |
+| `00_select.sh` | 언어별 설치 여부/버전, 그리고 버전 고정 범위(전역/로컬)를 물어보는 대화형 선택기. `/dev/tty`로 직접 읽고 써서 `curl \| sh`에서도 동작. 결과를 임시 `.tool-versions` 파일(첫 줄에 `# scope: ...` 포함)로 반환 |
 | `01_bootstrap_asdf.sh` | Homebrew 없으면 공식 스크립트로 설치(sudo 필요), `asdf` 없으면 `brew install asdf` |
 | `02_install_plugins.sh` | 선택된 언어마다 `asdf plugin add` |
 | `03_install_system_deps.sh` | Python 컴파일용 Homebrew 패키지 설치 |
@@ -404,7 +404,7 @@ langtoolchain/
 <summary><b>1. 각 phase는 서로 독립적입니다 — export에 의존하지 않음</b></summary>
 <br>
 
-각 phase 스크립트는 `main.sh`가 별도의 `bash` 프로세스로 실행합니다. 즉 한 phase에서 `export`한 값은 다음 phase로 자동으로 넘어가지 않습니다. 그래서 `asdf`나 빌드 플래그가 필요한 스크립트는 각자 `ensure_asdf_on_path`/`ensure_build_flags`를 직접 호출합니다. 이 원칙 덕분에 아무 phase나 단독으로(`bash scripts/install/05_install_runtimes.sh`) 실행해도 정상 동작하고, 순서를 바꾸거나 phase를 추가/삭제하기도 쉽습니다.
+각 phase 스크립트는 `main.sh`가 별도의 `sh` 프로세스로 실행합니다. 즉 한 phase에서 `export`한 값은 다음 phase로 자동으로 넘어가지 않습니다. 그래서 `asdf`나 빌드 플래그가 필요한 스크립트는 각자 `ensure_asdf_on_path`/`ensure_build_flags`를 직접 호출합니다. 이 원칙 덕분에 아무 phase나 단독으로(`sh scripts/install/05_install_runtimes.sh`) 실행해도 정상 동작하고, 순서를 바꾸거나 phase를 추가/삭제하기도 쉽습니다.
 </details>
 
 <details>
@@ -415,17 +415,27 @@ langtoolchain/
 </details>
 
 <details>
-<summary><b>3. 파이프를 곧장 grep -q로 넘기지 않습니다 (pipefail + SIGPIPE)</b></summary>
+<summary><b>3. 파이프를 곧장 grep -q로 넘기지 않습니다 (SIGPIPE)</b></summary>
 <br>
 
-`asdf plugin list | grep -q ...`처럼 "명령 출력을 곧장 `grep -q`로 파이프"하는 패턴은 `set -o pipefail`과 함께 쓰면 위험합니다 — `grep -q`가 매치되자마자 파이프를 일찍 닫아버리는데, 그 타이밍에 상류 명령이 아직 출력 중이면 SIGPIPE로 죽고 파이프라인 전체가 실패로 보고됩니다. 명령 출력은 변수에 먼저 담고, 그 변수를 grep하세요.
+`asdf plugin list | grep -q ...`처럼 "명령 출력을 곧장 `grep -q`로 파이프"하는 패턴은 위험합니다 — `grep -q`가 매치되자마자 파이프를 일찍 닫아버리는데, 그 타이밍에 상류 명령이 아직 출력 중이면 SIGPIPE로 죽습니다. (예전엔 `set -o pipefail`과 함께 쓸 때만의 문제로 설명했지만, `pipefail`은 bash/ksh/zsh 전용 확장이라 POSIX sh 전환 이후로는 애초에 쓰지 않습니다 — SIGPIPE로 상류 명령이 죽는 것 자체는 pipefail 유무와 무관한 문제라 이 원칙은 그대로 유지됩니다.) 명령 출력은 변수에 먼저 담고, 그 변수를 grep하세요.
 </details>
 
 <details>
-<summary><b>4. bash 3.2 호환을 유지합니다</b></summary>
+<summary><b>4. POSIX sh 호환을 유지합니다</b></summary>
 <br>
 
-macOS 기본 `/bin/bash`는 여전히 3.2입니다(라이선스 문제로 Apple이 업그레이드하지 않음). 연관 배열(`declare -A`) 같은 bash 4+ 전용 문법을 쓰지 않습니다 — `curl | bash`로 실행될 때 어떤 `bash`가 PATH에 잡힐지 보장할 수 없기 때문입니다.
+기본 포맷(들여쓰기, 라인 길이, 네이밍)은 [Google Shell Style Guide](https://google.github.io/styleguide/shellguide.html)를 따르되, 호환성 레이어는 POSIX sh입니다 — bash 전용 문법을 쓰지 않아서, `curl | sh`로 실행될 때 PATH에 어떤 `sh`가 잡히든(dash, ash, posix 모드 bash 등) 그대로 동작합니다. 구체적으로 이런 걸 안 씁니다:
+
+- `[[ ... ]]` 대신 `[ ... ]`, 글롭 패턴 매칭이 필요한 곳은 `case`문
+- 연관 배열(`declare -A`)이나 인덱스 배열(`arr=()`, `arr+=()`) — 대신 개행으로 구분한 문자열 + `IFS`/`set --`로 위치 매개변수를 재구성 (값에 공백이 있어도 안전, 개행에서만 분리)
+- 프로세스 치환 `<(cmd)` — 대신 `mktemp`로 임시 파일을 만들어 그걸 읽음
+- `[[ =~ ]]`/`BASH_REMATCH` 정규식 매칭 — 대신 `sed`의 BRE(basic regular expression)로 대체
+- `set -o pipefail` — POSIX에 없는 bash/ksh/zsh 전용 옵션
+- `&>` 결합 리다이렉트 — 대신 `>file 2>&1`
+- `${BASH_SOURCE[0]}` — 대신 `$0` (모든 스크립트가 항상 경로로 호출되므로 안전)
+
+한 가지 함정: `:`(콜론, no-op)처럼 POSIX가 "특수 내장명령(special built-in)"으로 규정한 명령은, 리다이렉션이 실패하면 `set -e`나 `||`와 무관하게 비대화형 셸을 무조건 즉시 종료시킵니다(POSIX 표준 동작이며 dash가 정확히 이렇게 구현되어 있음 — bash는 기본 모드에서 더 관대해서 이 문제가 안 보였습니다). `/dev/tty` 존재 여부를 확인하는 코드처럼 "실패할 수도 있는 리다이렉션 + `||` 폴백" 패턴에선 `:` 대신 `true`(특수 내장명령이 아님) 같은 평범한 명령을 씁니다.
 </details>
 
 <details>
@@ -439,7 +449,7 @@ macOS 기본 `/bin/bash`는 여전히 3.2입니다(라이선스 문제로 Apple�
 <summary><b>6. 정리용 EXIT trap이 있는 스크립트에서는 exec를 쓰지 않습니다</b></summary>
 <br>
 
-`exec cmd`는 `execve`로 현재 프로세스 이미지를 통째로 교체합니다 — 셸의 정상 종료 절차(등록해둔 `trap ... EXIT` 포함)를 그대로 건너뜁니다. `install.sh`/`uninstall.sh`가 `curl | bash`로 실행될 때 임시 clone을 지우는 `trap 'rm -rf "$WORKDIR"' EXIT`가 있는 이유가 이겁니다 — 그 뒤에서 진짜 설치 스크립트를 실행할 땐 `exec`가 아니라 일반 호출 + `exit $?`를 씁니다. (반대로 로컬 클론 실행 경로처럼 정리할 게 없는 곳에선 `exec`를 그대로 씁니다 — 불필요한 프로세스 하나를 아낄 수 있어서.)
+`exec cmd`는 `execve`로 현재 프로세스 이미지를 통째로 교체합니다 — 셸의 정상 종료 절차(등록해둔 `trap ... EXIT` 포함)를 그대로 건너뜁니다. `install.sh`/`uninstall.sh`가 `curl | sh`로 실행될 때 임시 clone을 지우는 `trap 'rm -rf "$WORKDIR"' EXIT`가 있는 이유가 이겁니다 — 그 뒤에서 진짜 설치 스크립트를 실행할 땐 `exec`가 아니라 일반 호출 + `exit $?`를 씁니다. (반대로 로컬 클론 실행 경로처럼 정리할 게 없는 곳에선 `exec`를 그대로 씁니다 — 불필요한 프로세스 하나를 아낄 수 있어서.)
 </details>
 
 <details>
@@ -454,8 +464,8 @@ macOS의 `/usr/bin/sed`는 BSD sed로, GNU sed와 정규식 문법이 다릅니�
 ## 🤝 기여하기
 
 - 언어/버전을 바꾸려면 `.tool-versions` 한 줄만 수정하면 됩니다.
-- 특정 단계만 고치거나 디버깅할 땐 개별 실행: `DRY_RUN=true bash scripts/install/05_install_runtimes.sh`
-- 전체 문법 검사: `for f in install.sh uninstall.sh scripts/lib.sh scripts/install/*.sh scripts/uninstall/*.sh; do bash -n "$f"; done`
+- 특정 단계만 고치거나 디버깅할 땐 개별 실행: `DRY_RUN=true sh scripts/install/05_install_runtimes.sh`
+- 전체 문법 검사: `for f in install.sh uninstall.sh scripts/lib.sh scripts/install/*.sh scripts/uninstall/*.sh; do sh -n "$f"; done` (더 엄격하게 검사하려면 `dash -n`)
 - 실제로 아무것도 바꾸지 않고 전체 흐름 확인: `./install.sh --dry-run --all --yes`, `./uninstall.sh --dry-run --yes`
 
 **남은 To-Do**
