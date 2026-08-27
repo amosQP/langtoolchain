@@ -5,7 +5,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 step "Phase 4: Removing system build dependencies (Homebrew)"
 
-for pkg in openssl readline sqlite3 xz zlib tcl-tk; do
+for pkg in $LT_BUILD_DEPS; do
   # Only try to uninstall what's actually installed — brew would otherwise
   # just error on an already-absent formula.
   if brew list "$pkg" &>/dev/null; then
