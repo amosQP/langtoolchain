@@ -206,7 +206,7 @@ ensure_brew_on_path() {
 ensure_build_flags() {
   # `brew --prefix` below needs `brew` itself resolvable first.
   ensure_brew_on_path
-  export PATH="/opt/homebrew/opt/sqlite/bin:$PATH"
+  export PATH="$(lt_homebrew_prefix)/opt/sqlite/bin:$PATH"
   # Declared and assigned separately (not inline inside the export) so a
   # failing `brew --prefix` (e.g. the formula somehow isn't actually
   # installed) trips `set -e` here instead of being silently swallowed —
