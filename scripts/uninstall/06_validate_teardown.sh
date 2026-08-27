@@ -18,9 +18,9 @@ OK=true
 # This script deliberately does NOT call ensure_asdf_on_path() — a teardown
 # check has no reason to put asdf back on PATH. That means it can't rely on
 # lib.sh to have exported ASDF_DATA_DIR, so (same fix as 07_validate.sh /
-# TASK-57) fall back inline here to avoid false-FAILing a custom
-# ASDF_DATA_DIR against a hardcoded ".asdf".
-ASDF_DATA_DIR="${ASDF_DATA_DIR:-$HOME/.asdf}"
+# TASK-57) fall back to lib.sh's own default constant here instead of a
+# literal, to avoid false-FAILing a custom ASDF_DATA_DIR.
+ASDF_DATA_DIR="${ASDF_DATA_DIR:-$LT_ASDF_DATA_DIR_DEFAULT}"
 
 if command -v asdf &>/dev/null; then
   log "  FAIL: 'asdf' is still resolvable in PATH."

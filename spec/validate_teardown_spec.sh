@@ -52,6 +52,19 @@ Describe 'scripts/uninstall/06_validate_teardown.sh'
     End
   End
 
+  Describe 'ASDF_DATA_DIR unset (falls back to lib.sh default)'
+    It 'still detects a leftover shim under $HOME/.asdf when ASDF_DATA_DIR is unset'
+      fake_home="$(mktemp -d)"
+      mkdir -p "$fake_home/.asdf/shims"
+      export HOME="$fake_home" PATH="$fake_home/.asdf/shims:$clean_path" DRY_RUN=false
+      unset -v ASDF_DATA_DIR JAVA_HOME
+      When run "$SCRIPT"
+      The output should include "FAIL: \$ASDF_DATA_DIR/shims is still in this session's PATH."
+      The status should be failure
+      rm -rf "$fake_home"
+    End
+  End
+
   Describe 'DRY_RUN=true'
     It 'skips all validation instead of reporting false failures'
       export ASDF_DATA_DIR="$data_dir" PATH="$data_dir/shims:$clean_path" DRY_RUN=true
