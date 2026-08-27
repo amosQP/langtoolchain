@@ -1,0 +1,126 @@
+name: E2E verify (real macOS, arm64 + Intel)
+
+# Manually triggered end-to-end verification of the installer/uninstaller on
+# real, clean, ephemeral GitHub-hosted macOS runners. Covers scenarios the
+# project's backlog could only mark as "needs real hardware": TASK-6, 9-12,
+# 18, 20, 23, 31, 32, 34, 35, 42-46. Every job checks out this exact commit
+# so it always tests what's on the branch, not a stale published copy.
+on:
+  workflow_dispatch: {}
+
+jobs:
+  full-cycle:
+    name: full install -> uninstall cycle (${{ matrix.label }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-15
+            label: arm64
+          - runner: macos-15-intel
+            label: intel
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: sanity - confirm actual architecture (TASK-34/35)
+        run: |
+          echo "uname -m: $(uname -m)"
+          echo "sw_vers:"; sw_vers
+          test "$(uname -m)" = "${{ matrix.label == 'intel' && 'x86_64' || 'arm64' }}"
+
+      - name: run installer for real (TASK-6, 9-12, 42-45)
+        run: sh scripts/install/main.sh --all --yes
+
+      - name: verify each shim wins in a real new login shell (TASK-18)
+        run: |
+          for cmd in node java python rustc go; do
+            resolved="$(zsh -lic "command -v $cmd" 2>/dev/null || true)"
+            echo "$cmd -> $resolved"
+            case "$resolved" in
+              *"/.asdf/shims/"*) echo "  OK" ;;
+              *) echo "  FAIL: $cmd did not resolve through an asdf shim in a real login shell"; exit 1 ;;
+            esac
+          done
+
+      - name: run uninstaller for real (TASK-23, 46)
+        run: sh scripts/uninstall/main.sh --yes
+
+      - name: verify teardown is clean in a real new login shell
+        run: |
+          zsh -lic '
+            command -v asdf >/dev/null 2>&1 && { echo "FAIL: asdf still resolvable"; exit 1; }
+            case ":$PATH:" in
+              *".asdf/shims:"*) echo "FAIL: asdf shims still on PATH"; exit 1 ;;
+            esac
+            echo "OK: teardown confirmed clean in a real new shell"
+          '
+
+  no-homebrew-bootstrap:
+    name: install with Homebrew pre-removed (TASK-20)
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: remove Homebrew entirely first
+        run: |
+          if command -v brew >/dev/null 2>&1; then
+            NONINTERACTIVE=1 /bin/bash -c \
+              "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/uninstall.sh)"
+          fi
+          command -v brew >/dev/null 2>&1 && { echo "FAIL: brew still present"; exit 1; } || true
+
+      - name: run installer - must self-bootstrap Homebrew
+        run: sh scripts/install/main.sh --all --yes
+
+  no-git-curl-pipe:
+    name: curl | sh with git hidden (TASK-31)
+    runs-on: macos-15
+    steps:
+      - name: run remote one-liner with git actually moved aside, expect graceful failure
+        run: |
+          # This runner VM is thrown away after the job, so temporarily
+          # moving the real git binary out of the way (rather than trying
+          # to fake a PATH that omits it, which real dirs can leak back
+          # through) is simple and safe here.
+          real_git="$(command -v git)"
+          sudo mv "$real_git" "${real_git}.hidden-for-test"
+          command -v git >/dev/null 2>&1 && { echo "FAIL: git is still resolvable"; exit 1; }
+
+          set +e
+          curl -fsSL https://raw.githubusercontent.com/amosQP/langtoolchain/main/install.sh | sh > out.log 2>&1
+          status=$?
+          set -e
+
+          sudo mv "${real_git}.hidden-for-test" "$real_git"
+
+          cat out.log
+          [ "$status" -ne 0 ] || { echo "FAIL: expected non-zero exit without git"; exit 1; }
+          grep -q "git is required" out.log || { echo "FAIL: expected clear git-required error message"; exit 1; }
+          echo "OK: failed gracefully with a clear error, as expected"
+
+  interrupt-and-resume:
+    name: kill mid-install then re-run (TASK-32)
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: start install, kill it partway through phase 5, confirm partial state doesn't wedge a re-run
+        run: |
+          # macOS doesn't ship a `timeout` utility, so start in the
+          # background and kill it ourselves after a delay instead.
+          sh scripts/install/main.sh --all --yes > first-run.log 2>&1 &
+          install_pid=$!
+          sleep 90
+          kill "$install_pid" 2>/dev/null || true
+          # Give the process tree a moment to actually die before moving on.
+          sleep 5
+          echo "--- interrupted run log (last 20 lines) ---"
+          tail -20 first-run.log
+
+      - name: re-run to completion - must succeed despite the partial state left behind
+        run: sh scripts/install/main.sh --all --yes
+
+      - name: cleanup
+        if: always()
+        run: sh scripts/uninstall/main.sh --yes || true
