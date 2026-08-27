@@ -190,10 +190,7 @@ ensure_brew_on_path() {
     return
   fi
   local brew_bin
-  case "$(uname -m)" in
-    arm64) brew_bin="/opt/homebrew/bin" ;;   # Apple Silicon
-    *)     brew_bin="/usr/local/bin" ;;      # Intel
-  esac
+  brew_bin="$(lt_homebrew_prefix)/bin"
   if [[ -x "$brew_bin/brew" ]]; then
     export PATH="$brew_bin:$PATH"
   fi
