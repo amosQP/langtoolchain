@@ -1,9 +1,10 @@
 ---
 id: TASK-72
 title: lib.sh를 POSIX sh로 전환 (전체 전환의 기반)
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-08-27 14:41'
+updated_date: '2026-08-27 14:43'
 labels:
   - code-quality
   - posix
@@ -29,7 +30,7 @@ TASK-71 정책에 따라 scripts/lib.sh를 POSIX sh 호환으로 전환한다. �
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 scripts/lib.sh가 dash -n(또는 dash로 source)에서 에러 없이 통과한다
-- [ ] #2 [[ ]], BASH_REMATCH, =~ 가 lib.sh에서 전부 제거된다
-- [ ] #3 shellspec 관련 스펙이 그린을 유지한다(또는 POSIX 셸 기준으로 조정된다)
+- [x] #1 scripts/lib.sh가 dash -n(또는 dash로 source)에서 에러 없이 통과한다
+- [x] #2 [[ ]], BASH_REMATCH, =~ 가 lib.sh에서 전부 제거된다
+- [x] #3 shellspec 관련 스펙이 그린을 유지한다(또는 POSIX 셸 기준으로 조정된다)
 <!-- AC:END -->
