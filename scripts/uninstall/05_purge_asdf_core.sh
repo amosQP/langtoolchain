@@ -13,12 +13,12 @@ if brew list asdf &>/dev/null; then
   run brew uninstall asdf || true
 fi
 
-if [[ -d "$HOME/.asdf" ]]; then
+if [[ -d "$LT_ASDF_DATA_DIR_DEFAULT" ]]; then
   # This is where EVERYTHING asdf-managed actually lives: downloads,
   # installs, plugins, and shims all sit under here. Removing it deletes
   # every compiled runtime this tool ever installed.
-  log "Removing $HOME/.asdf ..."
-  run rm -rf "$HOME/.asdf"
+  log "Removing $LT_ASDF_DATA_DIR_DEFAULT ..."
+  run rm -rf "$LT_ASDF_DATA_DIR_DEFAULT"
 fi
 
 if [[ -f "$HOME/.tool-versions" ]]; then
