@@ -1,10 +1,10 @@
-#!/usr/bin/env bash
+#!/usr/bin/env sh
 # Interactive language/version picker.
 #
 # Prints nothing but a single file path to stdout on success (the resulting
 # .tool-versions-style selection file) — every prompt and menu line goes to
 # /dev/tty instead, so this script is safe to call via command substitution
-# (`SELECTION_FILE="$(bash 00_select.sh)"`).
+# (`SELECTION_FILE="$(sh 00_select.sh)"`).
 #
 # Flags:
 #   --all         skip the menu, select every language at its default version
@@ -18,22 +18,26 @@
 # when there's no tty to ask.
 
 # -e: any unhandled non-zero exit kills the script. -u: referencing an
-# unset variable is an error. -o pipefail: a pipeline fails if ANY stage
-# fails, not just the last one.
-set -euo pipefail
+# unset variable is an error. (No pipefail — that's a bash/ksh/zsh
+# extension, not POSIX; dash doesn't have it. This script avoids relying on
+# it — see the fd-3 process-substitution replacement below for why piping
+# straight into a loop was already avoided regardless.)
+set -eu
 
 # Resolve this script's own directory, regardless of the caller's cwd, so
-# `. lib.sh` below always finds the right file.
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# `. lib.sh` below always finds the right file. $0 (not ${BASH_SOURCE[0]}
+# — POSIX sh has no BASH_SOURCE) works here because every caller always
+# invokes this script by path (never a bare name looked up on PATH).
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 # Pull in log/step/die/run/each_tool/binary_for_plugin/etc.
 . "$SCRIPT_DIR/../lib.sh"
 
 # Two directories up from scripts/install/ is the repo root.
-REPO_ROOT="$(repo_root_from "${BASH_SOURCE[0]}")"
+REPO_ROOT="$(repo_root_from "$0")"
 # The shipped, default list of languages/versions this repo installs.
 DEFAULT_CONFIG="$REPO_ROOT/.tool-versions"
 # Bail out early with a clear message if the repo is somehow missing it.
-[[ -f "$DEFAULT_CONFIG" ]] || die "Config file not found: $DEFAULT_CONFIG"
+[ -f "$DEFAULT_CONFIG" ] || die "Config file not found: $DEFAULT_CONFIG"
 
 # Flags default to off; the loop below flips them on if passed.
 SELECT_ALL=false
@@ -52,8 +56,8 @@ for arg in "$@"; do
   esac
 done
 
-if [[ "$SCOPE" == "local" ]]; then
-  [[ -d "$SCOPE_DIR" ]] || die "Directory not found: $SCOPE_DIR"
+if [ "$SCOPE" = "local" ]; then
+  [ -d "$SCOPE_DIR" ] || die "Directory not found: $SCOPE_DIR"
   # Resolve to an absolute path now, once, so 06_set_globals.sh (running
   # later, as its own process, possibly with a different cwd) gets an
   # unambiguous path regardless of where it happens to be invoked from.
@@ -64,7 +68,7 @@ fi
 # output file — a comment, so each_tool's plugin/version parsing (which
 # skips lines starting with '#') never has to know this exists.
 scope_line() {
-  if [[ "$SCOPE" == "local" ]]; then
+  if [ "$SCOPE" = "local" ]; then
     printf '# scope: local %s\n' "$SCOPE_DIR"
   else
     printf '# scope: global\n'
@@ -77,13 +81,16 @@ write_with_scope() {
   { scope_line; cat "$1"; } > "$2"
 }
 
-# Probe for a controlling terminal. `: < /dev/tty` tries to open /dev/tty
-# for reading and does nothing with it (`:` is the no-op builtin); if that
-# open fails (no tty — e.g. cron, CI, or this being piped through something
-# with no terminal at all), the `||` sets INTERACTIVE=false instead of
-# letting `set -e` kill the script.
+# Probe for a controlling terminal. `true < /dev/tty` tries to open
+# /dev/tty for reading and does nothing with it; if that open fails (no
+# tty — e.g. cron, CI, or this being piped through something with no
+# terminal at all), the `||` sets INTERACTIVE=false. Uses `true`, not `:` —
+# POSIX mandates that a redirection error on a *special* built-in (`:` is
+# one) unconditionally kills a non-interactive shell script, bypassing
+# `set -e`/`||` entirely; `true` is an ordinary command, so its redirection
+# failure is just a normal non-zero status the `||` can catch.
 INTERACTIVE=true
-{ : < /dev/tty; } 2>/dev/null || INTERACTIVE=false
+{ true < /dev/tty; } 2>/dev/null || INTERACTIVE=false
 
 # tty_out/tty_prompt: write straight to the terminal device, bypassing this
 # script's own stdout. That keeps stdout free to carry only the final
@@ -126,8 +133,11 @@ tty_out "== 설치할 언어를 선택하세요 (Enter = 예) =="
 # (the /dev/tty reads below are already redirected per-command so they're
 # safe either way, but fd 3 keeps every loop in this codebase consistent).
 # `each_tool` prints "plugin version" pairs for every language in the
-# default config; process substitution `<( ... )` feeds them in on fd 3
-# instead of the loop's own stdin (fd 0).
+# default config; POSIX sh has no process substitution (`<(...)` is a
+# bash/ksh/zsh extension), so this writes each_tool's output to a temp
+# file first and reads that on fd 3 instead of the loop's own stdin (fd 0).
+EACH_TOOL_TMP="$(mktemp)"
+each_tool "$DEFAULT_CONFIG" > "$EACH_TOOL_TMP"
 while read -r plugin default_version <&3; do
   # Just for a friendlier prompt line, e.g. "nodejs (node)".
   cmd="$(binary_for_plugin "$plugin")"
@@ -144,16 +154,17 @@ while read -r plugin default_version <&3; do
   tty_prompt "  버전 [기본값: $default_version] > "
   read -r version < /dev/tty || version=""
   # Empty input (plain Enter) means "use the default version".
-  [[ -n "$version" ]] || version="$default_version"
+  [ -n "$version" ] || version="$default_version"
 
   # Record this language/version as one line of the selection file.
   printf '%s %s\n' "$plugin" "$version" >> "$OUT_FILE"
-done 3< <(each_tool "$DEFAULT_CONFIG")
+done 3< "$EACH_TOOL_TMP"
+rm -f "$EACH_TOOL_TMP"
 
 # `-s` = file exists and is non-empty. If the user answered "n" to every
 # single language, there's nothing to install — stop here instead of
 # silently proceeding with an empty plan.
-if [[ ! -s "$OUT_FILE" ]]; then
+if [ ! -s "$OUT_FILE" ]; then
   tty_out ""
   tty_out "선택된 언어가 없습니다. 설치를 취소합니다."
   exit 1
@@ -168,7 +179,7 @@ done < "$OUT_FILE"
 tty_out ""
 
 # Ask where to pin these versions, unless --local[=DIR] already decided it.
-if [[ -z "$SCOPE" ]]; then
+if [ -z "$SCOPE" ]; then
   tty_prompt "전역으로 고정할까요, 이 디렉토리에만 고정할까요? [전역/로컬] > "
   read -r scope_answer < /dev/tty || scope_answer=""
   case "$scope_answer" in
@@ -176,7 +187,7 @@ if [[ -z "$SCOPE" ]]; then
       tty_prompt "  어느 디렉토리에 고정할까요? [기본값: 현재 디렉토리] > "
       read -r scope_dir_answer < /dev/tty || scope_dir_answer=""
       SCOPE_DIR="${scope_dir_answer:-$(pwd)}"
-      [[ -d "$SCOPE_DIR" ]] || die "Directory not found: $SCOPE_DIR"
+      [ -d "$SCOPE_DIR" ] || die "Directory not found: $SCOPE_DIR"
       SCOPE_DIR="$(cd "$SCOPE_DIR" && pwd)"
       SCOPE="local"
       ;;
