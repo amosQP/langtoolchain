@@ -13,6 +13,13 @@
 # for real".
 DRY_RUN="${DRY_RUN:-false}"
 
+# ---- Shared constants ----
+# Homebrew formulas needed to compile Python's (and friends') C extensions.
+# Single source of truth for scripts/install/03_install_system_deps.sh,
+# scripts/uninstall/04_remove_system_deps.sh, and ensure_build_flags() below
+# (which only needs the openssl/readline/sqlite3/zlib subset — see there).
+LT_BUILD_DEPS="openssl readline sqlite3 xz zlib tcl-tk"
+
 # log <msg>: plain status line to stdout.
 log()  { printf '%s\n' "$*"; }
 # step <msg>: a section header, e.g. "== Phase 3: ... ==", to visually
@@ -181,6 +188,10 @@ ensure_brew_on_path() {
 # python ...` fails to find OpenSSL/SQLite headers. Any phase that runs
 # `asdf install` calls this itself rather than trusting an earlier phase's
 # export to still be in scope (again: separate child processes).
+#
+# Of the full LT_BUILD_DEPS list, only these four (openssl, readline,
+# sqlite3, zlib) actually need compiler/linker flags — xz and tcl-tk don't,
+# so they're intentionally left out below.
 ensure_build_flags() {
   # `brew --prefix` below needs `brew` itself resolvable first.
   ensure_brew_on_path
