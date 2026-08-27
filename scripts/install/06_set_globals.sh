@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/usr/bin/env sh
 # Binds each selected language to a version and regenerates shims.
 # Self-sufficient: ensures asdf is on PATH itself.
 #
