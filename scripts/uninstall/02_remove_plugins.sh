@@ -17,7 +17,12 @@ step "Phase 2: Removing asdf plugins"
 # POSIX sh has no process substitution, so this goes to a temp file first.
 PLUGIN_LIST_TMP="$(mktemp)"
 asdf plugin list 2>/dev/null > "$PLUGIN_LIST_TMP" || true
-while read -r plugin <&3; do
+# `|| [ -n "$plugin" ]`: unlike each_tool()/lt_env_var_defs() (our own
+# printf-based output, always newline-terminated), this file comes from an
+# external command we don't control the exact output of — `read` returns
+# failure at EOF, and without this guard a final line with no trailing
+# newline would be silently dropped even though `read` did populate it.
+while read -r plugin <&3 || [ -n "$plugin" ]; do
   [ -n "$plugin" ] || continue   # skip a stray blank line, if any
   log "Removing plugin: $plugin"
   run asdf plugin remove "$plugin" || true
