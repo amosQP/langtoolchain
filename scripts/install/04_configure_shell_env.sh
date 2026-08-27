@@ -20,41 +20,29 @@ RC_FILE="$(detect_rc_file)"
 run touch "$RC_FILE"
 log "Using rc file: $RC_FILE"
 
-# Homebrew's own installer never edits shell config itself — it just prints
-# this line as a suggested next step. Write it in for the user — at the
-# TOP of the file (prepend, not append): this needs to run before asdf's
-# shim PATH line so asdf can correctly win over any same-named Homebrew
-# formula (e.g. a separately brew-installed `node`) rather than being
-# silently shadowed by it.
-BREW_BIN="$(lt_homebrew_prefix)/bin/brew"
-prepend_env_var "$RC_FILE" "brew shellenv" "eval \"\$($BREW_BIN shellenv)\""
-
-# The two lines modern asdf actually needs: where its data lives, and
-# putting its shim directory ahead of everything else on PATH so `node`,
-# `python`, etc. resolve to the asdf-managed versions.
-append_env_var "$RC_FILE" "ASDF_DATA_DIR" "export ASDF_DATA_DIR=\"\$HOME/$LT_ASDF_DATA_DIR_NAME\""
-append_env_var "$RC_FILE" "ASDF_DATA_DIR/shims" 'export PATH="$ASDF_DATA_DIR/shims:$PATH"'
-
 # Java home hook — pick the variant matching the detected shell (the
 # asdf-java plugin ships both; sourcing the wrong one would just silently
-# do nothing in that shell).
+# do nothing in that shell). This choice depends on which rc file we're
+# writing to, so it's made here and handed to lib.sh's lt_env_var_defs()
+# rather than lib.sh guessing it.
 case "$RC_FILE" in
   *.zshrc) JAVA_HOOK="set-java-home.zsh" ;;
   *)       JAVA_HOOK="set-java-home.bash" ;;
 esac
-# This makes $JAVA_HOME track whatever Java version asdf currently has set
-# globally, every time a new shell starts.
-append_env_var "$RC_FILE" "$JAVA_HOOK" ". \$HOME/$LT_ASDF_DATA_DIR_NAME/plugins/java/$JAVA_HOOK"
 
-# Python build flags (openssl/readline/sqlite3/zlib are keg-only, so the
-# compiler can't find them unless we point at them explicitly). Each of
-# these is an `export ... $(brew --prefix ...)` line written *literally*
-# into the rc file — the `brew --prefix` calls run fresh every time a new
-# shell starts, not just once now, so they stay correct even if Homebrew's
-# install paths ever change.
-append_env_var "$RC_FILE" "opt/sqlite/bin" "export PATH=\"$(lt_homebrew_prefix)/opt/sqlite/bin:\$PATH\""
-append_env_var "$RC_FILE" 'LDFLAGS.*openssl' "export LDFLAGS=\"-L\$(brew --prefix openssl)/lib -L\$(brew --prefix readline)/lib -L\$(brew --prefix sqlite3)/lib -L\$(brew --prefix zlib)/lib\""
-append_env_var "$RC_FILE" 'CPPFLAGS.*openssl' "export CPPFLAGS=\"-I\$(brew --prefix openssl)/include -I\$(brew --prefix readline)/include -I\$(brew --prefix sqlite3)/include -I\$(brew --prefix zlib)/include\""
-append_env_var "$RC_FILE" 'PKG_CONFIG_PATH.*openssl' "export PKG_CONFIG_PATH=\"\$(brew --prefix openssl)/lib/pkgconfig:\$(brew --prefix readline)/lib/pkgconfig:\$(brew --prefix sqlite3)/lib/pkgconfig\""
+# Every rc-file line this installer manages — search pattern and the line
+# to write, "pattern|||line" per row — comes from this single shared
+# definition (see lib.sh's lt_env_var_defs for why). "brew shellenv" alone
+# needs to be prepended, not appended: it must land ahead of the asdf shim
+# PATH line, or a same-named Homebrew formula could shadow the asdf shim
+# (see prepend_env_var's own comment). Everything else is appended.
+while IFS= read -r def; do
+  search="${def%%|||*}"
+  line="${def#*|||}"
+  case "$search" in
+    "brew shellenv") prepend_env_var "$RC_FILE" "$search" "$line" ;;
+    *)                append_env_var "$RC_FILE" "$search" "$line" ;;
+  esac
+done < <(lt_env_var_defs "$JAVA_HOOK")
 
 log "Shell config written to $RC_FILE."
