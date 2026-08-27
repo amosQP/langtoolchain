@@ -80,50 +80,49 @@ LT_KNOWN_RC_FILES="$LT_RC_FILE_ZSH $LT_RC_FILE_BASH $LT_RC_FILE_BASH_INTERACTIVE
 
 # lt_env_var_defs [java_hook_file] (TASK-64): prints one line per rc-file
 # entry this tool's installer manages, formatted
-# "<search-pattern>|||<line-to-write>" (a triple-pipe separator, since none
-# of the search patterns or lines contain it). Bash 3.2 has no associative
-# arrays, so this is a flat list of delimited lines, meant to be read with
-# `while IFS= read -r def; do ... done < <(lt_env_var_defs ...)` — the same
-# shape each_tool() already uses for .tool-versions lines, just with a
-# different separator since these lines contain spaces of their own.
+# "<search-pattern>|||<placement>|||<line-to-write>" (triple-pipe
+# separators, since none of the fields contain them). Bash 3.2 has no
+# associative arrays, so this is a flat list of delimited lines, meant to
+# be read with `while IFS= read -r def; do ... done < <(lt_env_var_defs
+# ...)` — the same shape each_tool() already uses for .tool-versions
+# lines, just with a different separator since these lines contain spaces
+# of their own.
 #
-# install/04_configure_shell_env.sh writes each <line-to-write>, guarded by
-# <search-pattern> via append_env_var/prepend_env_var (so re-running never
-# duplicates it). uninstall/03_clean_env_vars.sh only needs the
-# <search-pattern> half — it turns each one into a `sed -E -e '/pattern/d'`
-# expression. Both read from this one function instead of each
-# independently retyping the same patterns — that exact kind of drift is
-# what caused TASK-56 (BSD sed never actually deleting the java-hook line,
-# because uninstall's own copy of the pattern used a GNU-only regex
-# extension the install side never had to match against). To add a new rc
-# line, add one entry here; both install and uninstall pick it up
-# automatically.
+# install/04_configure_shell_env.sh writes each <line-to-write>, guarded
+# by <search-pattern>, calling prepend_env_var or append_env_var depending
+# on <placement> ("prepend" or "append") — the placement decision lives
+# here as data, not as a string the caller has to recognize, so it can't
+# go stale independently of the pattern it applies to.
+# uninstall/03_clean_env_vars.sh only needs the <search-pattern> field —
+# it turns each one into a `sed -E -e '/pattern/d'` expression. Both read
+# from this one function instead of each independently retyping the same
+# patterns — that exact kind of drift is what caused TASK-56 (BSD sed
+# never actually deleting the java-hook line, because uninstall's own copy
+# of the pattern used a GNU-only regex extension the install side never
+# had to match against). To add a new rc line, add one entry here; both
+# install and uninstall pick it up automatically.
 #
 # The java-hook line's content depends on which shell's variant is in use
 # (only install knows this, from the rc file it picked), so the caller
 # passes it in as $1; uninstall doesn't pass anything, since it only ever
-# reads the search-pattern half of that entry, never the content half.
+# reads the search-pattern field of that entry, never the content.
 #
-# NOTE (intentional asymmetry): "brew shellenv" is written with
-# prepend_env_var — it must land ahead of the asdf shim PATH line, or a
-# same-named Homebrew formula could shadow the asdf shim (see
-# prepend_env_var's own comment). Every other line here is appended.
-# Callers decide append vs. prepend themselves by which rc-writing
-# function they pass each line to — this function only supplies the
-# search pattern and the line content, not the placement.
+# "brew shellenv" is the only "prepend" entry — it must land ahead of the
+# asdf shim PATH line, or a same-named Homebrew formula could shadow the
+# asdf shim (see prepend_env_var's own comment). Everything else appends.
 lt_env_var_defs() {
   local java_hook_file="${1:-}"
   local homebrew_prefix
   homebrew_prefix="$(lt_homebrew_prefix)"
   printf '%s\n' \
-    "brew shellenv|||eval \"\$($homebrew_prefix/bin/brew shellenv)\"" \
-    "ASDF_DATA_DIR|||export ASDF_DATA_DIR=\"\$HOME/$LT_ASDF_DATA_DIR_NAME\"" \
-    "ASDF_DATA_DIR/shims|||export PATH=\"\$ASDF_DATA_DIR/shims:\$PATH\"" \
-    "set-java-home\.|||. \$HOME/$LT_ASDF_DATA_DIR_NAME/plugins/java/$java_hook_file" \
-    "opt/sqlite/bin|||export PATH=\"$homebrew_prefix/opt/sqlite/bin:\$PATH\"" \
-    "LDFLAGS.*openssl|||export LDFLAGS=\"-L\$(brew --prefix openssl)/lib -L\$(brew --prefix readline)/lib -L\$(brew --prefix sqlite3)/lib -L\$(brew --prefix zlib)/lib\"" \
-    "CPPFLAGS.*openssl|||export CPPFLAGS=\"-I\$(brew --prefix openssl)/include -I\$(brew --prefix readline)/include -I\$(brew --prefix sqlite3)/include -I\$(brew --prefix zlib)/include\"" \
-    "PKG_CONFIG_PATH.*openssl|||export PKG_CONFIG_PATH=\"\$(brew --prefix openssl)/lib/pkgconfig:\$(brew --prefix readline)/lib/pkgconfig:\$(brew --prefix sqlite3)/lib/pkgconfig\""
+    "brew shellenv|||prepend|||eval \"\$($homebrew_prefix/bin/brew shellenv)\"" \
+    "ASDF_DATA_DIR|||append|||export ASDF_DATA_DIR=\"\$HOME/$LT_ASDF_DATA_DIR_NAME\"" \
+    "ASDF_DATA_DIR/shims|||append|||export PATH=\"\$ASDF_DATA_DIR/shims:\$PATH\"" \
+    "set-java-home\.|||append|||. \$HOME/$LT_ASDF_DATA_DIR_NAME/plugins/java/$java_hook_file" \
+    "opt/sqlite/bin|||append|||export PATH=\"$homebrew_prefix/opt/sqlite/bin:\$PATH\"" \
+    "LDFLAGS.*openssl|||append|||export LDFLAGS=\"-L\$(brew --prefix openssl)/lib -L\$(brew --prefix readline)/lib -L\$(brew --prefix sqlite3)/lib -L\$(brew --prefix zlib)/lib\"" \
+    "CPPFLAGS.*openssl|||append|||export CPPFLAGS=\"-I\$(brew --prefix openssl)/include -I\$(brew --prefix readline)/include -I\$(brew --prefix sqlite3)/include -I\$(brew --prefix zlib)/include\"" \
+    "PKG_CONFIG_PATH.*openssl|||append|||export PKG_CONFIG_PATH=\"\$(brew --prefix openssl)/lib/pkgconfig:\$(brew --prefix readline)/lib/pkgconfig:\$(brew --prefix sqlite3)/lib/pkgconfig\""
 }
 
 # log <msg>: plain status line to stdout.

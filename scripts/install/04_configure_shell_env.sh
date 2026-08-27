@@ -30,18 +30,18 @@ case "$RC_FILE" in
   *)       JAVA_HOOK="set-java-home.bash" ;;
 esac
 
-# Every rc-file line this installer manages — search pattern and the line
-# to write, "pattern|||line" per row — comes from this single shared
-# definition (see lib.sh's lt_env_var_defs for why). "brew shellenv" alone
-# needs to be prepended, not appended: it must land ahead of the asdf shim
-# PATH line, or a same-named Homebrew formula could shadow the asdf shim
-# (see prepend_env_var's own comment). Everything else is appended.
+# Every rc-file line this installer manages — search pattern, placement
+# (prepend/append), and the line to write — comes from this single shared
+# definition (see lib.sh's lt_env_var_defs for why). Which lines prepend
+# vs. append is decided there, as data, not by matching text here.
 while IFS= read -r def; do
   search="${def%%|||*}"
-  line="${def#*|||}"
-  case "$search" in
-    "brew shellenv") prepend_env_var "$RC_FILE" "$search" "$line" ;;
-    *)                append_env_var "$RC_FILE" "$search" "$line" ;;
+  rest="${def#*|||}"
+  placement="${rest%%|||*}"
+  line="${rest#*|||}"
+  case "$placement" in
+    prepend) prepend_env_var "$RC_FILE" "$search" "$line" ;;
+    *)       append_env_var "$RC_FILE" "$search" "$line" ;;
   esac
 done < <(lt_env_var_defs "$JAVA_HOOK")
 
