@@ -1,10 +1,10 @@
 ---
 id: TASK-31
 title: curl | bash 중 git 없는 환경
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-08-24 08:05'
-updated_date: '2026-08-24 08:12'
+updated_date: '2026-08-27 20:53'
 labels:
   - test
   - edge-case
@@ -23,5 +23,5 @@ ordinal: 31000
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 git이 없으면 'git is required...' 류의 명확한 메시지와 함께 exit 1로 종료된다
+- [x] #1 git이 없으면 'git is required...' 류의 명확한 메시지와 함께 exit 1로 종료된다
 <!-- AC:END -->

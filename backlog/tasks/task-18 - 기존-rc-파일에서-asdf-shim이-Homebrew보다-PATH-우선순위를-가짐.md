@@ -1,9 +1,10 @@
 ---
 id: TASK-18
 title: 기존 rc 파일에서 asdf shim이 Homebrew보다 PATH 우선순위를 가짐
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-08-24 08:05'
+updated_date: '2026-08-27 20:53'
 labels:
   - test
   - shell
@@ -23,5 +24,14 @@ ordinal: 18000
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 zsh -lic 'command -v node'가 항상 ~/.asdf/shims/node를 가리킨다 (다른 도구가 rc 파일 뒤쪽에 PATH를 추가로 prepend해도)
+- [x] #1 zsh -lic 'command -v node'가 항상 ~/.asdf/shims/node를 가리킨다 (다른 도구가 rc 파일 뒤쪽에 PATH를 추가로 prepend해도)
 <!-- AC:END -->
+
+## Comments
+
+<!-- COMMENTS:BEGIN -->
+created: 2026-08-27 20:53
+---
+GitHub Actions 워크플로 .github/workflows/e2e-verify.yml, run https://github.com/amosQP/langtoolchain/actions/runs/33114765195 (전부 success) — full-cycle job에서 "$SHELL" -lic 'command -v node/java/python/rustc/go'로 진짜 새 로그인 셸을 열어서 5개 전부 asdf shim으로 resolve됨을 확인(arm64/intel 둘 다). 참고: 처음엔 zsh를 하드코딩해서 오탐이 났었는데(러너의 $SHELL이 bash라 .bash_profile에 썼는데 zsh로 확인해서), $SHELL을 동적으로 쓰도록 고쳐서 재확인.
+---
+<!-- COMMENTS:END -->

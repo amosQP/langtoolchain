@@ -1,9 +1,10 @@
 ---
 id: TASK-9
 title: Python 신규 버전 실제 설치(소스 컴파일)
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-08-24 08:05'
+updated_date: '2026-08-27 20:53'
 labels:
   - test
   - runtime
@@ -24,3 +25,12 @@ Python은 asdf-python이 기본적으로 소스에서 컴파일한다. openssl/r
 - [ ] #1 asdf install python <new-version>이 빌드 에러 없이 끝까지 완료된다
 - [ ] #2 설치된 python이 ssl/sqlite3 모듈을 정상적으로 import할 수 있다
 <!-- AC:END -->
+
+## Comments
+
+<!-- COMMENTS:BEGIN -->
+created: 2026-08-27 20:53
+---
+GitHub Actions 워크플로 .github/workflows/e2e-verify.yml, run https://github.com/amosQP/langtoolchain/actions/runs/33114765195 (전부 success) — full-cycle job에서 asdf install python 3.12.13 실제 소스 컴파일 성공, 이후 python --version으로 검증됨.
+---
+<!-- COMMENTS:END -->

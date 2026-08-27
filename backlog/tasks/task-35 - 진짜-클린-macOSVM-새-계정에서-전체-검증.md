@@ -1,10 +1,10 @@
 ---
 id: TASK-35
 title: 진짜 클린 macOS(VM/새 계정)에서 전체 검증
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-08-24 08:05'
-updated_date: '2026-08-24 08:12'
+updated_date: '2026-08-27 20:53'
 labels:
   - test
   - platform
@@ -26,3 +26,12 @@ ordinal: 35000
 <!-- AC:BEGIN -->
 - [ ] #1 Homebrew도 asdf도 전혀 없는 상태에서 curl | bash 한 줄로 끝까지 설치가 완료된다
 <!-- AC:END -->
+
+## Comments
+
+<!-- COMMENTS:BEGIN -->
+created: 2026-08-27 20:53
+---
+GitHub Actions 워크플로 .github/workflows/e2e-verify.yml, run https://github.com/amosQP/langtoolchain/actions/runs/33114765195 (전부 success) — GitHub-hosted 러너는 매 실행마다 완전히 새로 프로비저닝되는 ephemeral VM이라 '진짜 클린 macOS' 요건을 구조적으로 만족. full-cycle 양쪽 아키텍처 모두 성공.
+---
+<!-- COMMENTS:END -->
