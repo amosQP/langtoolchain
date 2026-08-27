@@ -1,9 +1,10 @@
 ---
 id: TASK-76
 title: POSIX 전환 이후 전체 검증 + README 갱신 + Google 시각 스타일 재확인
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-08-27 14:41'
+updated_date: '2026-08-27 19:58'
 labels:
   - code-quality
   - posix
@@ -23,7 +24,7 @@ TASK-72~75 완료 후 마무리 작업: (1) 전체 파이프라인을 dash로 �
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 전체 install/uninstall 파이프라인이 dash --dry-run으로 처음부터 끝까지 에러 없이 돈다
-- [ ] #2 shellspec 전체 그린
-- [ ] #3 README가 POSIX sh 호환을 정확히 반영한다
+- [x] #1 전체 install/uninstall 파이프라인이 dash --dry-run으로 처음부터 끝까지 에러 없이 돈다
+- [x] #2 shellspec 전체 그린
+- [x] #3 README가 POSIX sh 호환을 정확히 반영한다
 <!-- AC:END -->
