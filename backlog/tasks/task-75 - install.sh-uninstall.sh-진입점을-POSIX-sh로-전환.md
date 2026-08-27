@@ -1,9 +1,10 @@
 ---
 id: TASK-75
 title: install.sh/uninstall.sh 진입점을 POSIX sh로 전환
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-08-27 14:41'
+updated_date: '2026-08-27 19:56'
 labels:
   - code-quality
   - posix
@@ -28,6 +29,6 @@ curl|bash 진입점 install.sh/uninstall.sh를 POSIX sh로 전환한다.
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 install.sh/uninstall.sh가 dash로 직접 실행했을 때(로컬 클론 시나리오) 정상 동작한다
-- [ ] #2 curl | sh 시나리오(스트리밍 stdin 실행)에서도 자기 위치 판별 로직이 올바르게 '로컬 클론 아님'으로 판정한다
+- [x] #1 install.sh/uninstall.sh가 dash로 직접 실행했을 때(로컬 클론 시나리오) 정상 동작한다
+- [x] #2 curl | sh 시나리오(스트리밍 stdin 실행)에서도 자기 위치 판별 로직이 올바르게 '로컬 클론 아님'으로 판정한다
 <!-- AC:END -->
