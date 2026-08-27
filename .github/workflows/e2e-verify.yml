@@ -80,11 +80,21 @@ jobs:
       - name: run remote one-liner with git actually moved aside, expect graceful failure
         run: |
           # This runner VM is thrown away after the job, so temporarily
-          # moving the real git binary out of the way (rather than trying
-          # to fake a PATH that omits it, which real dirs can leak back
-          # through) is simple and safe here.
-          real_git="$(command -v git)"
-          sudo mv "$real_git" "${real_git}.hidden-for-test"
+          # moving every git binary on PATH out of the way (rather than
+          # trying to fake a PATH that omits it, which real dirs can leak
+          # back through) is simple and safe here. There can be more than
+          # one (Xcode CLT's /usr/bin/git AND Homebrew's, for example) -
+          # command -v only finds the first, so walk all of PATH instead.
+          moved=""
+          old_ifs="$IFS"
+          IFS=:
+          for dir in $PATH; do
+            IFS="$old_ifs"
+            [ -x "$dir/git" ] || continue
+            sudo mv "$dir/git" "$dir/git.hidden-for-test"
+            moved="$moved $dir/git"
+          done
+          IFS="$old_ifs"
           command -v git >/dev/null 2>&1 && { echo "FAIL: git is still resolvable"; exit 1; }
 
           set +e
@@ -92,7 +102,9 @@ jobs:
           status=$?
           set -e
 
-          sudo mv "${real_git}.hidden-for-test" "$real_git"
+          for g in $moved; do
+            sudo mv "$g.hidden-for-test" "$g"
+          done
 
           cat out.log
           [ "$status" -ne 0 ] || { echo "FAIL: expected non-zero exit without git"; exit 1; }
