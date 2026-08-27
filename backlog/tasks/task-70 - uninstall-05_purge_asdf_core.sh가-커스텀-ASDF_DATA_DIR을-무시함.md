@@ -1,9 +1,10 @@
 ---
 id: TASK-70
 title: uninstall/05_purge_asdf_core.sh가 커스텀 ASDF_DATA_DIR을 무시함
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-08-27 14:23'
+updated_date: '2026-08-27 20:21'
 labels:
   - code-quality
 milestone: m-5
@@ -21,5 +22,5 @@ ordinal: 70000
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 05_purge_asdf_core.sh가 라이브 $ASDF_DATA_DIR 값이 있으면 그걸 우선 사용하고, 없을 때만 LT_ASDF_DATA_DIR_DEFAULT로 폴백한다
+- [x] #1 05_purge_asdf_core.sh가 라이브 $ASDF_DATA_DIR 값이 있으면 그걸 우선 사용하고, 없을 때만 LT_ASDF_DATA_DIR_DEFAULT로 폴백한다
 <!-- AC:END -->
