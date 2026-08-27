@@ -298,14 +298,15 @@ ensure_brew_on_path() {
 ensure_build_flags() {
   # `brew --prefix` below needs `brew` itself resolvable first.
   ensure_brew_on_path
-  export PATH="$(lt_homebrew_prefix)/opt/sqlite/bin:$PATH"
   # Declared and assigned separately (not inline inside the export) so a
-  # failing `brew --prefix` (e.g. the formula somehow isn't actually
-  # installed) trips `set -e` here instead of being silently swallowed —
-  # `export LDFLAGS="...$(cmd)..."` always "succeeds" as a command even if
-  # the command substitution inside it failed, masking the real error and
-  # leaving LDFLAGS built from an empty/wrong path.
-  local openssl_prefix readline_prefix sqlite_prefix zlib_prefix
+  # failing `brew --prefix`/`lt_homebrew_prefix` (e.g. the formula somehow
+  # isn't actually installed) trips `set -e` here instead of being silently
+  # swallowed — `export LDFLAGS="...$(cmd)..."` always "succeeds" as a
+  # command even if the command substitution inside it failed, masking the
+  # real error and leaving LDFLAGS built from an empty/wrong path.
+  local homebrew_prefix openssl_prefix readline_prefix sqlite_prefix zlib_prefix
+  homebrew_prefix="$(lt_homebrew_prefix)"
+  export PATH="$homebrew_prefix/opt/sqlite/bin:$PATH"
   openssl_prefix="$(brew --prefix openssl)"
   readline_prefix="$(brew --prefix readline)"
   sqlite_prefix="$(brew --prefix sqlite3)"
