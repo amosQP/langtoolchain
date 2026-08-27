@@ -1,9 +1,10 @@
 ---
 id: TASK-69
 title: Google Shell Style Guide + pure-bash-bible 기준으로 리팩토링 후 코드리뷰 발견 버그 2건 수정
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-08-27 14:22'
+updated_date: '2026-08-27 14:29'
 labels:
   - code-quality
   - style-guide
@@ -24,10 +25,10 @@ TASK-61~68 리팩토링 직후 /code-review에서 실제 버그 2건을 찾았�
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Google Shell Style Guide 문서를 다운로드해서 참고 자료로 확보한다
-- [ ] #2 pure-bash-bible 문서를 다운로드해서 참고 자료로 확보한다
-- [ ] #3 두 문서 기준으로 scripts/ 전체에 스타일 리팩토링을 적용한다 (bash 3.2 호환 유지, 기존 동작 변경 없음)
-- [ ] #4 리팩토링 이후 uninstall/06_validate_teardown.sh가 LT_ASDF_DATA_DIR_DEFAULT를 참조하도록 수정 (코드리뷰 Finding 1)
-- [ ] #5 리팩토링 이후 04_configure_shell_env.sh의 prepend/append 분기를 lt_env_var_defs()의 데이터(placement 필드)로 옮겨서 문자열 리터럴 매칭을 제거 (코드리뷰 Finding 2)
-- [ ] #6 shellspec 전체 그린 확인
+- [x] #1 Google Shell Style Guide 문서를 다운로드해서 참고 자료로 확보한다
+- [x] #2 pure-bash-bible 문서를 다운로드해서 참고 자료로 확보한다
+- [x] #3 두 문서 기준으로 scripts/ 전체에 스타일 리팩토링을 적용한다 (bash 3.2 호환 유지, 기존 동작 변경 없음)
+- [x] #4 리팩토링 이후 uninstall/06_validate_teardown.sh가 LT_ASDF_DATA_DIR_DEFAULT를 참조하도록 수정 (코드리뷰 Finding 1)
+- [x] #5 리팩토링 이후 04_configure_shell_env.sh의 prepend/append 분기를 lt_env_var_defs()의 데이터(placement 필드)로 옮겨서 문자열 리터럴 매칭을 제거 (코드리뷰 Finding 2)
+- [x] #6 shellspec 전체 그린 확인
 <!-- AC:END -->
