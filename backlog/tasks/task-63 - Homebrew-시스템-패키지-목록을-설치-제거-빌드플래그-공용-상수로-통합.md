@@ -1,9 +1,10 @@
 ---
 id: TASK-63
 title: Homebrew 시스템 패키지 목록을 설치/제거/빌드플래그 공용 상수로 통합
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-08-27 09:27'
+updated_date: '2026-08-27 09:37'
 labels:
   - code-quality
   - constants-refactor
@@ -22,7 +23,7 @@ openssl/readline/sqlite3/xz/zlib/tcl-tk 목록이 03_install_system_deps.sh(설�
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 패키지 목록이 lib.sh 한 곳에 정의된다
-- [ ] #2 03_install_system_deps.sh와 04_remove_system_deps.sh가 그 정의를 참조한다
-- [ ] #3 ensure_build_flags()가 쓰는 부분집합과 전체 목록의 관계가 코드/주석으로 명확하다
+- [x] #1 패키지 목록이 lib.sh 한 곳에 정의된다
+- [x] #2 03_install_system_deps.sh와 04_remove_system_deps.sh가 그 정의를 참조한다
+- [x] #3 ensure_build_flags()가 쓰는 부분집합과 전체 목록의 관계가 코드/주석으로 명확하다
 <!-- AC:END -->
