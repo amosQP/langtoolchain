@@ -13,12 +13,18 @@ if brew list asdf >/dev/null 2>&1; then
   run brew uninstall asdf || true
 fi
 
-if [ -d "$LT_ASDF_DATA_DIR_DEFAULT" ]; then
+# Respect a live ASDF_DATA_DIR override (same "${VAR:-default}" pattern
+# ensure_asdf_on_path() uses) instead of always assuming the default — a
+# user who installed with a custom ASDF_DATA_DIR would otherwise have their
+# real data directory silently left behind (TASK-70).
+TARGET_ASDF_DATA_DIR="${ASDF_DATA_DIR:-$LT_ASDF_DATA_DIR_DEFAULT}"
+
+if [ -d "$TARGET_ASDF_DATA_DIR" ]; then
   # This is where EVERYTHING asdf-managed actually lives: downloads,
   # installs, plugins, and shims all sit under here. Removing it deletes
   # every compiled runtime this tool ever installed.
-  log "Removing $LT_ASDF_DATA_DIR_DEFAULT ..."
-  run rm -rf "$LT_ASDF_DATA_DIR_DEFAULT"
+  log "Removing $TARGET_ASDF_DATA_DIR ..."
+  run rm -rf "$TARGET_ASDF_DATA_DIR"
 fi
 
 if [ -f "$HOME/.tool-versions" ]; then
