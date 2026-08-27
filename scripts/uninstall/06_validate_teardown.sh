@@ -15,6 +15,13 @@ fi
 
 OK=true
 
+# This script deliberately does NOT call ensure_asdf_on_path() — a teardown
+# check has no reason to put asdf back on PATH. That means it can't rely on
+# lib.sh to have exported ASDF_DATA_DIR, so (same fix as 07_validate.sh /
+# TASK-57) fall back inline here to avoid false-FAILing a custom
+# ASDF_DATA_DIR against a hardcoded ".asdf".
+ASDF_DATA_DIR="${ASDF_DATA_DIR:-$HOME/.asdf}"
+
 if command -v asdf &>/dev/null; then
   log "  FAIL: 'asdf' is still resolvable in PATH."
   OK=false
@@ -22,15 +29,15 @@ else
   log "  OK:   asdf removed from PATH."
 fi
 
-# Colons bracket the check so ".asdf/shims" can't false-positive-match a
-# differently named path that merely contains that substring.
+# Colons bracket the check so "$ASDF_DATA_DIR/shims" can't false-positive-match
+# a differently named path that merely contains that substring.
 case ":$PATH:" in
-  *".asdf/shims"*) log "  FAIL: .asdf/shims is still in this session's PATH."; OK=false ;;
+  *":$ASDF_DATA_DIR/shims:"*) log "  FAIL: \$ASDF_DATA_DIR/shims is still in this session's PATH."; OK=false ;;
   *) log "  OK:   PATH has no asdf shims." ;;
 esac
 
-if [[ -n "${JAVA_HOME:-}" && "$JAVA_HOME" == *".asdf"* ]]; then
-  log "  FAIL: \$JAVA_HOME still points into .asdf."
+if [[ -n "${JAVA_HOME:-}" && "$JAVA_HOME" == "$ASDF_DATA_DIR"* ]]; then
+  log "  FAIL: \$JAVA_HOME still points into \$ASDF_DATA_DIR."
   OK=false
 else
   log "  OK:   JAVA_HOME not pointing at asdf."
