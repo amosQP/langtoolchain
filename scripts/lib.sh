@@ -230,3 +230,11 @@ flag_for_binary() {
     *)      echo --version ;;   # unknown binary: guess the common long flag
   esac
 }
+
+# version_core <version-string>: extracts the first X.Y[.Z] numeric version
+# substring (e.g. asdf's "temurin-25.0.2+10.0.LTS" -> "25.0.2"). Prints
+# nothing if the string has no such pattern (e.g. the alias "lts"), so
+# callers can skip a version comparison instead of false-warning.
+version_core() {
+  [[ "$1" =~ [0-9]+\.[0-9]+(\.[0-9]+)? ]] && echo "${BASH_REMATCH[0]}"
+}

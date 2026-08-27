@@ -39,14 +39,24 @@ while read -r plugin version <&3; do
   case "$resolved_path" in
     # Resolving through an asdf shim is the success case — it means asdf,
     # not some other system-wide install, is what PATH will actually run.
-    *".asdf/shims/"*) log "  OK:   $cmd -> $resolved_path" ;;
+    # Compared against $ASDF_DATA_DIR (set by ensure_asdf_on_path above),
+    # not a hardcoded ".asdf", so a custom ASDF_DATA_DIR doesn't false-WARN.
+    "$ASDF_DATA_DIR/shims/"*) log "  OK:   $cmd -> $resolved_path" ;;
     *) log "  WARN: $cmd resolves outside asdf shims ($resolved_path)" ;;
   esac
 
   # Some tools (java) print their version to stderr, hence 2>&1; `head -n 1`
   # keeps the log to one line even for multi-line version banners.
   version_line="$("$cmd" "$flag" 2>&1 | head -n 1)"
-  log "        $version_line"
+  # Compare against the version requested in .tool-versions. Aliases like
+  # "lts" have no numeric core, so version_core is empty and we skip the
+  # check rather than false-warn.
+  expected_core="$(version_core "$version")"
+  if [[ -n "$expected_core" ]] && [[ "$version_line" != *"$expected_core"* ]]; then
+    log "  WARN: $cmd reports '$version_line', expected version matching '$version'"
+  else
+    log "        $version_line"
+  fi
 done 3< <(each_tool "$CONFIG_FILE")
 
 log ""
