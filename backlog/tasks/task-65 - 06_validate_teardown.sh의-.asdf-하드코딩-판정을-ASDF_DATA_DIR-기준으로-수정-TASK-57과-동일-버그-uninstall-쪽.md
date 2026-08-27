@@ -3,9 +3,10 @@ id: TASK-65
 title: >-
   06_validate_teardown.sh의 .asdf 하드코딩 판정을 ASDF_DATA_DIR 기준으로 수정 (TASK-57과 동일 버그,
   uninstall 쪽)
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-08-27 09:27'
+updated_date: '2026-08-27 09:40'
 labels:
   - code-quality
   - bug
@@ -24,7 +25,7 @@ ordinal: 65000
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 PATH 검증이 $ASDF_DATA_DIR/shims 기준으로 판정한다
-- [ ] #2 JAVA_HOME 검증이 $ASDF_DATA_DIR 기준으로 판정한다
-- [ ] #3 07_validate.sh와 같은 방식(리터럴 하드코딩 없음)으로 통일된다
+- [x] #1 PATH 검증이 $ASDF_DATA_DIR/shims 기준으로 판정한다
+- [x] #2 JAVA_HOME 검증이 $ASDF_DATA_DIR 기준으로 판정한다
+- [x] #3 07_validate.sh와 같은 방식(리터럴 하드코딩 없음)으로 통일된다
 <!-- AC:END -->
