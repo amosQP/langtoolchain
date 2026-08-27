@@ -32,7 +32,7 @@ prepend_env_var "$RC_FILE" "brew shellenv" "eval \"\$($BREW_BIN shellenv)\""
 # The two lines modern asdf actually needs: where its data lives, and
 # putting its shim directory ahead of everything else on PATH so `node`,
 # `python`, etc. resolve to the asdf-managed versions.
-append_env_var "$RC_FILE" "ASDF_DATA_DIR" 'export ASDF_DATA_DIR="$HOME/.asdf"'
+append_env_var "$RC_FILE" "ASDF_DATA_DIR" "export ASDF_DATA_DIR=\"\$HOME/$LT_ASDF_DATA_DIR_NAME\""
 append_env_var "$RC_FILE" "ASDF_DATA_DIR/shims" 'export PATH="$ASDF_DATA_DIR/shims:$PATH"'
 
 # Java home hook — pick the variant matching the detected shell (the
@@ -44,7 +44,7 @@ case "$RC_FILE" in
 esac
 # This makes $JAVA_HOME track whatever Java version asdf currently has set
 # globally, every time a new shell starts.
-append_env_var "$RC_FILE" "$JAVA_HOOK" ". \$HOME/.asdf/plugins/java/$JAVA_HOOK"
+append_env_var "$RC_FILE" "$JAVA_HOOK" ". \$HOME/$LT_ASDF_DATA_DIR_NAME/plugins/java/$JAVA_HOOK"
 
 # Python build flags (openssl/readline/sqlite3/zlib are keg-only, so the
 # compiler can't find them unless we point at them explicitly). Each of
