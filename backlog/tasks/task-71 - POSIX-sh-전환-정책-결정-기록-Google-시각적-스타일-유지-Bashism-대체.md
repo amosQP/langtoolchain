@@ -1,9 +1,10 @@
 ---
 id: TASK-71
 title: POSIX sh 전환 정책 결정 기록 (Google 시각적 스타일 유지 + Bashism 대체)
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-08-27 14:40'
+updated_date: '2026-08-27 19:59'
 labels:
   - code-quality
   - posix
@@ -34,6 +35,23 @@ ordinal: 71000
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 정책이 이 태스크에 기록되고, 실제 저장소에 적용된 Bashism 목록과 각각의 POSIX 대체 방식이 명시된다
-- [ ] #2 local 키워드를 유지하기로 한 결정과 그 근거가 기록된다
+- [x] #1 정책이 이 태스크에 기록되고, 실제 저장소에 적용된 Bashism 목록과 각각의 POSIX 대체 방식이 명시된다
+- [x] #2 local 키워드를 유지하기로 한 결정과 그 근거가 기록된다
 <!-- AC:END -->
+
+## Comments
+
+<!-- COMMENTS:BEGIN -->
+created: 2026-08-27 19:59
+---
+실제 전환 작업(TASK-72~76) 중 최초 스캔에서 놓쳤던 bashism 2종을 추가로 발견해 제거함:
+
+8. set -euo pipefail → set -eu (pipefail은 bash/ksh/zsh 전용 옵션, dash는 이 옵션 자체를 파싱 못 하고 즉시 에러 — 16개 파일 전부)
+9. &> (stdout+stderr 결합 리다이렉트, bash 전용) → >file 2>&1 (uninstall/04,05,06 3개 파일)
+
+그리고 코드가 아니라 셸 자체의 순수 동작 차이로 인한 함정 1건 발견:
+10. POSIX가 "특수 내장명령(special built-in)"으로 규정한 명령(:, ., eval, exec, exit, export, readonly, return, set, shift, times, trap, unset, break, continue)은, 리다이렉션이 실패하면 set -e/||와 무관하게 비대화형 셸을 무조건 즉시 종료시킨다 — dash가 이를 정확히 구현하고 있어서 `: < /dev/tty`(tty 존재 확인용) 패턴이 dash에서 항상 스크립트를 죽였다. `true < /dev/tty`(특수 내장명령 아님)로 교체해서 해결. bash 기본 모드는 이 규칙을 강제하지 않아서 기존 코드에선 안 보였던 문제.
+
+전체 파이프라인(install/uninstall 양쪽)을 /bin/dash로 처음부터 끝까지 --dry-run 실행해서 검증 완료. shellspec 전체 스위트도 --shell dash로 강제 실행해 59/59 통과 확인(bash 실행과 별개로).
+---
+<!-- COMMENTS:END -->
