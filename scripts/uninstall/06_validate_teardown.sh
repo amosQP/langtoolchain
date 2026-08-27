@@ -1,14 +1,14 @@
-#!/usr/bin/env bash
+#!/usr/bin/env sh
 # No `set -e` — a test runner should evaluate every assertion, not stop at
 # the first failure.
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 . "$SCRIPT_DIR/../lib.sh"
 
 step "Phase 6: Validating teardown"
 
 # Under --dry-run nothing was actually removed, so every check below would
 # report FAIL against a machine that's still fully intact — skip instead.
-if [[ "${DRY_RUN:-false}" == "true" ]]; then
+if [ "${DRY_RUN:-false}" = "true" ]; then
   log "(dry-run: nothing was actually removed, skipping validation)"
   exit 0
 fi
@@ -22,7 +22,7 @@ OK=true
 # literal, to avoid false-FAILing a custom ASDF_DATA_DIR.
 ASDF_DATA_DIR="${ASDF_DATA_DIR:-$LT_ASDF_DATA_DIR_DEFAULT}"
 
-if command -v asdf &>/dev/null; then
+if command -v asdf >/dev/null 2>&1; then
   log "  FAIL: 'asdf' is still resolvable in PATH."
   OK=false
 else
@@ -36,12 +36,19 @@ case ":$PATH:" in
   *) log "  OK:   PATH has no asdf shims." ;;
 esac
 
-if [[ -n "${JAVA_HOME:-}" && "$JAVA_HOME" == "$ASDF_DATA_DIR"* ]]; then
-  log "  FAIL: \$JAVA_HOME still points into \$ASDF_DATA_DIR."
-  OK=false
-else
-  log "  OK:   JAVA_HOME not pointing at asdf."
-fi
+# POSIX [ ] has no glob-pattern matching, so this is a case statement
+# instead of [[ -n ... && ... == pat* ]]. An unset/empty JAVA_HOME simply
+# won't match the (always non-empty) "$ASDF_DATA_DIR"* pattern, so it
+# falls through to the OK branch same as before.
+case "${JAVA_HOME:-}" in
+  "$ASDF_DATA_DIR"*)
+    log "  FAIL: \$JAVA_HOME still points into \$ASDF_DATA_DIR."
+    OK=false
+    ;;
+  *)
+    log "  OK:   JAVA_HOME not pointing at asdf."
+    ;;
+esac
 
 log ""
 if $OK; then

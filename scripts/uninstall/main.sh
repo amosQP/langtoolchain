@@ -1,11 +1,11 @@
-#!/usr/bin/env bash
+#!/usr/bin/env sh
 # Orchestrator: runs each teardown phase in its own process, in order.
 #
 # Flags:
 #   --dry-run   print what would happen, change nothing
 #   --yes       skip the "are you sure?" confirmation
-set -euo pipefail
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+set -eu
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 DRY_RUN=false
 AUTO_YES=false
@@ -16,7 +16,7 @@ for arg in "$@"; do
     *) echo "Unknown option: $arg" >&2; exit 1 ;;
   esac
 done
-# Exported so every phase script below (each its own `bash` process) can
+# Exported so every phase script below (each its own `sh` process) can
 # see it via lib.sh.
 export DRY_RUN
 
@@ -34,7 +34,7 @@ if ! $AUTO_YES; then
   esac
 fi
 
-# Each phase runs as its own `bash` process, independent of the others —
+# Each phase runs as its own `sh` process, independent of the others —
 # same reasoning as scripts/install/main.sh.
 for phase in \
   01_uninstall_runtimes.sh \
@@ -43,7 +43,7 @@ for phase in \
   04_remove_system_deps.sh \
   05_purge_asdf_core.sh
 do
-  bash "$SCRIPT_DIR/$phase"
+  sh "$SCRIPT_DIR/$phase"
 done
 
 echo ""
@@ -52,11 +52,11 @@ echo ""
 # session state) and we want to report on it ourselves below rather than
 # letting `set -e` abort mid-way.
 set +e
-bash "$SCRIPT_DIR/06_validate_teardown.sh"
+sh "$SCRIPT_DIR/06_validate_teardown.sh"
 VALIDATION_EXIT_CODE=$?
 set -e
 
-if [[ $VALIDATION_EXIT_CODE -eq 0 ]]; then
+if [ "$VALIDATION_EXIT_CODE" -eq 0 ]; then
   echo "제거가 완료되었습니다. 'exec \$SHELL'로 새 세션을 여세요."
 else
   echo "제거는 끝났지만 위 경고를 확인하세요."
