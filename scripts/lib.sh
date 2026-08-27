@@ -13,6 +13,31 @@
 # for real".
 DRY_RUN="${DRY_RUN:-false}"
 
+# ---- Shared constants ----
+# Literal values (paths, filenames, rc-file search/write patterns) that
+# used to be typed independently into multiple phase scripts, which let
+# them silently drift out of sync with each other (see e.g. the Intel-Mac
+# sqlite PATH bug fixed alongside TASK-61, or the BSD-sed java-hook bug
+# fixed by TASK-56). Each entry below is its own clearly-separated block so
+# another branch adding one more entry here merges cleanly. This section is
+# data only — it holds no control flow, and no phase script's own logic is
+# meant to move here.
+
+# lt_homebrew_prefix (TASK-61): prints Homebrew's install prefix for the
+# CPU architecture this script is running on right now. Apple Silicon and
+# Intel Macs use two different fixed Homebrew locations; every script that
+# needs a Homebrew-rooted path (the brew binary itself, a keg-only
+# formula's bin dir, etc.) should compute it by calling this function
+# instead of re-typing its own `uname -m` case — that duplication is what
+# let the sqlite PATH line go stale to an Apple-Silicon-only path on Intel
+# Macs.
+lt_homebrew_prefix() {
+  case "$(uname -m)" in
+    arm64) echo "/opt/homebrew" ;;  # Apple Silicon
+    *)     echo "/usr/local" ;;     # Intel
+  esac
+}
+
 # log <msg>: plain status line to stdout.
 log()  { printf '%s\n' "$*"; }
 # step <msg>: a section header, e.g. "== Phase 3: ... ==", to visually
