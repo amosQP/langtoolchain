@@ -1,9 +1,10 @@
 ---
 id: TASK-74
 title: scripts/uninstall/*.sh 7개 스크립트를 POSIX sh로 전환
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-08-27 14:41'
+updated_date: '2026-08-27 19:54'
 labels:
   - code-quality
   - posix
@@ -29,6 +30,6 @@ ordinal: 74000
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 7개 스크립트 전부 dash로 문법/실행 검증을 통과한다
-- [ ] #2 shellspec 관련 스펙이 그린을 유지한다(또는 POSIX 셸 기준으로 조정된다)
+- [x] #1 7개 스크립트 전부 dash로 문법/실행 검증을 통과한다
+- [x] #2 shellspec 관련 스펙이 그린을 유지한다(또는 POSIX 셸 기준으로 조정된다)
 <!-- AC:END -->
