@@ -179,7 +179,7 @@ read_scope() {
 ensure_asdf_on_path() {
   # Default to asdf's own default data directory if the caller's
   # environment hasn't already set ASDF_DATA_DIR.
-  export ASDF_DATA_DIR="${ASDF_DATA_DIR:-$HOME/.asdf}"
+  export ASDF_DATA_DIR="${ASDF_DATA_DIR:-$LT_ASDF_DATA_DIR_DEFAULT}"
   # Only prepend the shims directory if it isn't already on PATH — colons
   # bracket the check so a partial/substring match (e.g. a differently
   # named sibling directory) can't produce a false positive.
