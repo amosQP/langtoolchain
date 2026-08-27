@@ -1,10 +1,10 @@
 ---
 id: TASK-39
 title: 대화형 프롬프트에서 로컬 선택 → 디렉토리 입력 반영
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-08-24 08:05'
-updated_date: '2026-08-24 08:13'
+updated_date: '2026-08-27 20:45'
 labels:
   - test
   - version-scope
@@ -24,5 +24,14 @@ ordinal: 39000
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 입력한 디렉토리 경로가 선택 파일의 scope 줄에 정확히 기록된다
+- [x] #1 입력한 디렉토리 경로가 선택 파일의 scope 줄에 정확히 기록된다
 <!-- AC:END -->
+
+## Comments
+
+<!-- COMMENTS:BEGIN -->
+created: 2026-08-27 20:45
+---
+expect로 진짜 pty 구동 검증: 전역/로컬 프롬프트에 '로컬' 입력 후 디렉토리 프롬프트에 임의 경로 입력 -> 선택 파일의 '# scope: local <경로>' 줄에 입력한 경로가 정확히 기록됨을 확인.
+---
+<!-- COMMENTS:END -->
