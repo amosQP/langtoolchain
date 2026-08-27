@@ -9,6 +9,9 @@
 # in structure.
 set -euo pipefail
 
+# NOTE: kept in sync by hand with install.sh's copy of these same two
+# lines — see install.sh for why this can't source lib.sh instead. If you
+# change REPO_URL/BRANCH here, change install.sh too.
 REPO_URL="https://github.com/amosQP/langtoolchain.git"
 BRANCH="main"
 
