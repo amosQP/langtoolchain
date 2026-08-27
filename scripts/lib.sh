@@ -38,6 +38,21 @@ lt_homebrew_prefix() {
   esac
 }
 
+# LT_ASDF_DATA_DIR_NAME / LT_ASDF_DATA_DIR_DEFAULT (TASK-62): asdf's own
+# default data directory when the caller's environment hasn't set
+# ASDF_DATA_DIR — this is where every asdf-managed download, plugin, and
+# shim actually lives. Split into a bare directory NAME and the expanded
+# DEFAULT path so both shapes are available: scripts doing real filesystem
+# work (ensure_asdf_on_path's fallback, uninstall's delete target) want the
+# expanded absolute path; a script writing a line into an rc file for a
+# *future* shell to evaluate wants the bare name so it can keep `$HOME`
+# itself literal (unexpanded) in what gets written, exactly like the
+# original code did — resolving $HOME at write time instead would bake in
+# whatever $HOME happened to be during install rather than at each future
+# shell's own startup.
+LT_ASDF_DATA_DIR_NAME=".asdf"
+LT_ASDF_DATA_DIR_DEFAULT="$HOME/$LT_ASDF_DATA_DIR_NAME"
+
 # log <msg>: plain status line to stdout.
 log()  { printf '%s\n' "$*"; }
 # step <msg>: a section header, e.g. "== Phase 3: ... ==", to visually
