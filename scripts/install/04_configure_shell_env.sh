@@ -26,10 +26,7 @@ log "Using rc file: $RC_FILE"
 # shim PATH line so asdf can correctly win over any same-named Homebrew
 # formula (e.g. a separately brew-installed `node`) rather than being
 # silently shadowed by it.
-case "$(uname -m)" in
-  arm64) BREW_BIN="/opt/homebrew/bin/brew" ;;   # Apple Silicon
-  *)     BREW_BIN="/usr/local/bin/brew" ;;       # Intel
-esac
+BREW_BIN="$(lt_homebrew_prefix)/bin/brew"
 prepend_env_var "$RC_FILE" "brew shellenv" "eval \"\$($BREW_BIN shellenv)\""
 
 # The two lines modern asdf actually needs: where its data lives, and
@@ -55,7 +52,7 @@ append_env_var "$RC_FILE" "$JAVA_HOOK" ". \$HOME/.asdf/plugins/java/$JAVA_HOOK"
 # into the rc file — the `brew --prefix` calls run fresh every time a new
 # shell starts, not just once now, so they stay correct even if Homebrew's
 # install paths ever change.
-append_env_var "$RC_FILE" "opt/sqlite/bin" 'export PATH="/opt/homebrew/opt/sqlite/bin:$PATH"'
+append_env_var "$RC_FILE" "opt/sqlite/bin" "export PATH=\"$(lt_homebrew_prefix)/opt/sqlite/bin:\$PATH\""
 append_env_var "$RC_FILE" 'LDFLAGS.*openssl' "export LDFLAGS=\"-L\$(brew --prefix openssl)/lib -L\$(brew --prefix readline)/lib -L\$(brew --prefix sqlite3)/lib -L\$(brew --prefix zlib)/lib\""
 append_env_var "$RC_FILE" 'CPPFLAGS.*openssl' "export CPPFLAGS=\"-I\$(brew --prefix openssl)/include -I\$(brew --prefix readline)/include -I\$(brew --prefix sqlite3)/include -I\$(brew --prefix zlib)/include\""
 append_env_var "$RC_FILE" 'PKG_CONFIG_PATH.*openssl' "export PKG_CONFIG_PATH=\"\$(brew --prefix openssl)/lib/pkgconfig:\$(brew --prefix readline)/lib/pkgconfig:\$(brew --prefix sqlite3)/lib/pkgconfig\""
