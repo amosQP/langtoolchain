@@ -154,9 +154,9 @@ run() {
 
 # repo_root_from <path-to-a-file-inside-scripts/install-or-uninstall>:
 # prints the repository root (two directories up from scripts/install/ or
-# scripts/uninstall/). Each phase script calls this with its own
-# ${BASH_SOURCE[0]} so it can find .tool-versions regardless of the
-# caller's current working directory.
+# scripts/uninstall/). Each phase script calls this with its own $0 so it
+# can find .tool-versions regardless of the caller's current working
+# directory.
 repo_root_from() {
   # Run in a subshell so the `cd` here doesn't change the calling script's
   # own working directory; `pwd` then prints the absolute, resolved path.
