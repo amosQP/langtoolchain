@@ -1,9 +1,10 @@
 ---
 id: TASK-64
 title: rc 파일에 쓰는 라인과 uninstall이 지우는 sed 패턴을 lib.sh 공용 정의로 통합
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-08-27 09:27'
+updated_date: '2026-08-27 14:06'
 labels:
   - code-quality
   - constants-refactor
@@ -22,7 +23,7 @@ install/04_configure_shell_env.sh가 append_env_var/prepend_env_var에 넘기는
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 rc 파일 라인의 검색패턴/내용이 lib.sh 한 곳에 정의된다
-- [ ] #2 04_configure_shell_env.sh와 03_clean_env_vars.sh 둘 다 그 정의를 참조한다(패턴을 각자 재입력하지 않는다)
-- [ ] #3 새 rc 라인을 추가할 때 한 곳만 고치면 설치/제거 양쪽에 자동 반영된다
+- [x] #1 rc 파일 라인의 검색패턴/내용이 lib.sh 한 곳에 정의된다
+- [x] #2 04_configure_shell_env.sh와 03_clean_env_vars.sh 둘 다 그 정의를 참조한다(패턴을 각자 재입력하지 않는다)
+- [x] #3 새 rc 라인을 추가할 때 한 곳만 고치면 설치/제거 양쪽에 자동 반영된다
 <!-- AC:END -->

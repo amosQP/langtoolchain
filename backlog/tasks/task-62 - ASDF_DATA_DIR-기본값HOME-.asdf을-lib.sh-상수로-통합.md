@@ -1,9 +1,10 @@
 ---
 id: TASK-62
 title: ASDF_DATA_DIR 기본값($HOME/.asdf)을 lib.sh 상수로 통합
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-08-27 09:27'
+updated_date: '2026-08-27 09:42'
 labels:
   - code-quality
   - constants-refactor
@@ -22,6 +23,6 @@ lib.sh의 ensure_asdf_on_path(), install/04_configure_shell_env.sh(rc 파일에 
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 $HOME/.asdf 리터럴이 lib.sh 한 곳에만 정의된다
-- [ ] #2 04_configure_shell_env.sh와 05_purge_asdf_core.sh가 그 정의를 참조한다(재하드코딩하지 않는다)
+- [x] #1 $HOME/.asdf 리터럴이 lib.sh 한 곳에만 정의된다
+- [x] #2 04_configure_shell_env.sh와 05_purge_asdf_core.sh가 그 정의를 참조한다(재하드코딩하지 않는다)
 <!-- AC:END -->

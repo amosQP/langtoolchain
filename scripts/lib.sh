@@ -14,11 +14,117 @@
 DRY_RUN="${DRY_RUN:-false}"
 
 # ---- Shared constants ----
+# Literal values (paths, filenames, package lists, rc-file search/write
+# patterns) that used to be typed independently into multiple phase
+# scripts, which let them silently drift out of sync with each other (see
+# e.g. the Intel-Mac sqlite PATH bug fixed alongside TASK-61, or the
+# BSD-sed java-hook bug fixed by TASK-56). Each entry below is its own
+# clearly-separated block so another branch adding one more entry here
+# merges cleanly. This section is data only — it holds no control flow,
+# and no phase script's own logic is meant to move here.
+
 # Homebrew formulas needed to compile Python's (and friends') C extensions.
 # Single source of truth for scripts/install/03_install_system_deps.sh,
 # scripts/uninstall/04_remove_system_deps.sh, and ensure_build_flags() below
 # (which only needs the openssl/readline/sqlite3/zlib subset — see there).
 LT_BUILD_DEPS="openssl readline sqlite3 xz zlib tcl-tk"
+
+# lt_homebrew_prefix (TASK-61): prints Homebrew's install prefix for the
+# CPU architecture this script is running on right now. Apple Silicon and
+# Intel Macs use two different fixed Homebrew locations; every script that
+# needs a Homebrew-rooted path (the brew binary itself, a keg-only
+# formula's bin dir, etc.) should compute it by calling this function
+# instead of re-typing its own `uname -m` case — that duplication is what
+# let the sqlite PATH line go stale to an Apple-Silicon-only path on Intel
+# Macs.
+lt_homebrew_prefix() {
+  case "$(uname -m)" in
+    arm64) echo "/opt/homebrew" ;;  # Apple Silicon
+    *)     echo "/usr/local" ;;     # Intel
+  esac
+}
+
+# LT_ASDF_DATA_DIR_NAME / LT_ASDF_DATA_DIR_DEFAULT (TASK-62): asdf's own
+# default data directory when the caller's environment hasn't set
+# ASDF_DATA_DIR — this is where every asdf-managed download, plugin, and
+# shim actually lives. Split into a bare directory NAME and the expanded
+# DEFAULT path so both shapes are available: scripts doing real filesystem
+# work (ensure_asdf_on_path's fallback, uninstall's delete target) want the
+# expanded absolute path; a script writing a line into an rc file for a
+# *future* shell to evaluate wants the bare name so it can keep `$HOME`
+# itself literal (unexpanded) in what gets written, exactly like the
+# original code did — resolving $HOME at write time instead would bake in
+# whatever $HOME happened to be during install rather than at each future
+# shell's own startup.
+LT_ASDF_DATA_DIR_NAME=".asdf"
+LT_ASDF_DATA_DIR_DEFAULT="$HOME/$LT_ASDF_DATA_DIR_NAME"
+
+# LT_RC_FILE_ZSH / LT_RC_FILE_BASH / LT_RC_FILE_BASH_INTERACTIVE /
+# LT_KNOWN_RC_FILES (TASK-66): the rc filenames (bare, relative to $HOME)
+# this tool knows how to write into or clean up.
+#
+# detect_rc_file() (below) picks exactly ONE of these at install time,
+# based on the current $SHELL — the installer only ever writes into the rc
+# file matching whichever shell is actually running it.
+#
+# uninstall/03_clean_env_vars.sh instead sweeps ALL of LT_KNOWN_RC_FILES:
+# the $SHELL active when uninstall runs isn't necessarily the same one that
+# was active when install ran, so it can't assume which single file was
+# written to and has to check every rc file this tool has ever been able to
+# write. This install-picks-one vs. uninstall-sweeps-all asymmetry is
+# intentional, not an oversight.
+LT_RC_FILE_ZSH=".zshrc"
+LT_RC_FILE_BASH=".bash_profile"          # macOS Terminal runs login shells
+LT_RC_FILE_BASH_INTERACTIVE=".bashrc"    # never picked by detect_rc_file; swept by uninstall only
+LT_KNOWN_RC_FILES="$LT_RC_FILE_ZSH $LT_RC_FILE_BASH $LT_RC_FILE_BASH_INTERACTIVE"
+
+# lt_env_var_defs [java_hook_file] (TASK-64): prints one line per rc-file
+# entry this tool's installer manages, formatted
+# "<search-pattern>|||<line-to-write>" (a triple-pipe separator, since none
+# of the search patterns or lines contain it). Bash 3.2 has no associative
+# arrays, so this is a flat list of delimited lines, meant to be read with
+# `while IFS= read -r def; do ... done < <(lt_env_var_defs ...)` — the same
+# shape each_tool() already uses for .tool-versions lines, just with a
+# different separator since these lines contain spaces of their own.
+#
+# install/04_configure_shell_env.sh writes each <line-to-write>, guarded by
+# <search-pattern> via append_env_var/prepend_env_var (so re-running never
+# duplicates it). uninstall/03_clean_env_vars.sh only needs the
+# <search-pattern> half — it turns each one into a `sed -E -e '/pattern/d'`
+# expression. Both read from this one function instead of each
+# independently retyping the same patterns — that exact kind of drift is
+# what caused TASK-56 (BSD sed never actually deleting the java-hook line,
+# because uninstall's own copy of the pattern used a GNU-only regex
+# extension the install side never had to match against). To add a new rc
+# line, add one entry here; both install and uninstall pick it up
+# automatically.
+#
+# The java-hook line's content depends on which shell's variant is in use
+# (only install knows this, from the rc file it picked), so the caller
+# passes it in as $1; uninstall doesn't pass anything, since it only ever
+# reads the search-pattern half of that entry, never the content half.
+#
+# NOTE (intentional asymmetry): "brew shellenv" is written with
+# prepend_env_var — it must land ahead of the asdf shim PATH line, or a
+# same-named Homebrew formula could shadow the asdf shim (see
+# prepend_env_var's own comment). Every other line here is appended.
+# Callers decide append vs. prepend themselves by which rc-writing
+# function they pass each line to — this function only supplies the
+# search pattern and the line content, not the placement.
+lt_env_var_defs() {
+  local java_hook_file="${1:-}"
+  local homebrew_prefix
+  homebrew_prefix="$(lt_homebrew_prefix)"
+  printf '%s\n' \
+    "brew shellenv|||eval \"\$($homebrew_prefix/bin/brew shellenv)\"" \
+    "ASDF_DATA_DIR|||export ASDF_DATA_DIR=\"\$HOME/$LT_ASDF_DATA_DIR_NAME\"" \
+    "ASDF_DATA_DIR/shims|||export PATH=\"\$ASDF_DATA_DIR/shims:\$PATH\"" \
+    "set-java-home\.|||. \$HOME/$LT_ASDF_DATA_DIR_NAME/plugins/java/$java_hook_file" \
+    "opt/sqlite/bin|||export PATH=\"$homebrew_prefix/opt/sqlite/bin:\$PATH\"" \
+    "LDFLAGS.*openssl|||export LDFLAGS=\"-L\$(brew --prefix openssl)/lib -L\$(brew --prefix readline)/lib -L\$(brew --prefix sqlite3)/lib -L\$(brew --prefix zlib)/lib\"" \
+    "CPPFLAGS.*openssl|||export CPPFLAGS=\"-I\$(brew --prefix openssl)/include -I\$(brew --prefix readline)/include -I\$(brew --prefix sqlite3)/include -I\$(brew --prefix zlib)/include\"" \
+    "PKG_CONFIG_PATH.*openssl|||export PKG_CONFIG_PATH=\"\$(brew --prefix openssl)/lib/pkgconfig:\$(brew --prefix readline)/lib/pkgconfig:\$(brew --prefix sqlite3)/lib/pkgconfig\""
+}
 
 # log <msg>: plain status line to stdout.
 log()  { printf '%s\n' "$*"; }
@@ -71,9 +177,9 @@ each_tool() {
 # user actually uses day to day).
 detect_rc_file() {
   case "$(basename "${SHELL:-}")" in
-    zsh)  echo "$HOME/.zshrc" ;;
-    bash) echo "$HOME/.bash_profile" ;;  # macOS Terminal runs login shells
-    *)    echo "$HOME/.zshrc" ;;         # unknown shell: default to zsh (macOS's own default since Catalina)
+    zsh)  echo "$HOME/$LT_RC_FILE_ZSH" ;;
+    bash) echo "$HOME/$LT_RC_FILE_BASH" ;;
+    *)    echo "$HOME/$LT_RC_FILE_ZSH" ;;  # unknown shell: default to zsh (macOS's own default since Catalina)
   esac
 }
 
@@ -146,7 +252,7 @@ read_scope() {
 ensure_asdf_on_path() {
   # Default to asdf's own default data directory if the caller's
   # environment hasn't already set ASDF_DATA_DIR.
-  export ASDF_DATA_DIR="${ASDF_DATA_DIR:-$HOME/.asdf}"
+  export ASDF_DATA_DIR="${ASDF_DATA_DIR:-$LT_ASDF_DATA_DIR_DEFAULT}"
   # Only prepend the shims directory if it isn't already on PATH — colons
   # bracket the check so a partial/substring match (e.g. a differently
   # named sibling directory) can't produce a false positive.
@@ -172,10 +278,7 @@ ensure_brew_on_path() {
     return
   fi
   local brew_bin
-  case "$(uname -m)" in
-    arm64) brew_bin="/opt/homebrew/bin" ;;   # Apple Silicon
-    *)     brew_bin="/usr/local/bin" ;;      # Intel
-  esac
+  brew_bin="$(lt_homebrew_prefix)/bin"
   if [[ -x "$brew_bin/brew" ]]; then
     export PATH="$brew_bin:$PATH"
   fi
@@ -195,7 +298,7 @@ ensure_brew_on_path() {
 ensure_build_flags() {
   # `brew --prefix` below needs `brew` itself resolvable first.
   ensure_brew_on_path
-  export PATH="/opt/homebrew/opt/sqlite/bin:$PATH"
+  export PATH="$(lt_homebrew_prefix)/opt/sqlite/bin:$PATH"
   # Declared and assigned separately (not inline inside the export) so a
   # failing `brew --prefix` (e.g. the formula somehow isn't actually
   # installed) trips `set -e` here instead of being silently swallowed —

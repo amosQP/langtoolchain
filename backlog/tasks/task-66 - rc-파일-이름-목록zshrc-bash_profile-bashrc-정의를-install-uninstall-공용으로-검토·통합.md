@@ -1,9 +1,10 @@
 ---
 id: TASK-66
 title: rc 파일 이름 목록(zshrc/bash_profile/bashrc) 정의를 install/uninstall 공용으로 검토·통합
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-08-27 09:27'
+updated_date: '2026-08-27 14:08'
 labels:
   - code-quality
   - constants-refactor
@@ -22,7 +23,7 @@ lib.sh의 detect_rc_file()은 설치 시 .zshrc/.bash_profile 중 하나만 반�
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 지원하는 rc 파일 전체 목록이 lib.sh 한 곳에 명시적으로 정의된다
-- [ ] #2 detect_rc_file()과 03_clean_env_vars.sh가 그 목록을 참조한다
-- [ ] #3 설치 시 1개만 골라 쓰고 제거 시 전체를 훑는 비대칭이 코드/주석으로 명확히 드러난다
+- [x] #1 지원하는 rc 파일 전체 목록이 lib.sh 한 곳에 명시적으로 정의된다
+- [x] #2 detect_rc_file()과 03_clean_env_vars.sh가 그 목록을 참조한다
+- [x] #3 설치 시 1개만 골라 쓰고 제거 시 전체를 훑는 비대칭이 코드/주석으로 명확히 드러난다
 <!-- AC:END -->
