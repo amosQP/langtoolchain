@@ -1,15 +1,18 @@
 #!/usr/bin/env bash
 # Strips every line this tool's install phase (04_configure_shell_env.sh)
-# may have added, from whichever rc files exist. Checks both zsh and bash
-# rc files regardless of the current $SHELL, since the install may have
-# happened under a different shell than the one running uninstall.
+# may have added, from whichever rc files exist. Sweeps lib.sh's
+# LT_KNOWN_RC_FILES (TASK-66) — all rc files this tool ever knows how to
+# write into, not just the one detect_rc_file() would pick right now —
+# since the install may have happened under a different shell than the one
+# running uninstall.
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 . "$SCRIPT_DIR/../lib.sh"
 
 step "Phase 3: Cleaning shell environment variables"
 
-for rc in "$HOME/.zshrc" "$HOME/.bash_profile" "$HOME/.bashrc"; do
+for rc_name in $LT_KNOWN_RC_FILES; do
+  rc="$HOME/$rc_name"
   [[ -f "$rc" ]] || continue   # nothing to clean if this rc file doesn't exist
   log "Cleaning $rc ..."
   if [[ "$DRY_RUN" == "true" ]]; then
