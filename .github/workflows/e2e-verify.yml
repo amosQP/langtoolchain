@@ -34,8 +34,14 @@ jobs:
 
       - name: verify each shim wins in a real new login shell (TASK-18)
         run: |
+          # Use $SHELL, not a hardcoded zsh - detect_rc_file() in lib.sh
+          # wrote to whichever rc file matches *this account's actual*
+          # $SHELL, and a differently-shelled login (e.g. forcing zsh when
+          # $SHELL=bash) would read the wrong rc file entirely and always
+          # "fail" for a reason that has nothing to do with PATH priority.
+          echo "SHELL=$SHELL"
           for cmd in node java python rustc go; do
-            resolved="$(zsh -lic "command -v $cmd" 2>/dev/null || true)"
+            resolved="$("$SHELL" -lic "command -v $cmd" 2>/dev/null || true)"
             echo "$cmd -> $resolved"
             case "$resolved" in
               *"/.asdf/shims/"*) echo "  OK" ;;
@@ -48,7 +54,8 @@ jobs:
 
       - name: verify teardown is clean in a real new login shell
         run: |
-          zsh -lic '
+          # Same $SHELL reasoning as the shim-priority check above.
+          "$SHELL" -lic '
             command -v asdf >/dev/null 2>&1 && { echo "FAIL: asdf still resolvable"; exit 1; }
             case ":$PATH:" in
               *".asdf/shims:"*) echo "FAIL: asdf shims still on PATH"; exit 1 ;;
@@ -77,34 +84,38 @@ jobs:
     name: curl | sh with git hidden (TASK-31)
     runs-on: macos-15
     steps:
-      - name: run remote one-liner with git actually moved aside, expect graceful failure
+      - name: run remote one-liner with git unreachable, expect graceful failure
         run: |
-          # This runner VM is thrown away after the job, so temporarily
-          # moving every git binary on PATH out of the way (rather than
-          # trying to fake a PATH that omits it, which real dirs can leak
-          # back through) is simple and safe here. There can be more than
-          # one (Xcode CLT's /usr/bin/git AND Homebrew's, for example) -
-          # command -v only finds the first, so walk all of PATH instead.
-          moved=""
+          # /usr/bin (where Xcode CLT's git lives) is the read-only signed
+          # system volume - not even `sudo mv` can touch it. And dropping
+          # the whole directory from PATH isn't an option either, since
+          # curl/sh/mktemp/etc. live right alongside git in the same
+          # directory. Instead: symlink every executable found on PATH
+          # into a scratch dir, *except* anything literally named "git",
+          # then use only that scratch dir as PATH.
+          scratch="$(mktemp -d)"
           old_ifs="$IFS"
           IFS=:
           for dir in $PATH; do
             IFS="$old_ifs"
-            [ -x "$dir/git" ] || continue
-            sudo mv "$dir/git" "$dir/git.hidden-for-test"
-            moved="$moved $dir/git"
+            [ -d "$dir" ] || continue
+            for f in "$dir"/*; do
+              [ -x "$f" ] || continue
+              base="$(basename "$f")"
+              [ "$base" = "git" ] && continue
+              [ -e "$scratch/$base" ] && continue
+              ln -s "$f" "$scratch/$base" 2>/dev/null || true
+            done
           done
           IFS="$old_ifs"
+          PATH="$scratch"
+          export PATH
           command -v git >/dev/null 2>&1 && { echo "FAIL: git is still resolvable"; exit 1; }
 
           set +e
           curl -fsSL https://raw.githubusercontent.com/amosQP/langtoolchain/main/install.sh | sh > out.log 2>&1
           status=$?
           set -e
-
-          for g in $moved; do
-            sudo mv "$g.hidden-for-test" "$g"
-          done
 
           cat out.log
           [ "$status" -ne 0 ] || { echo "FAIL: expected non-zero exit without git"; exit 1; }
