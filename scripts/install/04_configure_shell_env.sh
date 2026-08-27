@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/usr/bin/env sh
 # Writes asdf + build-flag shell config into the user's rc file.
 #
 # Modern Homebrew asdf (v0.16+, the Go rewrite — what `brew install asdf`
@@ -6,8 +6,8 @@
 # Shell integration is just: put $ASDF_DATA_DIR/shims on PATH. The previous
 # version of this tool tried to source that nonexistent file and silently
 # did nothing — this replaces that with the two exports asdf actually needs.
-set -euo pipefail
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+set -eu
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 . "$SCRIPT_DIR/../lib.sh"
 
 step "Phase 4: Configuring shell environment"
@@ -34,6 +34,9 @@ esac
 # (prepend/append), and the line to write — comes from this single shared
 # definition (see lib.sh's lt_env_var_defs for why). Which lines prepend
 # vs. append is decided there, as data, not by matching text here.
+# POSIX sh has no process substitution, so the defs go to a temp file first.
+ENV_VAR_DEFS_TMP="$(mktemp)"
+lt_env_var_defs "$JAVA_HOOK" > "$ENV_VAR_DEFS_TMP"
 while IFS= read -r def; do
   search="${def%%|||*}"
   rest="${def#*|||}"
@@ -43,6 +46,7 @@ while IFS= read -r def; do
     prepend) prepend_env_var "$RC_FILE" "$search" "$line" ;;
     *)       append_env_var "$RC_FILE" "$search" "$line" ;;
   esac
-done < <(lt_env_var_defs "$JAVA_HOOK")
+done < "$ENV_VAR_DEFS_TMP"
+rm -f "$ENV_VAR_DEFS_TMP"
 
 log "Shell config written to $RC_FILE."

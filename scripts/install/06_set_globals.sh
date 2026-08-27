@@ -7,18 +7,23 @@
 # read_scope() in lib.sh. A config file with no such line (e.g. this
 # repo's own .tool-versions, used when running this phase standalone)
 # defaults to global, matching the tool's original behavior.
-set -euo pipefail
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+set -eu
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 . "$SCRIPT_DIR/../lib.sh"
 ensure_asdf_on_path
 
-REPO_ROOT="$(repo_root_from "${BASH_SOURCE[0]}")"
+REPO_ROOT="$(repo_root_from "$0")"
 CONFIG_FILE="${TOOL_VERSIONS_FILE:-$REPO_ROOT/.tool-versions}"
-[[ -f "$CONFIG_FILE" ]] || die "Config file not found: $CONFIG_FILE"
+[ -f "$CONFIG_FILE" ] || die "Config file not found: $CONFIG_FILE"
 
 step "Phase 6: Setting versions"
 
 SCOPE_INFO="$(read_scope "$CONFIG_FILE")"
+
+# POSIX sh has no process substitution, so each_tool's output goes to a
+# temp file first — both branches below read from the same one.
+EACH_TOOL_TMP="$(mktemp)"
+each_tool "$CONFIG_FILE" > "$EACH_TOOL_TMP"
 
 case "$SCOPE_INFO" in
   local:*)
@@ -31,7 +36,7 @@ case "$SCOPE_INFO" in
       # instead of the global ~/.tool-versions — subshell so the `cd` here
       # never affects this script's own cwd.
       ( cd "$TARGET_DIR" && run asdf set "$plugin" "$version" )
-    done 3< <(each_tool "$CONFIG_FILE")
+    done 3< "$EACH_TOOL_TMP"
     ;;
   *)
     # fd 3, not stdin — see 02_install_plugins.sh for why.
@@ -42,9 +47,10 @@ case "$SCOPE_INFO" in
       # chosen version applies everywhere on the machine, not just this
       # repo directory.
       run asdf set -u "$plugin" "$version"
-    done 3< <(each_tool "$CONFIG_FILE")
+    done 3< "$EACH_TOOL_TMP"
     ;;
 esac
+rm -f "$EACH_TOOL_TMP"
 
 # Regenerates every shim under $ASDF_DATA_DIR/shims (node, python, ...).
 # Scope-independent: shims are generic dispatchers that resolve the active

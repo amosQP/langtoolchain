@@ -1,10 +1,10 @@
-#!/usr/bin/env bash
+#!/usr/bin/env sh
 # System-level Homebrew packages needed to compile Python's C extensions
 # (ssl, sqlite, zlib, ...). Installed unconditionally since they're small
 # and brew install is idempotent regardless of which languages were
 # selected in phase 00.
-set -euo pipefail
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+set -eu
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 . "$SCRIPT_DIR/../lib.sh"
 # Phase 1 may have installed Homebrew moments ago in a different process —
 # make sure `brew` is resolvable in THIS one too.
