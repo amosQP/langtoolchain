@@ -1,11 +1,14 @@
-#!/usr/bin/env bash
+#!/usr/bin/env sh
 # Shared utilities sourced by the phase scripts under scripts/install/ and
 # scripts/uninstall/. Pure functions only — sourcing this file has no side
 # effects, so any phase script can source it standalone, in any order,
 # without depending on another phase script having run first.
 #
-# Written for bash 3.2 (macOS's stock /bin/bash) — no associative arrays,
-# no bash-4-only syntax.
+# Written for POSIX sh (TASK-71/72) — no [[ ]], no arrays, no BASH_REMATCH,
+# no other bash-only syntax. `local` is the one non-POSIX-standard
+# exception kept deliberately (see TASK-71): it's supported by every real
+# POSIX-compliant shell this tool targets (dash included), and dropping it
+# would mean every function falls back to polluting the global namespace.
 
 # DRY_RUN is exported by main.sh before it launches each phase script as a
 # child process. `:-false` makes this file safe to source on its own too
@@ -139,7 +142,7 @@ die()  { printf 'ERROR: %s\n' "$*" >&2; exit 1; }
 run() {
   # Under --dry-run, print what *would* run (prefixed with "+", like `set -x`)
   # instead of running it.
-  if [[ "$DRY_RUN" == "true" ]]; then
+  if [ "$DRY_RUN" = "true" ]; then
     printf '  + %s\n' "$*"
   else
     # "$@" preserves each argument's word boundaries/quoting exactly as the
@@ -187,7 +190,7 @@ detect_rc_file() {
 # <search> — so re-running the installer never duplicates a line.
 append_env_var() {
   local rc_file="$1" search="$2" line="$3"
-  if [[ "$DRY_RUN" == "true" ]]; then
+  if [ "$DRY_RUN" = "true" ]; then
     # Dry-run: describe the write instead of performing it.
     printf '  + append to %s if missing: %s\n' "$rc_file" "$line"
     return
@@ -212,7 +215,7 @@ append_env_var() {
 # regardless of what else already lives in the rc file.
 prepend_env_var() {
   local rc_file="$1" search="$2" line="$3"
-  if [[ "$DRY_RUN" == "true" ]]; then
+  if [ "$DRY_RUN" = "true" ]; then
     printf '  + prepend to %s if missing: %s\n' "$rc_file" "$line"
     return
   fi
@@ -278,7 +281,7 @@ ensure_brew_on_path() {
   fi
   local brew_bin
   brew_bin="$(lt_homebrew_prefix)/bin"
-  if [[ -x "$brew_bin/brew" ]]; then
+  if [ -x "$brew_bin/brew" ]; then
     export PATH="$brew_bin:$PATH"
   fi
 }
@@ -347,8 +350,18 @@ flag_for_binary() {
 
 # version_core <version-string>: extracts the first X.Y[.Z] numeric version
 # substring (e.g. asdf's "temurin-25.0.2+10.0.LTS" -> "25.0.2"). Prints
-# nothing if the string has no such pattern (e.g. the alias "lts"), so
-# callers can skip a version comparison instead of false-warning.
+# nothing (and fails) if the string has no such pattern (e.g. the alias
+# "lts"), so callers can skip a version comparison instead of false-warning.
+#
+# POSIX sh has no [[ =~ ]]/BASH_REMATCH, so this uses sed instead: strip
+# every leading non-digit character (`[^0-9]*`, greedy but unable to eat
+# into a digit, so it always stops at the *first* digit run — this is what
+# gives leftmost-match behavior, same as the old regex), then capture an
+# X.Y or X.Y.Z run and discard everything after it. Plain BRE (no -E), so
+# this is portable to both BSD and GNU sed without needing -E.
 version_core() {
-  [[ "$1" =~ [0-9]+\.[0-9]+(\.[0-9]+)? ]] && echo "${BASH_REMATCH[0]}"
+  local result
+  result="$(printf '%s\n' "$1" | sed -n 's/[^0-9]*\([0-9][0-9]*\.[0-9][0-9]*\(\.[0-9][0-9]*\)*\).*/\1/p')"
+  [ -n "$result" ] || return 1
+  printf '%s\n' "$result"
 }
