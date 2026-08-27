@@ -1,9 +1,10 @@
 ---
 id: TASK-73
 title: scripts/install/*.sh 8개 스크립트를 POSIX sh로 전환
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-08-27 14:41'
+updated_date: '2026-08-27 19:50'
 labels:
   - code-quality
   - posix
@@ -30,7 +31,7 @@ ordinal: 73000
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 8개 스크립트 전부 dash로 문법/실행 검증을 통과한다
-- [ ] #2 프로세스 치환이 전부 제거되고 대체 패턴이 서브셸 변수 스코프 문제를 일으키지 않는다
-- [ ] #3 shellspec 관련 스펙이 그린을 유지한다(또는 POSIX 셸 기준으로 조정된다)
+- [x] #1 8개 스크립트 전부 dash로 문법/실행 검증을 통과한다
+- [x] #2 프로세스 치환이 전부 제거되고 대체 패턴이 서브셸 변수 스코프 문제를 일으키지 않는다
+- [x] #3 shellspec 관련 스펙이 그린을 유지한다(또는 POSIX 셸 기준으로 조정된다)
 <!-- AC:END -->
