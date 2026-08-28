@@ -25,7 +25,7 @@ curl -fsSL https://raw.githubusercontent.com/amosQP/langtoolchain/main/install.s
 
 ## 왜 만들었나
 
-새 Mac을 받을 때마다 Homebrew 깔고, asdf 깔고, 언어별 플러그인 추가하고, 컴파일 플래그 맞춰서 `.zshrc` 고치고… 매번 똑같은 삽질을 반복하는 게 지겨워서 만들었습니다. **이제는 한 줄이면 됩니다.** Homebrew도 없으면 알아서 깔고, asdf도 알아서 깔고, 원하는 언어만 체크하듯 골라서 설치하고, 셸 설정까지 자동으로 끝납니다.
+새 Mac마다 Homebrew·asdf 설치, 플러그인 추가, `.zshrc` 손보기를 반복하는 게 지겨워서 만들었습니다. **이제는 한 줄이면 됩니다.** Homebrew·asdf 설치부터 언어 선택, 셸 설정까지 전부 자동입니다.
 
 - 🍺 **Homebrew 없어도 OK** — 없으면 공식 스크립트로 자동 설치 (sudo 비밀번호만 직접 입력)
 - ☑️ **체크박스 같은 대화형 설치** — 언어별로 설치 여부와 버전을 확인하고 골라서 설치
@@ -64,6 +64,7 @@ langtoolchain이 설치·관리하는 건 **Node.js·Java·Python·Rust·Go 5개
 - [코드 구조](#-코드-구조-파일별-설명)
 - [설계 원칙](#-설계-원칙)
 - [기여하기](#-기여하기)
+- [알려진 한계 / 앞으로 할 일](#-알려진-한계--앞으로-할-일)
 - [License](#-license)
 
 <br>
@@ -81,7 +82,7 @@ git clone https://github.com/amosQP/langtoolchain.git && cd langtoolchain
 ./install.sh
 ```
 
-실행하면 언어별로 설치할지 물어보고(Enter = 예), 버전을 확인/수정할 수 있게 한 뒤, 마지막에 "설치할까요?"로 한 번 더 확인하고 나서 실제 설치를 시작합니다.
+언어별 설치 여부(Enter = 예)와 버전을 확인한 뒤, 마지막 확인을 거쳐 설치를 시작합니다.
 
 ```text
 == 설치할 언어를 선택하세요 (Enter = 예) ==
@@ -166,17 +167,17 @@ flowchart TD
     H --> I["07_validate.sh<br/>설치 검증"]
 ```
 
-1. **진입점 (`install.sh`)** — 로컬에 클론된 상태로 실행됐으면(`scripts/install/` 디렉토리가 옆에 있으면) 바로 그걸 실행합니다. `curl | sh`로 stdin을 통해 실행된 경우엔(로컬에 아무 파일도 없는 경우) `git clone --depth 1`로 임시 디렉토리(`mktemp -d`)에 저장소를 내려받은 뒤 그 안의 스크립트를 실행하고, 끝나면 `trap`으로 임시 디렉토리를 지웁니다.
-2. **언어 선택 (`00_select.sh`)** — 언어별로 설치 여부(Y/n)와 버전, 그리고 이걸 전역으로 고정할지 특정 디렉토리에만 고정할지를 물어봅니다. 모든 프롬프트/출력은 `/dev/tty`에 직접 쓰고 읽어서, `curl | sh`처럼 표준입력이 이미 스크립트 내용으로 막혀 있어도 정상적으로 사용자 입력을 받습니다. 결과는 `.tool-versions` 형식의 임시 파일로 저장되고, 그 파일 경로만 표준출력으로 반환됩니다. 터미널이 없으면(CI 등) 자동으로 전체 설치로 폴백하고, 고정 범위도 `--local`이 없으면 전역으로 기본 설정됩니다.
-3. **Homebrew/asdf 부트스트랩 (`01_bootstrap_asdf.sh`)** — Homebrew가 없으면 공식 설치 스크립트를 `NONINTERACTIVE=1`로 실행해 직접 설치합니다(sudo 비밀번호 입력은 그대로 필요). `asdf`가 없으면 `brew install asdf`로 설치합니다.
+1. **진입점 (`install.sh`)** — 로컬 클론이면 바로 실행. `curl | sh`면 `git clone --depth 1`로 임시 디렉토리에 받아 실행 후 `trap`으로 정리.
+2. **언어 선택 (`00_select.sh`)** — 언어별 설치 여부·버전, 전역/로컬 고정 범위를 물어봅니다. `/dev/tty`로 직접 읽고 써서 `curl | sh`에서도 입력을 받습니다. 결과는 임시 `.tool-versions` 파일로 저장, 경로만 표준출력으로 반환. 터미널이 없으면 자동으로 전체 설치.
+3. **Homebrew/asdf 부트스트랩 (`01_bootstrap_asdf.sh`)** — Homebrew 없으면 공식 스크립트로 설치(sudo 비밀번호 필요), asdf 없으면 `brew install asdf`.
 4. **플러그인 설치 (`02_install_plugins.sh`)** — 선택된 언어마다 `asdf plugin add`.
 5. **시스템 의존성 (`03_install_system_deps.sh`)** — Python 컴파일에 필요한 Homebrew 패키지 설치.
-6. **셸 환경변수 (`04_configure_shell_env.sh`)** — `~/.zshrc` 또는 `~/.bash_profile`(사용자의 로그인 셸에 따라 자동 판단)에 asdf shim PATH, Java 홈, 컴파일러 플래그를 멱등적으로(중복 없이) 추가합니다.
-7. **런타임 설치 (`05_install_runtimes.sh`)** — `asdf install <plugin> <version>` — 실제로 시간이 오래 걸리는 컴파일/다운로드 단계.
-8. **버전 고정 (`06_set_globals.sh`)** — 2번에서 정한 범위에 따라 `asdf set -u`(전역) 또는 `asdf set`(지정 디렉토리)을 실행하고 `asdf reshim`으로 shim을 재생성.
-9. **검증 (`07_validate.sh`)** — 각 언어의 바이너리가 PATH에서 실제로 asdf shim을 통해 잡히는지, 버전이 올바른지 확인.
+6. **셸 환경변수 (`04_configure_shell_env.sh`)** — 로그인 셸에 맞는 rc 파일에 asdf shim PATH, Java 홈, 컴파일러 플래그를 중복 없이 추가.
+7. **런타임 설치 (`05_install_runtimes.sh`)** — `asdf install <plugin> <version>` — 가장 시간이 오래 걸리는 컴파일/다운로드 단계.
+8. **버전 고정 (`06_set_globals.sh`)** — 정한 범위에 따라 `asdf set -u`(전역) 또는 `asdf set`(로컬) 실행 후 `asdf reshim`.
+9. **검증 (`07_validate.sh`)** — 각 언어 바이너리가 asdf shim을 통해 잡히는지, 버전이 맞는지 확인.
 
-> **핵심 설계 원칙**: 각 단계는 `main.sh`가 별도의 `sh` 프로세스로 순서대로 실행합니다. **어느 한 단계도 다른 단계가 먼저 실행되어 뭔가를 `export`해뒀을 거라고 가정하지 않습니다.** 예를 들어 5번(런타임 설치)은 4번이 `.zshrc`에 PATH를 써놨다고 믿는 대신, 스스로 `ensure_asdf_on_path`/`ensure_build_flags`를 호출해 필요한 환경을 그 자리에서 만듭니다. 그래서 특정 단계 하나만 따로 실행해도(`sh scripts/install/05_install_runtimes.sh`) 정상 동작합니다.
+> **핵심 설계 원칙**: 각 단계는 별도 `sh` 프로세스로 실행되어 서로의 `export`에 의존하지 않습니다. 5번은 4번이 PATH를 써놨다고 믿지 않고 `ensure_asdf_on_path`를 직접 호출합니다. 그래서 단계 하나만 따로 실행해도(`sh scripts/install/05_install_runtimes.sh`) 정상 동작합니다.
 
 <br>
 
@@ -190,8 +191,8 @@ asdf는 언어 런타임을 **한 번만 설치**하고(`~/.asdf/installs/<plugi
 | **전역 (Global)** | `~/.tool-versions` | `asdf set -u <plugin> <version>` | 딱히 지정 안 된 모든 디렉토리의 기본값 |
 | **디렉토리별 (Local)** | `<지정 디렉토리>/.tool-versions` | `asdf set <plugin> <version>` (`-u` 없음) | 그 디렉토리(와 하위 디렉토리) 안에서만, 전역값보다 우선 |
 
-예: 평소엔 최신 Node.js를 쓰다가, 레거시 프로젝트 하나만 Node 18을 써야 할 때 그 프로젝트 디렉토리에만
-로컬로 고정하면 다른 곳엔 영향 없이 그 프로젝트에서만 Node 18이 적용됩니다.
+예: 평소엔 최신 Node.js를 쓰다가 레거시 프로젝트 하나만 Node 18이 필요하면, 그 디렉토리에만 로컬로
+고정하면 다른 곳엔 영향 없이 그 프로젝트에서만 적용됩니다.
 
 > 💡 **비유로 설명하면**: nvm의 `.nvmrc`, pyenv의 `.python-version` 같은 "이 폴더는 이 버전 써" 파일을
 > asdf는 언어 상관없이 전부 `.tool-versions` 하나로 통일한 것뿐입니다. 전역은 그게 없을 때의 기본값.
@@ -213,8 +214,8 @@ asdf는 언어 런타임을 **한 번만 설치**하고(`~/.asdf/installs/<plugi
 
 ### 구현 방식
 
-새 phase 스크립트를 추가하지 않고 기존 구조를 그대로 재사용합니다. `00_select.sh`가 언어 선택과 함께
-고정 범위도 물어본 뒤, 선택 결과 파일의 **첫 줄에 주석으로 기록**합니다:
+`00_select.sh`가 언어 선택과 함께 고정 범위도 물어본 뒤, 선택 결과 파일의 **첫 줄에 주석으로
+기록**합니다:
 
 ```
 # scope: global
@@ -227,16 +228,13 @@ python 3.12.13
 nodejs lts
 ```
 
-`each_tool`의 파싱 패턴(`#`으로 시작하는 줄은 무시)이 이 줄을 자동으로 건너뛰므로 언어/버전 파싱 로직은
-전혀 안 바뀝니다. `06_set_globals.sh`가 `read_scope()`(`scripts/lib.sh`)로 이 줄을 읽어 분기합니다 —
-줄이 아예 없으면(예: 이 저장소의 `.tool-versions`를 직접 쓰는 경우) 항상 전역으로 동작해 기존 동작과
-100% 호환됩니다.
+`#`으로 시작하는 줄은 파싱에서 무시되므로 언어/버전 로직은 그대로입니다. `06_set_globals.sh`가
+`read_scope()`(`scripts/lib.sh`)로 이 줄을 읽어 분기하고, 줄이 없으면 항상 전역으로 동작합니다.
 
 ### 이미 로컬로 고정된 걸 나중에 직접 다루고 싶다면
 
-langtoolchain은 이 표준 asdf 명령을 대신 실행해주는 것뿐입니다 — 그 디렉토리의 `.tool-versions`를
-직접 열어보거나, `asdf current`로 확인하거나, 직접 `asdf set <plugin> <version>`을 실행해도 됩니다.
-별도로 배워야 할 langtoolchain 전용 명령은 없습니다.
+langtoolchain은 표준 asdf 명령을 대신 실행해줄 뿐입니다 — `.tool-versions`를 직접 열거나,
+`asdf current`/`asdf set <plugin> <version>`을 직접 써도 됩니다. 따로 배울 전용 명령은 없습니다.
 
 <br>
 
@@ -409,59 +407,59 @@ langtoolchain/
 <summary><b>1. 각 phase는 서로 독립적입니다 — export에 의존하지 않음</b></summary>
 <br>
 
-각 phase 스크립트는 `main.sh`가 별도의 `sh` 프로세스로 실행합니다. 즉 한 phase에서 `export`한 값은 다음 phase로 자동으로 넘어가지 않습니다. 그래서 `asdf`나 빌드 플래그가 필요한 스크립트는 각자 `ensure_asdf_on_path`/`ensure_build_flags`를 직접 호출합니다. 이 원칙 덕분에 아무 phase나 단독으로(`sh scripts/install/05_install_runtimes.sh`) 실행해도 정상 동작하고, 순서를 바꾸거나 phase를 추가/삭제하기도 쉽습니다.
+각 phase는 `main.sh`가 별도 `sh` 프로세스로 실행하므로 `export`가 다음 phase로 안 넘어갑니다. 그래서 `asdf`/빌드 플래그가 필요한 스크립트는 각자 `ensure_asdf_on_path`/`ensure_build_flags`를 직접 호출합니다. 덕분에 phase 하나만 단독 실행해도(`sh scripts/install/05_install_runtimes.sh`) 정상 동작하고, 순서를 바꾸거나 추가/삭제하기도 쉽습니다.
 </details>
 
 <details>
 <summary><b>2. .tool-versions를 읽는 루프는 표준입력이 아니라 fd 3을 씁니다</b></summary>
 <br>
 
-`.tool-versions`를 파싱해서 `while read ...; do ... done` 루프를 도는 코드는 항상 파일디스크립터 3번을 씁니다. 루프 안에서 `asdf` 같은 외부 명령을 또 실행하기 때문인데, 표준입력을 그대로 쓰면 그 명령이 실수로 루프용 입력을 가로챌 수 있어서입니다. POSIX sh엔 프로세스 치환(`<(cmd)`)이 없으므로, `each_tool "$CONFIG_FILE" > "$TMP"`로 먼저 임시 파일에 담은 뒤 `done 3< "$TMP"`로 그 파일을 fd 3에 연결하는 두 단계로 이뤄집니다 — 원칙 4의 POSIX 호환 정책과 같은 이유입니다.
+`.tool-versions`를 읽는 `while read` 루프는 표준입력 대신 fd 3을 씁니다 — 루프 안에서 `asdf` 같은 외부 명령이 표준입력을 가로챌 수 있어서입니다. POSIX sh엔 프로세스 치환이 없으므로, `each_tool ... > "$TMP"`로 임시 파일에 담은 뒤 `done 3< "$TMP"`로 연결하는 2단계로 구현합니다.
 </details>
 
 <details>
 <summary><b>3. 파이프를 곧장 grep -q로 넘기지 않습니다 (SIGPIPE)</b></summary>
 <br>
 
-`asdf plugin list | grep -q ...`처럼 "명령 출력을 곧장 `grep -q`로 파이프"하는 패턴은 위험합니다 — `grep -q`가 매치되자마자 파이프를 일찍 닫아버리는데, 그 타이밍에 상류 명령이 아직 출력 중이면 SIGPIPE로 죽습니다. (예전엔 `set -o pipefail`과 함께 쓸 때만의 문제로 설명했지만, `pipefail`은 bash/ksh/zsh 전용 확장이라 POSIX sh 전환 이후로는 애초에 쓰지 않습니다 — SIGPIPE로 상류 명령이 죽는 것 자체는 pipefail 유무와 무관한 문제라 이 원칙은 그대로 유지됩니다.) 명령 출력은 변수에 먼저 담고, 그 변수를 grep하세요.
+`cmd | grep -q ...`는 위험합니다 — `grep -q`가 매치되자마자 파이프를 닫는데, 그때 상류 명령이 아직 출력 중이면 SIGPIPE로 죽습니다. `pipefail`(bash 전용, POSIX sh엔 없음) 유무와 무관한 문제이니, 명령 출력은 변수에 먼저 담고 그 변수를 grep하세요.
 </details>
 
 <details>
 <summary><b>4. POSIX sh 호환을 유지합니다</b></summary>
 <br>
 
-기본 포맷(들여쓰기, 라인 길이, 네이밍)은 [Google Shell Style Guide](https://google.github.io/styleguide/shellguide.html)를 따르되, 호환성 레이어는 POSIX sh입니다 — bash 전용 문법을 쓰지 않아서, `curl | sh`로 실행될 때 PATH에 어떤 `sh`가 잡히든(dash, ash, posix 모드 bash 등) 그대로 동작합니다. 구체적으로 이런 걸 안 씁니다:
+포맷(들여쓰기·라인 길이·네이밍)은 [Google Shell Style Guide](https://google.github.io/styleguide/shellguide.html)를 따르되 호환성 레이어는 POSIX sh입니다 — `curl | sh`가 어떤 `sh`를 잡든(dash, ash, posix 모드 bash) 동작합니다. 안 쓰는 것:
 
-- `[[ ... ]]` 대신 `[ ... ]`, 글롭 패턴 매칭이 필요한 곳은 `case`문
-- 연관 배열(`declare -A`)이나 인덱스 배열(`arr=()`, `arr+=()`) — 대신 개행으로 구분한 문자열 + `IFS`/`set --`로 위치 매개변수를 재구성 (값에 공백이 있어도 안전, 개행에서만 분리)
-- 프로세스 치환 `<(cmd)` — 대신 `mktemp`로 임시 파일을 만들어 그걸 읽음
-- `[[ =~ ]]`/`BASH_REMATCH` 정규식 매칭 — 대신 `sed`의 BRE(basic regular expression)로 대체
+- `[[ ... ]]` 대신 `[ ... ]`, 글롭 패턴 매칭은 `case`문
+- 배열(`declare -A`, `arr=()`) — 대신 개행 구분 문자열 + `IFS`/`set --`
+- 프로세스 치환 `<(cmd)` — 대신 `mktemp` 임시 파일
+- `[[ =~ ]]`/`BASH_REMATCH` — 대신 `sed`의 BRE
 - `set -o pipefail` — POSIX에 없는 bash/ksh/zsh 전용 옵션
-- `&>` 결합 리다이렉트 — 대신 `>file 2>&1`
-- `${BASH_SOURCE[0]}` — 대신 `$0` (모든 스크립트가 항상 경로로 호출되므로 안전)
+- `&>` — 대신 `>file 2>&1`
+- `${BASH_SOURCE[0]}` — 대신 `$0`
 
-한 가지 함정: `:`(콜론, no-op)처럼 POSIX가 "특수 내장명령(special built-in)"으로 규정한 명령은, 리다이렉션이 실패하면 `set -e`나 `||`와 무관하게 비대화형 셸을 무조건 즉시 종료시킵니다(POSIX 표준 동작이며 dash가 정확히 이렇게 구현되어 있음 — bash는 기본 모드에서 더 관대해서 이 문제가 안 보였습니다). `/dev/tty` 존재 여부를 확인하는 코드처럼 "실패할 수도 있는 리다이렉션 + `||` 폴백" 패턴에선 `:` 대신 `true`(특수 내장명령이 아님) 같은 평범한 명령을 씁니다.
+함정 하나: `:`(콜론) 같은 POSIX "특수 내장명령"은 리다이렉션이 실패하면 `set -e`/`||`와 무관하게 셸을 즉시 종료시킵니다(dash는 표준대로 동작, bash는 기본 모드가 관대해서 이 문제가 안 드러났습니다). `/dev/tty` 존재 확인처럼 "실패할 수도 있는 리다이렉션" 패턴엔 `:` 대신 평범한 명령인 `true`를 씁니다.
 </details>
 
 <details>
 <summary><b>5. rc 파일에 PATH 줄을 추가할 땐 순서가 실제로 우선순위를 결정합니다</b></summary>
 <br>
 
-셸이 파일을 위에서부터 소싱하면서 매번 `export PATH="X:$PATH"`로 앞에 붙이기 때문에, **더 나중에 소싱되는 줄이 PATH 우선순위가 더 높습니다.** `brew shellenv`처럼 "제일 먼저 소싱되어야 하는" 줄은 `append_env_var`(파일 끝에 추가)가 아니라 `prepend_env_var`(파일 맨 앞에 추가)로 넣어야, 그 뒤에 오는 asdf shim PATH 줄이 항상 마지막에 prepend되어 우선순위를 가져갑니다.
+셸이 파일을 위에서부터 소싱하며 `export PATH="X:$PATH"`로 앞에 붙이므로, **나중에 소싱되는 줄이 우선순위가 더 높습니다.** `brew shellenv`처럼 먼저 소싱돼야 하는 줄은 `append_env_var`가 아니라 `prepend_env_var`(파일 맨 앞)로 넣어야, 뒤따르는 asdf shim PATH 줄이 항상 나중에 prepend되어 이깁니다.
 </details>
 
 <details>
 <summary><b>6. 정리용 EXIT trap이 있는 스크립트에서는 exec를 쓰지 않습니다</b></summary>
 <br>
 
-`exec cmd`는 `execve`로 현재 프로세스 이미지를 통째로 교체합니다 — 셸의 정상 종료 절차(등록해둔 `trap ... EXIT` 포함)를 그대로 건너뜁니다. `install.sh`/`uninstall.sh`가 `curl | sh`로 실행될 때 임시 clone을 지우는 `trap 'rm -rf "$WORKDIR"' EXIT`가 있는 이유가 이겁니다 — 그 뒤에서 진짜 설치 스크립트를 실행할 땐 `exec`가 아니라 일반 호출 + `exit $?`를 씁니다. (반대로 로컬 클론 실행 경로처럼 정리할 게 없는 곳에선 `exec`를 그대로 씁니다 — 불필요한 프로세스 하나를 아낄 수 있어서.)
+`exec cmd`는 현재 프로세스를 통째로 교체해 등록된 `trap ... EXIT`를 건너뜁니다. `install.sh`/`uninstall.sh`는 임시 clone을 지우는 `trap 'rm -rf "$WORKDIR"' EXIT`가 있어서, 실제 설치 스크립트는 `exec` 대신 일반 호출 + `exit $?`로 실행합니다. (정리할 게 없는 로컬 클론 경로에선 `exec`를 그대로 씁니다.)
 </details>
 
 <details>
 <summary><b>7. sed 스크립트는 macOS 기본 sed(BSD sed) 기준으로 씁니다</b></summary>
 <br>
 
-macOS의 `/usr/bin/sed`는 BSD sed로, GNU sed와 정규식 문법이 다릅니다. 특히 `\(a\|b\)` 같은 대체(alternation) 문법은 GNU sed 확장이라 BSD sed의 기본 모드(POSIX BRE)에서는 **조용히 아무것도 매칭하지 않습니다** — 에러도 안 나고 그냥 무시됩니다. 대체 문법이 필요하면 `-E`(확장 정규식) 플래그를 켜고 `\(`/`\)`/`\|` 대신 그냥 `(`/`)`/`|`를 쓰세요.
+macOS `/usr/bin/sed`는 BSD sed라 GNU sed와 정규식이 다릅니다. `\(a\|b\)` 같은 대체 문법은 GNU 확장이라 BSD sed 기본 모드에서 **에러 없이 조용히 매칭 안 됩니다.** 대체가 필요하면 `-E` 플래그를 켜고 `\(`/`\)`/`\|` 대신 `(`/`)`/`|`를 쓰세요.
 </details>
 
 <br>
@@ -470,14 +468,21 @@ macOS의 `/usr/bin/sed`는 BSD sed로, GNU sed와 정규식 문법이 다릅니�
 
 - 언어/버전을 바꾸려면 `.tool-versions` 한 줄만 수정하면 됩니다.
 - 특정 단계만 고치거나 디버깅할 땐 개별 실행: `DRY_RUN=true sh scripts/install/05_install_runtimes.sh`
-- 코드를 고쳤으면 순서대로: `shellcheck -s sh <고친 파일>` → `dash -n <고친 파일>` (macOS 기본 `/bin/sh`는 posix 모드 bash라 진짜 POSIX 위반을 놓치므로, 실제 POSIX 셸인 dash로 다시 검사) → `shellspec` 그리고 `shellspec --shell dash`로 회귀 테스트 스위트(`spec/`) 실행.
-- 실제로 아무것도 바꾸지 않고 전체 흐름 확인: `./install.sh --dry-run --all --yes`, `./uninstall.sh --dry-run --yes`
-- 실기기 검증이 필요한 시나리오(클린 Homebrew 부트스트랩, Intel Mac 등)는 `.github/workflows/e2e-verify.yml`을 `workflow_dispatch`로 실행 — GitHub 호스팅 macOS 러너(arm64+Intel)에서 진짜 설치/제거 사이클을 돌립니다. 공개 저장소라 러너 사용은 무료입니다.
+- 코드를 고쳤으면: `shellcheck -s sh` → `dash -n`(macOS 기본 `/bin/sh`는 posix 모드 bash라 진짜 POSIX 위반을 놓침) → `shellspec`/`shellspec --shell dash`로 `spec/` 스위트 실행.
+- 전체 흐름만 확인: `./install.sh --dry-run --all --yes`, `./uninstall.sh --dry-run --yes`
+- 실기기 검증(Homebrew 부트스트랩, Intel Mac 등)은 `.github/workflows/e2e-verify.yml`을 `workflow_dispatch`로 실행 — GitHub 호스팅 macOS 러너(arm64+Intel)에서 검증. 공개 저장소라 무료.
 
-**남은 To-Do**
-- [x] 실기기에서 `--dry-run` 없이 실제 설치 검증 (새 Node 버전을 실제로 설치/제거하며 phase 1~5, 7 검증)
-- [x] 진짜 클린 Homebrew 자동 설치 경로까지 포함해 처음부터 전체 검증 — `e2e-verify.yml`의 `no-homebrew-bootstrap` 잡으로 CI에서 검증
-- [x] Intel Mac(`/usr/local` 접두사) 경로 처리 확인 — `e2e-verify.yml`이 `macos-15-intel` 러너에서 설치/제거 전체 사이클을 실제로 검증
+<br>
+
+## 🧭 알려진 한계 / 앞으로 할 일
+
+- **macOS 전용** — Linux/Windows 미지원.
+- **언어 5개 고정** — Node.js/Java/Python/Rust/Go 외 언어는 코드를 직접 고쳐야 추가 가능. 순수 asdf처럼 임의 플러그인을 자유롭게 추가하는 기능은 없음.
+- **로컬 스코프로 설치한 디렉토리를 uninstall이 기억 못 함** — `--local`로 설치한 프로젝트 경로가 어디에도 기록되지 않아서, uninstall은 전역 버전만 확실하게 추적함.
+- **동시 실행 보호 없음** — 같은 머신에서 설치 스크립트를 두 번 동시에 돌리는 것에 대한 lock이 없음.
+- **CI는 수동 트리거만** — `e2e-verify.yml`은 `workflow_dispatch`만 지원, PR/push마다 자동으로 돌지 않음.
+- **핵심 목적("컴파일러 설치")보다 넓은 기능이 있음** — 전역/로컬 버전 고정, 대화형 선택기는 사실 asdf 버전 관리를 감싼 부가 기능. 걷어낼지는 미결정.
+- **Homebrew/asdf 외 도구체인 미고려** — MacPorts, mise 같은 대체 도구와의 상호운용은 지원 대상 아님.
 
 <br>
 
