@@ -20,12 +20,27 @@ step "Phase 5: Installing language runtimes (this can take a while)"
 
 # fd 3, not stdin — see 02_install_plugins.sh for why. POSIX sh has no
 # process substitution, so each_tool's output goes to a temp file first.
+# FAILED (TASK-89): collects languages that failed to install instead of
+# dying immediately on the first one, so one bad build doesn't stop every
+# OTHER selected language from even being attempted — mirrors
+# uninstall/01_uninstall_runtimes.sh's own `|| true` per-item pattern.
+# Checked once after the loop: if anything failed, this phase itself must
+# still fail (die() below) rather than let 06_set_globals.sh go on to
+# `asdf set` a version that was never actually installed.
+FAILED=""
 EACH_TOOL_TMP="$(mktemp)"
 each_tool "$CONFIG_FILE" > "$EACH_TOOL_TMP"
 while read -r plugin version <&3; do
   log "Installing $plugin $version ..."
   # This is the actual compile/download step — by far the slowest part of
-  # the whole installer. `run` still respects --dry-run.
-  run asdf install "$plugin" "$version"
+  # the whole installer. `run` still respects --dry-run. retry (TASK-88):
+  # this is the single most network/time-intensive step in the whole
+  # installer, so it's the one most worth retrying automatically.
+  if ! retry 3 5 run asdf install "$plugin" "$version"; then
+    log "  FAILED: $plugin $version (continuing with remaining languages)"
+    FAILED="${FAILED}${FAILED:+, }$plugin $version"
+  fi
 done 3< "$EACH_TOOL_TMP"
 rm -f "$EACH_TOOL_TMP"
+
+[ -z "$FAILED" ] || die "One or more runtimes failed to install: $FAILED. Re-run to retry just the missing ones (asdf skips what's already installed)."

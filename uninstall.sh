@@ -40,6 +40,19 @@ command -v git >/dev/null 2>&1 || {
 WORKDIR="$(mktemp -d)"
 trap 'rm -rf "$WORKDIR"' EXIT
 
-git clone --depth 1 --branch "$BRANCH" "$REPO_URL" "$WORKDIR/langtoolchain" >/dev/null
+# Retries a transient clone failure a few times before giving up (TASK-88)
+# — see install.sh for why this is an inline duplicate of lib.sh's retry()
+# rather than a shared call.
+CLONE_ATTEMPT=1
+until git clone --depth 1 --branch "$BRANCH" "$REPO_URL" "$WORKDIR/langtoolchain" >/dev/null 2>&1; do
+  if [ "$CLONE_ATTEMPT" -ge 3 ]; then
+    echo "ERROR: git clone failed after $CLONE_ATTEMPT attempts." >&2
+    exit 1
+  fi
+  echo "git clone failed (attempt $CLONE_ATTEMPT/3) — retrying..." >&2
+  rm -rf "$WORKDIR/langtoolchain"
+  sleep $((CLONE_ATTEMPT * 5))
+  CLONE_ATTEMPT=$((CLONE_ATTEMPT + 1))
+done
 sh "$WORKDIR/langtoolchain/scripts/uninstall/main.sh" "$@"
 exit $?

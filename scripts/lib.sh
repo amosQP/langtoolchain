@@ -172,6 +172,65 @@ run() {
   fi
 }
 
+# retry <max_attempts> <delay_seconds> <cmd...> (TASK-88): runs <cmd...>,
+# and if it fails, retries with exponential backoff (delay doubles each
+# time) up to <max_attempts> total attempts. Meant for genuinely transient
+# failures (a network blip mid-download) — not a substitute for fixing a
+# real error, which is why it still returns failure (not `|| true`) once
+# attempts are exhausted, so the caller decides what that means.
+#
+# Compose with run(): `retry 3 5 run asdf install "$plugin" "$version"`.
+# Under DRY_RUN, run() prints and returns success on the first call, so
+# retry's own loop exits immediately too — no repeated dry-run output.
+retry() {
+  local max_attempts="$1" delay="$2" attempt=1
+  shift 2
+  while true; do
+    if "$@"; then
+      return 0
+    fi
+    if [ "$attempt" -ge "$max_attempts" ]; then
+      return 1
+    fi
+    log "  (attempt $attempt/$max_attempts failed, retrying in ${delay}s...)"
+    sleep "$delay"
+    attempt=$((attempt + 1))
+    delay=$((delay * 2))
+  done
+}
+
+# ensure_disk_space <min_gb> (TASK-91): dies with a clear message if the
+# filesystem containing $HOME has less than <min_gb> GB free. A best-effort
+# up-front check, not a guarantee — a specific runtime's download+compile
+# could still fail on genuinely tight disk even after this passes.
+# `df -Pk`: POSIX output format (portable across BSD and GNU df) in 1024-byte
+# blocks, so dividing by 1024 twice gets whole GB without needing `-g` (a
+# GNU-only flag BSD/macOS df doesn't have).
+ensure_disk_space() {
+  local min_gb="$1" available_kb available_gb
+  available_kb="$(df -Pk "$HOME" | awk 'NR==2 {print $4}')"
+  available_gb=$((available_kb / 1024 / 1024))
+  if [ "$available_gb" -lt "$min_gb" ]; then
+    die "Only ${available_gb}GB free on the filesystem containing \$HOME (need at least ${min_gb}GB for Homebrew + asdf runtime compiles). Free up space and try again."
+  fi
+}
+
+# handle_interrupt (TASK-90): registered via `trap handle_interrupt INT
+# TERM` in install/main.sh and uninstall/main.sh, right after acquire_lock.
+# Without this, Ctrl-C just kills the script with no explanation of what
+# state it's left in. Every phase script this tool runs is safe to re-run
+# (each one checks "already present"/"already absent" before acting — see
+# design principle 1 in readme.md), so the honest, reassuring answer really
+# is "just run it again." `exit 130` (128+SIGINT, the conventional exit code
+# for Ctrl-C) still triggers the separately-registered EXIT trap afterward —
+# INT/TERM and EXIT are independent trap slots, so this doesn't clobber the
+# lock-release/cleanup trap the way two traps on the SAME signal would.
+handle_interrupt() {
+  log ""
+  log "중단되었습니다. 이미 끝난 부분은 다시 실행해도 건너뜁니다 — 이어서 하려면 같은 명령을 다시 실행하세요."
+  exit 130
+}
+
 # acquire_lock (TASK-84): takes the exclusive lock at LT_LOCK_DIR so two
 # install/uninstall runs can never mutate asdf/Homebrew state at the same
 # time. `mkdir` either succeeds (lock acquired) or fails because the

@@ -61,4 +61,31 @@ Describe 'scripts/install/02_install_plugins.sh'
       The output should include 'ADDED: python'
     End
   End
+
+  Describe 'partial failure isolation (TASK-89)'
+    It 'still attempts every plugin even after one fails, then fails overall'
+      printf 'nodejs lts\npython 3.12.13\n' > "$tool_versions"
+      # sleep Mocked so retry()'s backoff between nodejs's 3 failing
+      # attempts doesn't actually wait in this test.
+      Mock sleep
+        :
+      End
+      Mock asdf
+        case "$1 $2" in
+          "plugin update") exit 0 ;;
+          "plugin list") : ;;
+          "plugin add")
+            case "$3" in
+              nodejs) exit 1 ;;
+              python) echo "ADDED: $3" ;;
+            esac
+            ;;
+        esac
+      End
+      When run "$SCRIPT"
+      The status should be failure
+      The output should include 'ADDED: python'
+      The error should include 'Failed to add plugin(s): nodejs'
+    End
+  End
 End

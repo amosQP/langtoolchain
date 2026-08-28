@@ -60,6 +60,22 @@ trap 'rm -rf "$WORKDIR"' EXIT
 # --depth 1: only the latest commit, not the full history — this clone is
 # thrown away right after, so there's no reason to download more than
 # necessary.
-git clone --depth 1 --branch "$BRANCH" "$REPO_URL" "$WORKDIR/langtoolchain" >/dev/null
+#
+# Retries a transient clone failure (network blip) a few times before
+# giving up entirely (TASK-88). lib.sh's retry() isn't available here — see
+# the note above on why this file can't source it — so this is a small
+# inline equivalent, same idea as REPO_URL/BRANCH already being duplicated
+# rather than shared.
+CLONE_ATTEMPT=1
+until git clone --depth 1 --branch "$BRANCH" "$REPO_URL" "$WORKDIR/langtoolchain" >/dev/null 2>&1; do
+  if [ "$CLONE_ATTEMPT" -ge 3 ]; then
+    echo "ERROR: git clone failed after $CLONE_ATTEMPT attempts." >&2
+    exit 1
+  fi
+  echo "git clone failed (attempt $CLONE_ATTEMPT/3) — retrying..." >&2
+  rm -rf "$WORKDIR/langtoolchain"
+  sleep $((CLONE_ATTEMPT * 5))
+  CLONE_ATTEMPT=$((CLONE_ATTEMPT + 1))
+done
 sh "$WORKDIR/langtoolchain/scripts/install/main.sh" "$@"
 exit $?

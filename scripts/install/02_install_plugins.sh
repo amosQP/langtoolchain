@@ -18,9 +18,11 @@ CONFIG_FILE="${TOOL_VERSIONS_FILE:-$REPO_ROOT/.tool-versions}"
 
 step "Phase 2: Installing asdf plugins"
 
-# Refresh every already-installed plugin's own git checkout. `|| true`:
-# a stale/unreachable plugin repo shouldn't abort the whole install.
-run asdf plugin update --all || true
+# Refresh every already-installed plugin's own git checkout. retry
+# (TASK-88): worth a couple of attempts before giving up on a network blip.
+# `|| true`: a stale/unreachable plugin repo shouldn't abort the whole
+# install even after retries are exhausted.
+retry 3 5 run asdf plugin update --all || true
 
 # Capture once, up front, instead of piping straight into `grep -q` inside
 # the loop: grep -q closes the pipe as soon as it matches, which can
@@ -34,6 +36,13 @@ existing_plugins="$(asdf plugin list 2>/dev/null || true)"
 # fd 3, not stdin: keeps this loop's own `read` isolated from anything a
 # future edit to the loop body might do with stdin. POSIX sh has no
 # process substitution, so each_tool's output goes to a temp file first.
+# FAILED (TASK-89): collects plugins that failed to add instead of dying
+# immediately on the first one — mirrors uninstall/02_remove_plugins.sh's
+# own `|| true` per-item pattern, so one unreachable plugin repo doesn't
+# stop every OTHER selected language from even being attempted. Checked
+# once after the loop, not per-iteration, so every language gets a shot
+# before this script decides whether to fail overall.
+FAILED=""
 EACH_TOOL_TMP="$(mktemp)"
 each_tool "$CONFIG_FILE" > "$EACH_TOOL_TMP"
 while read -r plugin version <&3; do
@@ -43,7 +52,12 @@ while read -r plugin version <&3; do
     log "Plugin already present: $plugin"
   else
     log "Adding plugin: $plugin"
-    run asdf plugin add "$plugin"
+    if ! retry 3 5 run asdf plugin add "$plugin"; then
+      log "  FAILED: $plugin (continuing with remaining languages)"
+      FAILED="${FAILED}${FAILED:+ }$plugin"
+    fi
   fi
 done 3< "$EACH_TOOL_TMP"
 rm -f "$EACH_TOOL_TMP"
+
+[ -z "$FAILED" ] || die "Failed to add plugin(s): $FAILED"

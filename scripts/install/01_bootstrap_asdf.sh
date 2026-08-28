@@ -42,8 +42,14 @@ else
     # create /opt/homebrew (or /usr/local on Intel) the first time, which
     # will prompt for the account password in the terminal as normal — that
     # part can't be automated away, and shouldn't be.
-    env NONINTERACTIVE=1 bash -c \
-      "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+    #
+    # retry (TASK-88): the whole thing is wrapped in a single-quoted `sh -c`
+    # string, not run directly — retry() re-runs its argument list as-is on
+    # each attempt, and `$(curl ...)` inside an unquoted command would only
+    # ever be fetched ONCE (when this line is first parsed), before retry
+    # even gets a chance to loop. Deferring it into `sh -c '...'` makes the
+    # curl fetch itself happen fresh on every retry attempt.
+    retry 3 5 sh -c 'env NONINTERACTIVE=1 bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"'
   fi
   # The installer just placed `brew` at a fixed location but didn't add it
   # to this process's PATH — do that now so the rest of THIS run can use it.
@@ -61,6 +67,8 @@ if command -v asdf >/dev/null 2>&1; then
   log "asdf already installed: $(asdf version 2>/dev/null || true)"
 else
   # `run` respects --dry-run: prints "+ brew install asdf" instead of
-  # actually installing under DRY_RUN=true.
-  run brew install asdf
+  # actually installing under DRY_RUN=true. retry (TASK-88): a formula
+  # download failing on a flaky connection shouldn't need a full manual
+  # re-run.
+  retry 3 5 run brew install asdf
 fi

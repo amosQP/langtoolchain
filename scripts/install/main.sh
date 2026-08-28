@@ -21,6 +21,11 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 # replace this one rather than add to it.
 acquire_lock
 trap 'release_lock' EXIT
+# INT/TERM (TASK-90): a separate trap slot from EXIT above, so registering
+# this doesn't replace the lock-release trap — both fire on Ctrl-C (INT
+# trap runs handle_interrupt's `exit 130`, which then triggers the EXIT
+# trap for the actual cleanup).
+trap 'handle_interrupt' INT TERM
 
 DRY_RUN=false
 # Flags meant for 00_select.sh get collected here, one per line, instead of
@@ -46,6 +51,15 @@ done
 export DRY_RUN
 
 echo "langtoolchain installer"
+
+# TASK-91: fail fast on insufficient disk space, before asking the user
+# anything below — better than getting through the whole language picker
+# only to have a compile die from ENOSPC partway through phase 5. Skipped
+# under DRY_RUN, matching every other DRY_RUN-gated check in this codebase:
+# this is a precondition for a REAL run, not something a preview needs.
+if [ "$DRY_RUN" != "true" ]; then
+  ensure_disk_space 5
+fi
 
 # 00_select.sh writes prompts to /dev/tty and its actual result (a file
 # path) to stdout, so command substitution here captures just that path.

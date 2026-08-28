@@ -33,6 +33,7 @@ Every new Mac meant reinstalling Homebrew and asdf, adding plugins, and fixing `
 - 🌍 **Global or per-directory version pinning** — set a system-wide default, or scope it to one project
 - 🧩 **Independent, modular structure** — no phase depends on another, so you can read/fix just the part you need
 - 🔙 **Clean uninstall** — everything it installed can be undone (backups kept as `.bak`)
+- 🔁 **Retries + partial-failure isolation** — a transient network blip retries automatically, and one language failing doesn't stop the rest from being attempted
 - 🖥️ **POSIX sh compatible** — runs as-is under macOS's default shell (`/bin/sh`), no bash-only syntax
 
 <br>

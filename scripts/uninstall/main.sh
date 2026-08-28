@@ -13,6 +13,10 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 # prompt even, so nothing below ever runs concurrently with another instance.
 acquire_lock
 trap 'release_lock' EXIT
+# INT/TERM (TASK-90): separate trap slot from EXIT above — see
+# install/main.sh for why registering this doesn't clobber the lock-release
+# trap.
+trap 'handle_interrupt' INT TERM
 
 DRY_RUN=false
 AUTO_YES=false

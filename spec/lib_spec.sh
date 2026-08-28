@@ -306,6 +306,73 @@ EOF
     End
   End
 
+  Describe 'retry() (TASK-88)'
+    It 'returns success immediately when the command succeeds on the first try'
+      When call retry 3 1 true
+      The status should be success
+    End
+
+    It 'retries and succeeds once a later attempt works'
+      Mock sleep
+        :
+      End
+      attempt_file="$(mktemp)"
+      printf '0' > "$attempt_file"
+      flaky() {
+        n="$(cat "$attempt_file")"
+        n=$((n + 1))
+        printf '%s' "$n" > "$attempt_file"
+        [ "$n" -ge 2 ]
+      }
+      When call retry 3 1 flaky
+      The status should be success
+      The output should include 'attempt 1/3 failed'
+      The contents of file "$attempt_file" should eq '2'
+      rm -f "$attempt_file"
+    End
+
+    It 'fails after exhausting all attempts'
+      Mock sleep
+        :
+      End
+      When call retry 2 1 false
+      The status should be failure
+      The output should include 'attempt 1/2 failed'
+    End
+  End
+
+  Describe 'ensure_disk_space() (TASK-91)'
+    It 'passes when there is enough free space'
+      Mock df
+        printf '%s\n' 'Filesystem 1024-blocks Used Available Capacity Mounted' '/dev/disk1 100000000 0 10485760 1% /'
+      End
+      When call ensure_disk_space 5
+      The status should be success
+    End
+
+    It 'dies with a clear message when free space is below the threshold'
+      # Real `exit` inside die() - run as a subprocess (same reasoning as
+      # acquire_lock's die() path above), with `df` Mocked for that
+      # subprocess too since Mock's PATH change is example-scoped.
+      Mock df
+        printf '%s\n' 'Filesystem 1024-blocks Used Available Capacity Mounted' '/dev/disk1 100000000 0 1048576 1% /'
+      End
+      When run command sh -c '. ./scripts/lib.sh && ensure_disk_space 5'
+      The status should be failure
+      The error should include 'Only 1GB free'
+    End
+  End
+
+  Describe 'handle_interrupt() (TASK-90)'
+    It 'prints a clear interrupted message and exits 130'
+      # Real `exit`, so run as a subprocess rather than `When call` in this
+      # same process — same reasoning as acquire_lock's die() path above.
+      When run command sh -c '. ./scripts/lib.sh && handle_interrupt'
+      The status should equal 130
+      The output should include '중단되었습니다'
+    End
+  End
+
   Describe 'run()'
     It 'executes the command for real when DRY_RUN is false'
       DRY_RUN=false
