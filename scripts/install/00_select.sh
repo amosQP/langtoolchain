@@ -180,7 +180,7 @@ tty_out ""
 
 # Ask where to pin these versions, unless --local[=DIR] already decided it.
 if [ -z "$SCOPE" ]; then
-  tty_prompt "전역으로 고정할까요, 이 디렉토리에만 고정할까요? [전역/로컬] > "
+  tty_prompt "전역으로 고정할까요, 이 디렉토리에만 고정할까요? [전역/로컬, 기본값: 전역] > "
   read -r scope_answer < /dev/tty || scope_answer=""
   case "$scope_answer" in
     로컬|local|Local|l|L)
