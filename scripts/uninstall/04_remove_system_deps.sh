@@ -5,6 +5,10 @@
 set -eu
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 . "$SCRIPT_DIR/../lib.sh"
+# Same reasoning as every brew-touching install phase (see lib.sh): this
+# runs as its own process, so `brew` moments-old on PATH in some other
+# phase's process isn't guaranteed to be on THIS one's PATH too.
+ensure_brew_on_path
 
 step "Phase 4: Removing system build dependencies (Homebrew)"
 

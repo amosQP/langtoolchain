@@ -227,6 +227,38 @@ EOF
     End
   End
 
+  Describe 'ensure_brew_on_path()'
+    It 'is a no-op when brew is already resolvable on PATH'
+      Mock brew
+        echo mock-brew
+      End
+      before="$PATH"
+      When call ensure_brew_on_path
+      The variable PATH should eq "$before"
+    End
+
+    It 'prepends the fixed Homebrew prefix bin dir when brew is missing from PATH but installed there (TASK-78)'
+      fake_prefix="$(mktemp -d)"
+      mkdir -p "$fake_prefix/bin"
+      printf '#!/bin/sh\necho fake-brew\n' > "$fake_prefix/bin/brew"
+      chmod +x "$fake_prefix/bin/brew"
+      lt_homebrew_prefix() { echo "$fake_prefix"; }
+      PATH="/usr/bin:/bin"
+      When call ensure_brew_on_path
+      The variable PATH should include "$fake_prefix/bin:"
+      rm -rf "$fake_prefix"
+    End
+
+    It 'does not error when brew is not resolvable anywhere (fixed prefix included)'
+      lt_homebrew_prefix() { echo "/nonexistent-homebrew-prefix-$$"; }
+      PATH="/usr/bin:/bin"
+      before="$PATH"
+      When call ensure_brew_on_path
+      The status should be success
+      The variable PATH should eq "$before"
+    End
+  End
+
   Describe 'run()'
     It 'executes the command for real when DRY_RUN is false'
       DRY_RUN=false

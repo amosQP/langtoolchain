@@ -11,7 +11,24 @@ REPO_ROOT="$(repo_root_from "$0")"
 # Same TOOL_VERSIONS_FILE convention as the install side, though the
 # uninstaller's main.sh doesn't currently set it — this just keeps the two
 # sides consistent and lets someone wire up a selective uninstall later.
-CONFIG_FILE="${TOOL_VERSIONS_FILE:-$REPO_ROOT/.tool-versions}"
+#
+# Absent that, prefer $HOME/.tool-versions (where 06_set_globals.sh actually
+# wrote versions for a GLOBAL-scope install, via `asdf set -u`) over this
+# repo's own default .tool-versions. Falling back to the repo default here
+# unconditionally meant a version chosen interactively at install time
+# (e.g. the TASK-28 override flow) was never what got checked/uninstalled
+# below — this phase would compare against the wrong version string and
+# report a still-installed runtime as "already absent". A LOCAL-scope
+# install's own pin directory isn't recorded anywhere at uninstall time, so
+# it still can't be recovered here — that's a real limit, not something this
+# fixes.
+if [ -n "${TOOL_VERSIONS_FILE:-}" ]; then
+  CONFIG_FILE="$TOOL_VERSIONS_FILE"
+elif [ -f "$HOME/.tool-versions" ]; then
+  CONFIG_FILE="$HOME/.tool-versions"
+else
+  CONFIG_FILE="$REPO_ROOT/.tool-versions"
+fi
 
 step "Phase 1: Uninstalling language runtimes"
 

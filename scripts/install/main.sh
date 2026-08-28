@@ -55,6 +55,12 @@ if SELECTION_FILE="$(sh "$SCRIPT_DIR/00_select.sh" "$@")"; then
   # Every later phase reads $TOOL_VERSIONS_FILE instead of the repo's own
   # .tool-versions, so they only touch what the user actually picked.
   export TOOL_VERSIONS_FILE="$SELECTION_FILE"
+  # Clean up this temp file on ANY exit from here on, not just the success
+  # path at the bottom of this script — otherwise a phase failing partway
+  # through (network blip during 05_install_runtimes.sh, etc.) leaves it
+  # behind, since `set -eu` kills the script before it ever reaches the
+  # unconditional `rm -f` that used to be the only cleanup.
+  trap 'rm -f "$SELECTION_FILE"' EXIT
 else
   echo "설치가 취소되었습니다."
   exit 1
@@ -74,10 +80,6 @@ for phase in \
 do
   sh "$SCRIPT_DIR/$phase"
 done
-
-# The selection file was only ever a temporary hand-off between 00_select.sh
-# and the phases above — clean it up now that they're done with it.
-rm -f "$SELECTION_FILE"
 
 echo ""
 echo "완료되었습니다. 'source ~/.zshrc' (또는 새 터미널)을 실행해 PATH를 반영하세요."
