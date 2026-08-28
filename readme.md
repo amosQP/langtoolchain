@@ -6,8 +6,10 @@
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![Platform](https://img.shields.io/badge/platform-macOS-000000?logo=apple&logoColor=white)](#-사전-요구사항)
-[![Shell](https://img.shields.io/badge/shell-POSIX%20sh-4EAA25?logo=gnubash&logoColor=white)](#-설계-원칙)
+[![Shell](https://img.shields.io/badge/shell-POSIX%20sh-4EAA25)](#-설계-원칙)
 [![Powered by asdf](https://img.shields.io/badge/powered%20by-asdf-F16436)](https://asdf-vm.com)
+
+**한국어** | [English](readme.en.md)
 
 `git clone`도, 수동 설치도 필요 없습니다. 터미널에 한 줄 붙여넣으면 끝.
 
@@ -98,7 +100,7 @@ python (python) 설치할까요? [Y/n] > ⏎
   rust    1.94.0
   golang  1.26.1
 
-전역으로 고정할까요, 이 디렉토리에만 고정할까요? [전역/로컬] > ⏎
+전역으로 고정할까요, 이 디렉토리에만 고정할까요? [전역/로컬, 기본값: 전역] > ⏎
 
 설치할까요? [Y/n] > ⏎
 ```
@@ -198,7 +200,7 @@ asdf는 언어 런타임을 **한 번만 설치**하고(`~/.asdf/installs/<plugi
 
 **대화형**: 설치 마지막 확인 직전에 물어봅니다 (Enter = 전역).
 ```text
-전역으로 고정할까요, 이 디렉토리에만 고정할까요? [전역/로컬] > 로컬
+전역으로 고정할까요, 이 디렉토리에만 고정할까요? [전역/로컬, 기본값: 전역] > 로컬
   어느 디렉토리에 고정할까요? [기본값: 현재 디렉토리] > ⏎
 ```
 
@@ -365,6 +367,9 @@ langtoolchain/
 | `ensure_brew_on_path` | 이 프로세스에서 `brew`가 PATH에 잡히도록 보장 (Apple Silicon/Intel 설치 경로 자동 판단) |
 | `ensure_build_flags` | Python 등 컴파일에 필요한 `LDFLAGS`/`CPPFLAGS`/`PKG_CONFIG_PATH`를 이 프로세스에 export |
 | `binary_for_plugin`, `flag_for_binary` | plugin 이름 ↔ 실제 실행파일 이름 ↔ 버전 확인 플래그 매핑 (POSIX sh엔 연관 배열이 없어서 `case`로 구현) |
+| `version_core` | 버전 문자열에서 `X.Y[.Z]` 숫자 부분만 추출 (예: `temurin-25.0.2+10.0.LTS` → `25.0.2`), `lts`처럼 숫자가 없으면 실패 반환 |
+| `lt_homebrew_prefix` | 현재 CPU 아키텍처의 Homebrew 설치 경로 반환 (`/opt/homebrew` 또는 `/usr/local`) |
+| `lt_env_var_defs` | rc 파일에 쓰는 모든 줄의 검색 패턴/삽입 위치/내용을 한 곳에서 정의 — install과 uninstall이 이 정의 하나를 공유해서 서로 어긋나지 않게 함 |
 
 ### `scripts/install/`
 
@@ -378,7 +383,7 @@ langtoolchain/
 | `05_install_runtimes.sh` | `asdf install` — 실제 컴파일/다운로드 |
 | `06_set_globals.sh` | 선택 파일의 `# scope:` 줄에 따라 `asdf set -u`(전역) 또는 `asdf set`(로컬) 실행 + `asdf reshim` |
 | `07_validate.sh` | 설치 결과 검증 (바이너리 경로, 버전 출력) |
-| `main.sh` | 위 스크립트들을 순서대로 실행하는 오케스트레이터. `--dry-run`/`--all`/`--yes` 플래그 처리 |
+| `main.sh` | 위 스크립트들을 순서대로 실행하는 오케스트레이터. `--dry-run`/`--all`/`--yes`/`--local[=DIR]` 플래그를 처리해 필요한 것만 `00_select.sh`로 전달 |
 
 ### `scripts/uninstall/`
 
@@ -411,7 +416,7 @@ langtoolchain/
 <summary><b>2. .tool-versions를 읽는 루프는 표준입력이 아니라 fd 3을 씁니다</b></summary>
 <br>
 
-`.tool-versions`를 파싱해서 `while read ...; do ... done` 루프를 도는 코드는 항상 `3< <(each_tool "$CONFIG_FILE")` 형태로 파일디스크립터 3번을 씁니다. 루프 안에서 `asdf` 같은 외부 명령을 또 실행하기 때문인데, 표준입력을 그대로 쓰면 그 명령이 실수로 루프용 입력을 가로챌 수 있어서입니다.
+`.tool-versions`를 파싱해서 `while read ...; do ... done` 루프를 도는 코드는 항상 파일디스크립터 3번을 씁니다. 루프 안에서 `asdf` 같은 외부 명령을 또 실행하기 때문인데, 표준입력을 그대로 쓰면 그 명령이 실수로 루프용 입력을 가로챌 수 있어서입니다. POSIX sh엔 프로세스 치환(`<(cmd)`)이 없으므로, `each_tool "$CONFIG_FILE" > "$TMP"`로 먼저 임시 파일에 담은 뒤 `done 3< "$TMP"`로 그 파일을 fd 3에 연결하는 두 단계로 이뤄집니다 — 원칙 4의 POSIX 호환 정책과 같은 이유입니다.
 </details>
 
 <details>
@@ -465,13 +470,14 @@ macOS의 `/usr/bin/sed`는 BSD sed로, GNU sed와 정규식 문법이 다릅니�
 
 - 언어/버전을 바꾸려면 `.tool-versions` 한 줄만 수정하면 됩니다.
 - 특정 단계만 고치거나 디버깅할 땐 개별 실행: `DRY_RUN=true sh scripts/install/05_install_runtimes.sh`
-- 전체 문법 검사: `for f in install.sh uninstall.sh scripts/lib.sh scripts/install/*.sh scripts/uninstall/*.sh; do sh -n "$f"; done` (더 엄격하게 검사하려면 `dash -n`)
+- 코드를 고쳤으면 순서대로: `shellcheck -s sh <고친 파일>` → `dash -n <고친 파일>` (macOS 기본 `/bin/sh`는 posix 모드 bash라 진짜 POSIX 위반을 놓치므로, 실제 POSIX 셸인 dash로 다시 검사) → `shellspec` 그리고 `shellspec --shell dash`로 회귀 테스트 스위트(`spec/`) 실행.
 - 실제로 아무것도 바꾸지 않고 전체 흐름 확인: `./install.sh --dry-run --all --yes`, `./uninstall.sh --dry-run --yes`
+- 실기기 검증이 필요한 시나리오(클린 Homebrew 부트스트랩, Intel Mac 등)는 `.github/workflows/e2e-verify.yml`을 `workflow_dispatch`로 실행 — GitHub 호스팅 macOS 러너(arm64+Intel)에서 진짜 설치/제거 사이클을 돌립니다. 공개 저장소라 러너 사용은 무료입니다.
 
 **남은 To-Do**
 - [x] 실기기에서 `--dry-run` 없이 실제 설치 검증 (새 Node 버전을 실제로 설치/제거하며 phase 1~5, 7 검증)
-- [ ] 진짜 클린 macOS(VM 또는 새 계정)에서 Homebrew 자동 설치 경로까지 포함해 처음부터 전체 검증
-- [ ] Intel Mac(`/usr/local` 접두사) 경로 처리 확인 — 코드는 `uname -m` 분기로 처리해뒀지만 Intel 기기에서 직접 검증은 안 함
+- [x] 진짜 클린 Homebrew 자동 설치 경로까지 포함해 처음부터 전체 검증 — `e2e-verify.yml`의 `no-homebrew-bootstrap` 잡으로 CI에서 검증
+- [x] Intel Mac(`/usr/local` 접두사) 경로 처리 확인 — `e2e-verify.yml`이 `macos-15-intel` 러너에서 설치/제거 전체 사이클을 실제로 검증
 
 <br>
 
