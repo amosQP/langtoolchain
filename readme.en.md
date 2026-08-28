@@ -74,29 +74,95 @@ languages, or other version managers.
 
 ## 📎 Quick Reference (commands you'll actually use)
 
-Everything you'll want to copy-paste once this stops being new to you. Adding `-s -- <flags>` after
-`curl -fsSL <url> | sh` behaves exactly like `./install.sh <flags>` on a local clone.
+Every flag and usage pattern that exists, in one place, for when you forget.
+
+### Install
+
+Add `-s -- <flags>` after `curl -fsSL <url> | sh`. Flags combine freely.
 
 ```zsh
-# Install (interactive — asks per language)
+# Interactive (asks per language for install/skip, version, pin scope) — just run it with no flags
 curl -fsSL https://raw.githubusercontent.com/amosQP/langtoolchain/main/install.sh | sh
 
-# Install (no questions asked, everything automatic)
+# --all: skip the language picker, install everything in .tool-versions (still asks version/scope)
+curl -fsSL https://raw.githubusercontent.com/amosQP/langtoolchain/main/install.sh | sh -s -- --all
+
+# --yes: skip only the final "install these?" confirmation (language picker still interactive)
+curl -fsSL https://raw.githubusercontent.com/amosQP/langtoolchain/main/install.sh | sh -s -- --yes
+
+# --all --yes: no questions at all, everything automatic (the usual combo for scripts/CI)
 curl -fsSL https://raw.githubusercontent.com/amosQP/langtoolchain/main/install.sh | sh -s -- --all --yes
 
-# Preview the install (changes nothing)
+# --dry-run: only print what would happen, change nothing (combines freely with the others)
 curl -fsSL https://raw.githubusercontent.com/amosQP/langtoolchain/main/install.sh | sh -s -- --dry-run --all --yes
 
-# Pin versions to just this project directory (no global effect)
+# --local: pin versions to the CURRENT directory instead of globally (skips the scope prompt too)
 curl -fsSL https://raw.githubusercontent.com/amosQP/langtoolchain/main/install.sh | sh -s -- --local
 
-# Verify the install
-source ~/.zshrc && node -v && java -version && python --version && rustc --version && go version
-which node java python rustc go   # should point under ~/.asdf/shims/...
+# --local=<dir>: pin to a specific directory
+curl -fsSL https://raw.githubusercontent.com/amosQP/langtoolchain/main/install.sh | sh -s -- --local=/path/to/project
 
-# Uninstall everything
-curl -fsSL https://raw.githubusercontent.com/amosQP/langtoolchain/main/uninstall.sh | sh
+# Already have a local clone? Skip curl | sh and just run it directly (same flags as above)
+git clone https://github.com/amosQP/langtoolchain.git && cd langtoolchain
+./install.sh                    # or ./install.sh --all --yes, etc.
 ```
+
+> With no controlling terminal (CI, etc.), running with no flags automatically behaves like `--all`.
+
+### Verify the install
+
+```zsh
+source ~/.zshrc                                     # or open a new terminal tab
+node -v && java -version && python --version && rustc --version && go version
+which node java python rustc go                      # should point under ~/.asdf/shims/...
+asdf current                                          # every currently active version
+asdf current nodejs                                   # just one language
+asdf list nodejs                                      # versions installed on this machine
+asdf list all nodejs                                  # every installable version (no install needed to check)
+```
+
+### Uninstall
+
+```zsh
+# Interactive confirmation, then uninstall
+curl -fsSL https://raw.githubusercontent.com/amosQP/langtoolchain/main/uninstall.sh | sh
+
+# No confirmation prompt
+curl -fsSL https://raw.githubusercontent.com/amosQP/langtoolchain/main/uninstall.sh | sh -s -- --yes
+
+# Preview the uninstall (removes nothing)
+curl -fsSL https://raw.githubusercontent.com/amosQP/langtoolchain/main/uninstall.sh | sh -s -- --dry-run --yes
+
+# From a local clone
+./uninstall.sh                  # or ./uninstall.sh --yes / --dry-run --yes
+```
+
+Open a new shell session with `exec $SHELL` afterward so cached state like PATH is fully gone.
+
+### Running a single phase (debugging / advanced)
+
+Every phase runs standalone. `DRY_RUN=true` previews it; `TOOL_VERSIONS_FILE=<path>` points it at a
+config file other than this repo's own default.
+
+```zsh
+DRY_RUN=true sh scripts/install/05_install_runtimes.sh      # e.g. preview just the runtime-install phase
+TOOL_VERSIONS_FILE=/path/to/custom sh scripts/install/06_set_globals.sh
+```
+
+| install phases | uninstall phases |
+|---|---|
+| `00_select.sh` [details](#-code-structure-file-by-file) | `01_uninstall_runtimes.sh` |
+| `01_bootstrap_asdf.sh` | `02_remove_plugins.sh` |
+| `02_install_plugins.sh` | `03_clean_env_vars.sh` |
+| `03_install_system_deps.sh` | `04_remove_system_deps.sh` |
+| `04_configure_shell_env.sh` | `05_purge_asdf_core.sh` |
+| `05_install_runtimes.sh` | `06_validate_teardown.sh` |
+| `06_set_globals.sh` | |
+| `07_validate.sh` | |
+
+See [Code Structure](#-code-structure-file-by-file) for exactly what each file does.
+
+### Troubleshooting
 
 | Situation | What to do |
 |---|---|
@@ -104,6 +170,9 @@ curl -fsSL https://raw.githubusercontent.com/amosQP/langtoolchain/main/uninstall
 | Want to change which languages/versions get installed | Edit one line in `.tool-versions`, then reinstall (or just pick differently in the interactive prompt) |
 | Want to see what's currently pinned globally/locally | `asdf current` |
 | "Another langtoolchain install/uninstall appears to be running" | If nothing is really running concurrently, remove the lock directory the error message names and retry |
+| "Not enough disk space" | Free up at least 5GB on the volume containing `$HOME`, then retry |
+| Only one language failed to install | The others most likely already succeeded — re-run the same install command and only the failed one gets retried |
+| Want to change a `--local` pin by hand later | Run `asdf set <plugin> <version>` directly in that directory ([details](#-version-pin-scope-global-vs-per-directory)) |
 
 <br>
 

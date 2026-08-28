@@ -73,36 +73,104 @@ langtoolchain이 설치·관리하는 건 **Node.js·Java·Python·Rust·Go 5개
 
 ## 📎 빠른 참조 (자주 쓰는 명령어)
 
-나중에 명령어가 기억 안 날 때 이 섹션만 보면 되도록 모아뒀습니다. `curl -fsSL <url> | sh` 뒤에
-`-s -- <옵션>`을 붙이면 로컬에 클론해둔 `./install.sh <옵션>`과 완전히 동일하게 동작합니다.
+나중에 명령어가 기억 안 날 때 이 섹션만 보면 되도록, 존재하는 옵션과 사용법을 전부 모아뒀습니다.
+
+### 설치
+
+`curl -fsSL <url> | sh` 뒤에 `-s -- <옵션>`을 붙이면 됩니다. 옵션은 여러 개를 동시에 조합할 수 있습니다.
 
 ```zsh
-# 설치 (대화형 — 언어별로 물어봄)
+# 대화형 (언어별로 설치 여부/버전/고정 범위를 물어봄) — 옵션 없이 그냥 실행
 curl -fsSL https://raw.githubusercontent.com/amosQP/langtoolchain/main/install.sh | sh
 
-# 설치 (질문 없이 전부 자동)
+# --all: 언어 선택 화면 없이 .tool-versions에 있는 걸 전부 설치 (버전/고정 범위는 여전히 물어봄)
+curl -fsSL https://raw.githubusercontent.com/amosQP/langtoolchain/main/install.sh | sh -s -- --all
+
+# --yes: 마지막 "설치할까요?" 확인만 건너뜀 (언어 선택은 여전히 대화형)
+curl -fsSL https://raw.githubusercontent.com/amosQP/langtoolchain/main/install.sh | sh -s -- --yes
+
+# --all --yes: 질문 전혀 없이 전부 자동 설치 (스크립트/CI에서 주로 이 조합)
 curl -fsSL https://raw.githubusercontent.com/amosQP/langtoolchain/main/install.sh | sh -s -- --all --yes
 
-# 설치 미리보기 (실제로 아무것도 안 바뀜)
+# --dry-run: 실제로 뭘 할지만 출력하고 아무것도 안 바꿈 (다른 옵션과 자유롭게 조합 가능)
 curl -fsSL https://raw.githubusercontent.com/amosQP/langtoolchain/main/install.sh | sh -s -- --dry-run --all --yes
 
-# 이 프로젝트 디렉토리에만 버전 고정 (전역에 영향 없음)
+# --local: 전역 대신 "현재 디렉토리"에만 버전 고정 (대화형 스코프 질문도 스킵)
 curl -fsSL https://raw.githubusercontent.com/amosQP/langtoolchain/main/install.sh | sh -s -- --local
 
-# 설치 확인
-source ~/.zshrc && node -v && java -version && python --version && rustc --version && go version
-which node java python rustc go   # ~/.asdf/shims/... 아래를 가리켜야 정상
+# --local=<dir>: 지정한 디렉토리에만 버전 고정
+curl -fsSL https://raw.githubusercontent.com/amosQP/langtoolchain/main/install.sh | sh -s -- --local=/path/to/project
 
-# 완전 제거
-curl -fsSL https://raw.githubusercontent.com/amosQP/langtoolchain/main/uninstall.sh | sh
+# 로컬에 이미 클론해뒀다면 curl | sh 대신 그냥 이렇게 (옵션은 위와 동일하게 사용)
+git clone https://github.com/amosQP/langtoolchain.git && cd langtoolchain
+./install.sh                    # 또는 ./install.sh --all --yes 등 위 옵션 조합 그대로
 ```
+
+> 터미널(tty)이 없는 환경(CI 등)에서는 옵션 없이 실행해도 자동으로 `--all`처럼 동작합니다.
+
+### 설치 확인
+
+```zsh
+source ~/.zshrc                                    # 새 터미널 탭을 열어도 동일
+node -v && java -version && python --version && rustc --version && go version
+which node java python rustc go                     # ~/.asdf/shims/... 아래를 가리켜야 정상
+asdf current                                         # 지금 활성화된 버전 전체 목록
+asdf current nodejs                                  # 특정 언어만
+asdf list nodejs                                     # 이 머신에 설치된 nodejs 버전들
+asdf list all nodejs                                 # 설치 가능한 전체 버전 목록 (설치 안 해도 조회 가능)
+```
+
+### 제거
+
+```zsh
+# 대화형 확인 후 제거
+curl -fsSL https://raw.githubusercontent.com/amosQP/langtoolchain/main/uninstall.sh | sh
+
+# 확인 없이 바로 제거
+curl -fsSL https://raw.githubusercontent.com/amosQP/langtoolchain/main/uninstall.sh | sh -s -- --yes
+
+# 제거 미리보기 (실제로 아무것도 안 지움)
+curl -fsSL https://raw.githubusercontent.com/amosQP/langtoolchain/main/uninstall.sh | sh -s -- --dry-run --yes
+
+# 로컬 클론에서
+./uninstall.sh                  # 또는 ./uninstall.sh --yes / --dry-run --yes
+```
+
+제거 후에는 `exec $SHELL`로 새 셸 세션을 열어야 PATH 등 캐시된 상태가 완전히 사라집니다.
+
+### 개별 단계만 실행 (디버깅/고급)
+
+각 단계는 독립적으로 실행 가능합니다 — `DRY_RUN=true` 환경변수로 미리보기, `TOOL_VERSIONS_FILE=<경로>`로 이 저장소 기본값 대신 다른 설정 파일을 지정할 수 있습니다.
+
+```zsh
+DRY_RUN=true sh scripts/install/05_install_runtimes.sh      # 예: 런타임 설치 단계만 미리보기
+TOOL_VERSIONS_FILE=/path/to/custom sh scripts/install/06_set_globals.sh   # 다른 설정 파일로
+```
+
+| install 단계 | uninstall 단계 |
+|---|---|
+| `00_select.sh` [자세히](#-코드-구조-파일별-설명) | `01_uninstall_runtimes.sh` |
+| `01_bootstrap_asdf.sh` | `02_remove_plugins.sh` |
+| `02_install_plugins.sh` | `03_clean_env_vars.sh` |
+| `03_install_system_deps.sh` | `04_remove_system_deps.sh` |
+| `04_configure_shell_env.sh` | `05_purge_asdf_core.sh` |
+| `05_install_runtimes.sh` | `06_validate_teardown.sh` |
+| `06_set_globals.sh` | |
+| `07_validate.sh` | |
+
+각 파일이 정확히 무슨 일을 하는지는 [코드 구조](#-코드-구조-파일별-설명) 참고.
+
+### 문제 상황별 대응
 
 | 상황 | 어떻게 |
 |---|---|
 | 설치/제거 도중 끊겼다 (네트워크, Ctrl-C) | 같은 명령을 그대로 다시 실행 — 이미 끝난 부분은 자동으로 건너뜀 |
 | 설치할 언어나 버전을 바꾸고 싶다 | `.tool-versions` 파일 한 줄 수정 후 재설치 (또는 대화형 설치에서 직접 고르기) |
 | 지금 뭐가 전역/로컬로 고정돼 있는지 보고 싶다 | `asdf current` |
-| "다른 langtoolchain/uninstall 프로세스가 실행 중"이라고 뜬다 | 진짜 동시 실행 중인 게 없다면 에러 메시지가 알려주는 lock 디렉토리를 지우고 재시도 |
+| "다른 langtoolchain 설치/제거가 실행 중"이라고 뜬다 | 진짜 동시 실행 중인 게 없다면 에러 메시지가 알려주는 lock 디렉토리를 지우고 재시도 |
+| "디스크 공간이 부족하다"고 뜬다 | `$HOME`이 있는 볼륨에 최소 5GB 이상 여유 공간을 확보한 뒤 재시도 |
+| 언어 하나만 설치가 실패했다 | 나머지 언어는 이미 다 설치됐을 가능성이 높음 — 같은 설치 명령을 다시 실행하면 실패한 것만 재시도됨 |
+| `--local`로 고정한 버전을 나중에 직접 바꾸고 싶다 | 그 디렉토리에서 `asdf set <plugin> <version>` 직접 실행 ([자세히](#-버전-고정-범위-전역-vs-디렉토리별)) |
 
 <br>
 
