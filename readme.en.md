@@ -55,6 +55,7 @@ languages, or other version managers.
 
 ## Table of Contents
 
+- [Quick Reference (commands you'll actually use)](#-quick-reference-commands-youll-actually-use)
 - [Quick Start](#-quick-start)
 - [Scope](#-scope)
 - [Prerequisites](#-prerequisites)
@@ -68,6 +69,41 @@ languages, or other version managers.
 - [Contributing](#-contributing)
 - [Known Limitations / Future Work](#-known-limitations--future-work)
 - [License](#-license)
+
+<br>
+
+## 📎 Quick Reference (commands you'll actually use)
+
+Everything you'll want to copy-paste once this stops being new to you. Adding `-s -- <flags>` after
+`curl -fsSL <url> | sh` behaves exactly like `./install.sh <flags>` on a local clone.
+
+```zsh
+# Install (interactive — asks per language)
+curl -fsSL https://raw.githubusercontent.com/amosQP/langtoolchain/main/install.sh | sh
+
+# Install (no questions asked, everything automatic)
+curl -fsSL https://raw.githubusercontent.com/amosQP/langtoolchain/main/install.sh | sh -s -- --all --yes
+
+# Preview the install (changes nothing)
+curl -fsSL https://raw.githubusercontent.com/amosQP/langtoolchain/main/install.sh | sh -s -- --dry-run --all --yes
+
+# Pin versions to just this project directory (no global effect)
+curl -fsSL https://raw.githubusercontent.com/amosQP/langtoolchain/main/install.sh | sh -s -- --local
+
+# Verify the install
+source ~/.zshrc && node -v && java -version && python --version && rustc --version && go version
+which node java python rustc go   # should point under ~/.asdf/shims/...
+
+# Uninstall everything
+curl -fsSL https://raw.githubusercontent.com/amosQP/langtoolchain/main/uninstall.sh | sh
+```
+
+| Situation | What to do |
+|---|---|
+| Install/uninstall got interrupted (network, Ctrl-C) | Just run the same command again — anything already done is skipped automatically |
+| Want to change which languages/versions get installed | Edit one line in `.tool-versions`, then reinstall (or just pick differently in the interactive prompt) |
+| Want to see what's currently pinned globally/locally | `asdf current` |
+| "Another langtoolchain install/uninstall appears to be running" | If nothing is really running concurrently, remove the lock directory the error message names and retry |
 
 <br>
 

@@ -54,6 +54,7 @@ langtoolchain이 설치·관리하는 건 **Node.js·Java·Python·Rust·Go 5개
 
 ## 목차
 
+- [빠른 참조 (자주 쓰는 명령어)](#-빠른-참조-자주-쓰는-명령어)
 - [빠른 시작](#-빠른-시작)
 - [관리 범위](#-관리-범위)
 - [사전 요구사항](#-사전-요구사항)
@@ -67,6 +68,41 @@ langtoolchain이 설치·관리하는 건 **Node.js·Java·Python·Rust·Go 5개
 - [기여하기](#-기여하기)
 - [알려진 한계 / 앞으로 할 일](#-알려진-한계--앞으로-할-일)
 - [License](#-license)
+
+<br>
+
+## 📎 빠른 참조 (자주 쓰는 명령어)
+
+나중에 명령어가 기억 안 날 때 이 섹션만 보면 되도록 모아뒀습니다. `curl -fsSL <url> | sh` 뒤에
+`-s -- <옵션>`을 붙이면 로컬에 클론해둔 `./install.sh <옵션>`과 완전히 동일하게 동작합니다.
+
+```zsh
+# 설치 (대화형 — 언어별로 물어봄)
+curl -fsSL https://raw.githubusercontent.com/amosQP/langtoolchain/main/install.sh | sh
+
+# 설치 (질문 없이 전부 자동)
+curl -fsSL https://raw.githubusercontent.com/amosQP/langtoolchain/main/install.sh | sh -s -- --all --yes
+
+# 설치 미리보기 (실제로 아무것도 안 바뀜)
+curl -fsSL https://raw.githubusercontent.com/amosQP/langtoolchain/main/install.sh | sh -s -- --dry-run --all --yes
+
+# 이 프로젝트 디렉토리에만 버전 고정 (전역에 영향 없음)
+curl -fsSL https://raw.githubusercontent.com/amosQP/langtoolchain/main/install.sh | sh -s -- --local
+
+# 설치 확인
+source ~/.zshrc && node -v && java -version && python --version && rustc --version && go version
+which node java python rustc go   # ~/.asdf/shims/... 아래를 가리켜야 정상
+
+# 완전 제거
+curl -fsSL https://raw.githubusercontent.com/amosQP/langtoolchain/main/uninstall.sh | sh
+```
+
+| 상황 | 어떻게 |
+|---|---|
+| 설치/제거 도중 끊겼다 (네트워크, Ctrl-C) | 같은 명령을 그대로 다시 실행 — 이미 끝난 부분은 자동으로 건너뜀 |
+| 설치할 언어나 버전을 바꾸고 싶다 | `.tool-versions` 파일 한 줄 수정 후 재설치 (또는 대화형 설치에서 직접 고르기) |
+| 지금 뭐가 전역/로컬로 고정돼 있는지 보고 싶다 | `asdf current` |
+| "다른 langtoolchain/uninstall 프로세스가 실행 중"이라고 뜬다 | 진짜 동시 실행 중인 게 없다면 에러 메시지가 알려주는 lock 디렉토리를 지우고 재시도 |
 
 <br>
 
