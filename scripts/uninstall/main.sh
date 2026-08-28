@@ -46,7 +46,9 @@ if ! $AUTO_YES; then
 fi
 
 # Each phase runs as its own `sh` process, independent of the others —
-# same reasoning as scripts/install/main.sh.
+# same reasoning as scripts/install/main.sh. run_phase (not a plain
+# `sh "$SCRIPT_DIR/$phase"` call) so the INT/TERM trap above can actually
+# interrupt a phase mid-flight — see run_phase's own comment in lib.sh.
 for phase in \
   01_uninstall_runtimes.sh \
   02_remove_plugins.sh \
@@ -54,7 +56,7 @@ for phase in \
   04_remove_system_deps.sh \
   05_purge_asdf_core.sh
 do
-  sh "$SCRIPT_DIR/$phase"
+  run_phase "$SCRIPT_DIR/$phase"
 done
 
 echo ""

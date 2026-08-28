@@ -95,6 +95,9 @@ fi
 # Each phase runs as its OWN `sh` process (not sourced) — this is what
 # makes them independent: none of them can accidentally rely on a variable
 # or exported PATH change that only happened in a sibling phase's process.
+# run_phase (not a plain `sh "$SCRIPT_DIR/$phase"` call), so the INT/TERM
+# trap above can actually interrupt a phase mid-flight — see run_phase's
+# own comment in lib.sh for why a synchronous call can't be.
 for phase in \
   01_bootstrap_asdf.sh \
   02_install_plugins.sh \
@@ -104,7 +107,7 @@ for phase in \
   06_set_globals.sh \
   07_validate.sh
 do
-  sh "$SCRIPT_DIR/$phase"
+  run_phase "$SCRIPT_DIR/$phase"
 done
 
 echo ""

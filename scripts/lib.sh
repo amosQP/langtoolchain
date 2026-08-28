@@ -215,17 +215,51 @@ ensure_disk_space() {
   fi
 }
 
+# LT_CHILD_PID: the currently-running phase child process, if any — set by
+# run_phase() below, read by handle_interrupt() so a trapped signal can
+# kill it directly instead of leaving it to run to completion untouched.
+LT_CHILD_PID=""
+
+# run_phase <script>: runs a phase script and waits for it — but as a
+# backgrounded job + `wait`, not a plain synchronous `sh "$script"` call.
+# This matters for TASK-90: a signal for which a trap is registered does
+# NOT interrupt a shell blocked on a plain foreground command's exit —
+# POSIX shells only dispatch the trap once that command returns on its own,
+# which for a multi-minute `asdf install` mid-compile means Ctrl-C/SIGTERM
+# would sit unprocessed (and the lock unreleased) until the compile
+# finishes naturally. `wait` is different: POSIX explicitly guarantees it
+# returns early the moment a trapped signal arrives, letting the trap fire
+# immediately. (Found via a real CI failure, not by inspection: the TASK-32
+# "kill mid-install then re-run" job failed with "another install appears
+# to be running" — the first run's lock was still held, uncollected, when
+# the second one started, because main.sh hadn't processed its own SIGTERM
+# yet.) Only the immediate child is targeted, not further descendants (e.g.
+# `asdf install`'s own compiler subprocesses) — sufficient to make the
+# *lock* release promptly, which is what re-running depends on; deeper
+# orphans left briefly behind (if any) aren't this process's to manage.
+run_phase() {
+  sh "$1" &
+  LT_CHILD_PID=$!
+  wait "$LT_CHILD_PID"
+  LT_CHILD_PID=""
+}
+
 # handle_interrupt (TASK-90): registered via `trap handle_interrupt INT
 # TERM` in install/main.sh and uninstall/main.sh, right after acquire_lock.
 # Without this, Ctrl-C just kills the script with no explanation of what
 # state it's left in. Every phase script this tool runs is safe to re-run
 # (each one checks "already present"/"already absent" before acting — see
 # design principle 1 in readme.md), so the honest, reassuring answer really
-# is "just run it again." `exit 130` (128+SIGINT, the conventional exit code
-# for Ctrl-C) still triggers the separately-registered EXIT trap afterward —
-# INT/TERM and EXIT are independent trap slots, so this doesn't clobber the
+# is "just run it again." Kills LT_CHILD_PID first (see run_phase above) so
+# a phase mid-flight actually stops instead of continuing to completion
+# untouched. `exit 130` (128+SIGINT, the conventional exit code for Ctrl-C)
+# still triggers the separately-registered EXIT trap afterward — INT/TERM
+# and EXIT are independent trap slots, so this doesn't clobber the
 # lock-release/cleanup trap the way two traps on the SAME signal would.
 handle_interrupt() {
+  if [ -n "$LT_CHILD_PID" ]; then
+    kill "$LT_CHILD_PID" 2>/dev/null || true
+  fi
   log ""
   log "중단되었습니다. 이미 끝난 부분은 다시 실행해도 건너뜁니다 — 이어서 하려면 같은 명령을 다시 실행하세요."
   exit 130
