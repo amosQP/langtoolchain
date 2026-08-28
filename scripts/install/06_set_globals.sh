@@ -37,6 +37,19 @@ case "$SCOPE_INFO" in
       # never affects this script's own cwd.
       ( cd "$TARGET_DIR" && run asdf set "$plugin" "$version" )
     done 3< "$EACH_TOOL_TMP"
+    # Record this directory (TASK-83) so uninstall/01_uninstall_runtimes.sh
+    # can find it later and asdf-uninstall whatever got pinned here — the
+    # global ~/.tool-versions never mentions a local-only version, so
+    # without this record uninstall has no way to know it exists. Skipped
+    # under DRY_RUN: the `run asdf set` calls above didn't really pin
+    # anything, so recording the directory here would be a false record.
+    # `grep -qxF` dedupes: installing into the same directory twice must
+    # not grow this file forever.
+    if [ "$DRY_RUN" != "true" ]; then
+      LOCAL_PINS_FILE="$ASDF_DATA_DIR/$LT_LOCAL_PINS_FILE_NAME"
+      grep -qxF "$TARGET_DIR" "$LOCAL_PINS_FILE" 2>/dev/null \
+        || printf '%s\n' "$TARGET_DIR" >> "$LOCAL_PINS_FILE"
+    fi
     ;;
   *)
     # fd 3, not stdin — see 02_install_plugins.sh for why.

@@ -267,6 +267,7 @@ Everything is managed by asdf, following these two path rules.
 | `~/.asdf/installs/` | The actual compiled runtimes (table above) |
 | `~/.asdf/downloads/` | Source/binary cache downloaded during install |
 | `~/.asdf/shims/` | The thin wrapper executables PATH actually points to |
+| `~/.asdf/langtoolchain-local-pins` | List of directories pinned with `--local` — lets uninstall find and remove local-only versions too |
 
 ### Where configuration gets stored
 
@@ -285,6 +286,7 @@ Everything is managed by asdf, following these two path rules.
 
 - **Language selection result file**: created under the system temp directory (`$TMPDIR`) via `mktemp -t langtoolchain-selection`, deleted by `main.sh` once install finishes
 - **The repo clone made for `curl | sh`**: cloned into a scratch directory via `mktemp -d`, auto-deleted via `trap` when the script exits
+- **Concurrency lock**: `$TMPDIR/langtoolchain.lock` — created when install/uninstall starts, deleted via `trap` when it ends. Shared between install and uninstall, so they can't run concurrently with each other either
 
 ### What gets removed on uninstall (`uninstall.sh`)
 
@@ -484,8 +486,6 @@ macOS's `/usr/bin/sed` is BSD sed, whose regex dialect differs from GNU sed's. A
 
 - **macOS only** — no Linux/Windows support.
 - **Fixed to 5 languages** — adding another language means editing code; there's no way to freely add arbitrary asdf plugins the way raw asdf allows.
-- **Uninstall can't recall a local-scope install's directory** — a `--local` project path is never recorded anywhere, so uninstall can only reliably track the global version.
-- **No protection against concurrent runs** — no lock against running the installer twice on the same machine at once.
 - **CI is manually triggered only** — `e2e-verify.yml` only supports `workflow_dispatch`, not automatic runs on every PR/push.
 - **Some features go beyond the core mission ("install compilers")** — global/local version pinning and the interactive picker are really a wrapper around asdf's own version management. Whether to trim them is still undecided.
 - **No interoperability with tooling outside Homebrew/asdf** — alternatives like MacPorts or mise aren't a supported combination.

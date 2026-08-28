@@ -81,6 +81,26 @@ LT_RC_FILE_BASH=".bash_profile"          # macOS Terminal runs login shells
 LT_RC_FILE_BASH_INTERACTIVE=".bashrc"    # never picked by detect_rc_file; swept by uninstall only
 LT_KNOWN_RC_FILES="$LT_RC_FILE_ZSH $LT_RC_FILE_BASH $LT_RC_FILE_BASH_INTERACTIVE"
 
+# LT_LOCAL_PINS_FILE_NAME (TASK-83): bare filename, under $ASDF_DATA_DIR, of
+# the registry 06_set_globals.sh appends a directory to every time it pins
+# versions LOCALLY (never globally) to that directory. 01_uninstall_runtimes.sh
+# reads it back so a runtime version only ever pinned inside some project
+# directory (never in the global ~/.tool-versions) still gets asdf-uninstalled.
+# Deliberately lives under $ASDF_DATA_DIR: 05_purge_asdf_core.sh's `rm -rf
+# $ASDF_DATA_DIR` deletes this file too, so there's nothing extra to clean up.
+LT_LOCAL_PINS_FILE_NAME="langtoolchain-local-pins"
+
+# LT_LOCK_DIR (TASK-84): a single lock shared by install/main.sh and
+# uninstall/main.sh, so an install can never run concurrently with another
+# install, an uninstall, or itself — all of them mutate the same asdf/
+# Homebrew state. `mkdir` is used as the lock primitive (not `flock`, which
+# macOS doesn't ship) because directory creation is atomic on every real
+# filesystem: at most one concurrent `mkdir LT_LOCK_DIR` can succeed.
+# `${LT_LOCK_DIR:-default}`, same override pattern as ASDF_DATA_DIR below:
+# lets a test (or an unusual caller) point this somewhere other than the
+# real shared path without that being a special case in acquire_lock itself.
+LT_LOCK_DIR="${LT_LOCK_DIR:-${TMPDIR:-/tmp}/langtoolchain.lock}"
+
 # lt_env_var_defs [java_hook_file] (TASK-64): prints one line per rc-file
 # entry this tool's installer manages, formatted
 # "<search-pattern>|||<placement>|||<line-to-write>" (triple-pipe
@@ -150,6 +170,37 @@ run() {
     # spaces.
     "$@"
   fi
+}
+
+# acquire_lock (TASK-84): takes the exclusive lock at LT_LOCK_DIR so two
+# install/uninstall runs can never mutate asdf/Homebrew state at the same
+# time. `mkdir` either succeeds (lock acquired) or fails because the
+# directory already exists (someone else holds it) — nothing in between, so
+# this can't race. If it's already held, checks whether the PID recorded
+# inside it is still alive (`kill -0`, POSIX-specified, sends no signal):
+# a live PID means a real concurrent run, so this dies with a clear message;
+# a dead PID means whatever held the lock crashed/was killed before its own
+# `release_lock` trap could fire, so the stale lock is reclaimed instead of
+# permanently blocking every future run. Caller must `trap 'release_lock'
+# EXIT` (or fold it into an existing combined trap) right after calling this.
+acquire_lock() {
+  if ! mkdir "$LT_LOCK_DIR" 2>/dev/null; then
+    local holder_pid=""
+    [ -f "$LT_LOCK_DIR/pid" ] && holder_pid="$(cat "$LT_LOCK_DIR/pid" 2>/dev/null)"
+    if [ -n "$holder_pid" ] && kill -0 "$holder_pid" 2>/dev/null; then
+      die "Another langtoolchain install/uninstall (pid $holder_pid) appears to be running. If you're sure it isn't, remove $LT_LOCK_DIR and retry."
+    fi
+    rm -rf "$LT_LOCK_DIR"
+    mkdir "$LT_LOCK_DIR" 2>/dev/null || die "Could not acquire lock at $LT_LOCK_DIR"
+  fi
+  echo $$ > "$LT_LOCK_DIR/pid"
+}
+
+# release_lock: removes the lock directory. Safe to call even when no lock
+# was ever acquired (e.g. acquire_lock itself just died) — rm -rf on a path
+# that doesn't exist is a no-op, not an error.
+release_lock() {
+  rm -rf "$LT_LOCK_DIR"
 }
 
 # repo_root_from <path-to-a-file-inside-scripts/install-or-uninstall>:

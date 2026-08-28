@@ -6,6 +6,13 @@
 #   --yes       skip the "are you sure?" confirmation
 set -eu
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+. "$SCRIPT_DIR/../lib.sh"
+
+# Exclusive lock (TASK-84), shared with install/main.sh, so this can't race
+# another uninstall or an install. Must be first, before the confirmation
+# prompt even, so nothing below ever runs concurrently with another instance.
+acquire_lock
+trap 'release_lock' EXIT
 
 DRY_RUN=false
 AUTO_YES=false

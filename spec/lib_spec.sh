@@ -259,6 +259,53 @@ EOF
     End
   End
 
+  Describe 'acquire_lock() / release_lock() (TASK-84)'
+    setup() {
+      scratch="$(mktemp -d)"
+      LT_LOCK_DIR="$scratch/lt-test.lock"
+    }
+    cleanup() { rm -rf "$scratch"; }
+    BeforeEach 'setup'
+    AfterEach 'cleanup'
+
+    It 'creates the lock dir and records this process pid'
+      When call acquire_lock
+      The status should be success
+      The path "$LT_LOCK_DIR" should be exist
+      The contents of file "$LT_LOCK_DIR/pid" should eq "$$"
+    End
+
+    It 'release_lock removes the lock dir'
+      acquire_lock
+      When call release_lock
+      The path "$LT_LOCK_DIR" should not be exist
+    End
+
+    It 'release_lock is a no-op when no lock was ever acquired'
+      When call release_lock
+      The status should be success
+    End
+
+    It 'a second acquire while the first is still held by a live pid dies with a clear error'
+      # acquire_lock's die() path calls a real `exit`, which would tear down
+      # the shellspec runner itself under `When call` (same-process). Run it
+      # as a real subprocess instead, so its exit only ends that subprocess.
+      acquire_lock
+      When run command env LT_LOCK_DIR="$LT_LOCK_DIR" sh -c '. ./scripts/lib.sh && acquire_lock'
+      The status should be failure
+      The error should include 'appears to be running'
+      The path "$LT_LOCK_DIR" should be exist
+    End
+
+    It 'reclaims a stale lock left by a pid that no longer exists'
+      mkdir "$LT_LOCK_DIR"
+      printf '999999999\n' > "$LT_LOCK_DIR/pid"
+      When call acquire_lock
+      The status should be success
+      The contents of file "$LT_LOCK_DIR/pid" should eq "$$"
+    End
+  End
+
   Describe 'run()'
     It 'executes the command for real when DRY_RUN is false'
       DRY_RUN=false

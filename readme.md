@@ -262,6 +262,7 @@ langtoolchain은 표준 asdf 명령을 대신 실행해줄 뿐입니다 — `.to
 | `~/.asdf/installs/` | 실제 컴파일된 런타임들 (위 표) |
 | `~/.asdf/downloads/` | 설치 중 받은 소스/바이너리 캐시 |
 | `~/.asdf/shims/` | PATH가 실제로 가리키는 얇은 래퍼 실행파일들 |
+| `~/.asdf/langtoolchain-local-pins` | `--local`로 고정한 디렉토리 경로 목록 — uninstall이 로컬 전용 버전도 찾아 지울 수 있게 함 |
 
 ### 설정이 저장되는 곳
 
@@ -280,6 +281,7 @@ langtoolchain은 표준 asdf 명령을 대신 실행해줄 뿐입니다 — `.to
 
 - **언어 선택 결과 파일**: `mktemp -t langtoolchain-selection`으로 시스템 임시 디렉토리(`$TMPDIR`)에 생성, 설치 완료 후 `main.sh`가 삭제
 - **`curl | sh` 실행 시의 저장소 클론**: `mktemp -d`로 임시 디렉토리에 clone, 스크립트 종료 시 `trap`으로 자동 삭제
+- **동시 실행 방지 lock**: `$TMPDIR/langtoolchain.lock` — install/uninstall 시작 시 생성, 끝나면 `trap`으로 삭제. install↔uninstall 사이에도 공유되는 lock이라 서로 동시 실행도 막음
 
 ### 제거 시 지워지는 것 (`uninstall.sh`)
 
@@ -478,8 +480,6 @@ macOS `/usr/bin/sed`는 BSD sed라 GNU sed와 정규식이 다릅니다. `\(a\|b
 
 - **macOS 전용** — Linux/Windows 미지원.
 - **언어 5개 고정** — Node.js/Java/Python/Rust/Go 외 언어는 코드를 직접 고쳐야 추가 가능. 순수 asdf처럼 임의 플러그인을 자유롭게 추가하는 기능은 없음.
-- **로컬 스코프로 설치한 디렉토리를 uninstall이 기억 못 함** — `--local`로 설치한 프로젝트 경로가 어디에도 기록되지 않아서, uninstall은 전역 버전만 확실하게 추적함.
-- **동시 실행 보호 없음** — 같은 머신에서 설치 스크립트를 두 번 동시에 돌리는 것에 대한 lock이 없음.
 - **CI는 수동 트리거만** — `e2e-verify.yml`은 `workflow_dispatch`만 지원, PR/push마다 자동으로 돌지 않음.
 - **핵심 목적("컴파일러 설치")보다 넓은 기능이 있음** — 전역/로컬 버전 고정, 대화형 선택기는 사실 asdf 버전 관리를 감싼 부가 기능. 걷어낼지는 미결정.
 - **Homebrew/asdf 외 도구체인 미고려** — MacPorts, mise 같은 대체 도구와의 상호운용은 지원 대상 아님.

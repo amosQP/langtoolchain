@@ -11,6 +11,16 @@
 #                 of globally; also skips the interactive global/local prompt
 set -eu
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+. "$SCRIPT_DIR/../lib.sh"
+
+# Exclusive lock (TASK-84): must be first, before anything else runs, so the
+# whole pipeline below (including 00_select.sh) is protected — not just the
+# phases. Shared with uninstall/main.sh, so install can't race an uninstall
+# either. Combined with the SELECTION_FILE cleanup into one trap below once
+# SELECTION_FILE is known, since a second `trap ... EXIT` would silently
+# replace this one rather than add to it.
+acquire_lock
+trap 'release_lock' EXIT
 
 DRY_RUN=false
 # Flags meant for 00_select.sh get collected here, one per line, instead of
@@ -59,8 +69,10 @@ if SELECTION_FILE="$(sh "$SCRIPT_DIR/00_select.sh" "$@")"; then
   # path at the bottom of this script — otherwise a phase failing partway
   # through (network blip during 05_install_runtimes.sh, etc.) leaves it
   # behind, since `set -eu` kills the script before it ever reaches the
-  # unconditional `rm -f` that used to be the only cleanup.
-  trap 'rm -f "$SELECTION_FILE"' EXIT
+  # unconditional `rm -f` that used to be the only cleanup. Replaces (not
+  # adds to) the lock-only trap set above — folds release_lock in too, since
+  # a script has only one EXIT trap at a time.
+  trap 'rm -f "$SELECTION_FILE"; release_lock' EXIT
 else
   echo "설치가 취소되었습니다."
   exit 1
