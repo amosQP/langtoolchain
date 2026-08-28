@@ -1,12 +1,30 @@
 name: E2E verify (real macOS, arm64 + Intel)
 
-# Manually triggered end-to-end verification of the installer/uninstaller on
-# real, clean, ephemeral GitHub-hosted macOS runners. Covers scenarios the
-# project's backlog could only mark as "needs real hardware": TASK-6, 9-12,
-# 18, 20, 23, 31, 32, 34, 35, 42-46. Every job checks out this exact commit
-# so it always tests what's on the branch, not a stale published copy.
+# End-to-end verification of the installer/uninstaller on real, clean,
+# ephemeral GitHub-hosted macOS runners. Covers scenarios the project's
+# backlog could only mark as "needs real hardware": TASK-6, 9-12, 18, 20,
+# 23, 31, 32, 34, 35, 42-46. Every job checks out this exact commit so it
+# always tests what's on the branch, not a stale published copy.
+#
+# TASK-85: runs automatically on push/PR to main, but only when something
+# that could actually change installer behavior is touched (the `paths`
+# filter below) - each full-cycle job does a real Homebrew/asdf
+# install+uninstall, so this is minutes-to-tens-of-minutes per run, not
+# worth firing on every README/backlog-only commit. `workflow_dispatch`
+# still works for an on-demand run regardless of what changed.
 on:
   workflow_dispatch: {}
+  push:
+    branches: [main]
+    paths: &e2e-relevant-paths
+      - "scripts/**"
+      - "install.sh"
+      - "uninstall.sh"
+      - ".tool-versions"
+      - ".github/workflows/e2e-verify.yml"
+  pull_request:
+    branches: [main]
+    paths: *e2e-relevant-paths
 
 jobs:
   full-cycle:

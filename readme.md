@@ -482,7 +482,7 @@ macOS `/usr/bin/sed`는 BSD sed라 GNU sed와 정규식이 다릅니다. `\(a\|b
 - **언어 5개 고정** — Node.js/Java/Python/Rust/Go 외 언어는 코드를 직접 고쳐야 추가 가능. 순수 asdf처럼 임의 플러그인을 자유롭게 추가하는 기능은 없음.
 - **CI는 수동 트리거만** — `e2e-verify.yml`은 `workflow_dispatch`만 지원, PR/push마다 자동으로 돌지 않음.
 - **핵심 목적("컴파일러 설치")보다 넓은 기능이 있음** — 전역/로컬 버전 고정, 대화형 선택기는 사실 asdf 버전 관리를 감싼 부가 기능. 걷어낼지는 미결정.
-- **Homebrew/asdf 외 도구체인 미고려** — MacPorts, mise 같은 대체 도구와의 상호운용은 지원 대상 아님.
+- **Homebrew/asdf 외 도구체인은 지원 대상 아님** — MacPorts(`/opt/local`)는 경로 자체가 겹치지 않아 파일 충돌은 없지만, 같은 이름의 바이너리를 깔았다면 rc 파일에서 나중에 소싱되는 쪽이 이긴다(설계 원칙 #5와 동일한 문제). `mise`처럼 `.tool-versions`를 직접 읽고 자체 PATH 훅으로 셸을 활성화하는 도구는 더 실질적인 위험 — rc 파일에서 langtoolchain보다 나중에 로드되면 asdf shim을 조용히 가릴 수 있음. 둘 다 감지/경고 로직은 없음.
 
 <br>
 

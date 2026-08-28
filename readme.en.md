@@ -488,7 +488,7 @@ macOS's `/usr/bin/sed` is BSD sed, whose regex dialect differs from GNU sed's. A
 - **Fixed to 5 languages** — adding another language means editing code; there's no way to freely add arbitrary asdf plugins the way raw asdf allows.
 - **CI is manually triggered only** — `e2e-verify.yml` only supports `workflow_dispatch`, not automatic runs on every PR/push.
 - **Some features go beyond the core mission ("install compilers")** — global/local version pinning and the interactive picker are really a wrapper around asdf's own version management. Whether to trim them is still undecided.
-- **No interoperability with tooling outside Homebrew/asdf** — alternatives like MacPorts or mise aren't a supported combination.
+- **No support for tooling outside Homebrew/asdf** — MacPorts (`/opt/local`) doesn't overlap paths, so no file conflicts, but a same-named binary it installs still wins if its rc entry loads later (same issue as design principle 5). `mise`, which reads `.tool-versions` directly and activates via its own PATH hook, is the more realistic risk — if it loads after langtoolchain in the rc file, it can silently shadow the asdf shim. Neither case is detected or warned about.
 
 <br>
 

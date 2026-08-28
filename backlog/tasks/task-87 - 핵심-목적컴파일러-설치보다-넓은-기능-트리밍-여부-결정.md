@@ -1,9 +1,10 @@
 ---
 id: TASK-87
 title: 핵심 목적(컴파일러 설치)보다 넓은 기능 트리밍 여부 결정
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-08-28 09:42'
+updated_date: '2026-08-28 09:56'
 labels:
   - scope
 milestone: m-2
@@ -21,5 +22,14 @@ ordinal: 87000
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 사용자가 트리밍 여부(유지/축소)를 결정한다
+- [x] #1 사용자가 트리밍 여부(유지/축소)를 결정한다
 <!-- AC:END -->
+
+## Comments
+
+<!-- COMMENTS:BEGIN -->
+created: 2026-08-28 09:56
+---
+사용자 결정(2026-08-28): 유지. 전역/로컬 버전 고정과 대화형 선택기 모두 그대로 둔다 — 코드 변경 없음.
+---
+<!-- COMMENTS:END -->
