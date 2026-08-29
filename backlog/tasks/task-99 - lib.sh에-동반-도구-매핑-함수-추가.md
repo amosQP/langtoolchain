@@ -1,9 +1,10 @@
 ---
 id: TASK-99
 title: lib.sh에 동반 도구 매핑 함수 추가
-status: To Do
+status: In Progress
 assignee: []
 created_date: '2026-08-29 13:41'
+updated_date: '2026-08-29 13:44'
 labels: []
 milestone: m-7
 dependencies: []
