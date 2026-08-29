@@ -16,6 +16,10 @@ Describe 'scripts/install/00_select.sh'
     The contents of file "$out_file" should include '# scope: global'
     The contents of file "$out_file" should include 'nodejs lts'
     The contents of file "$out_file" should include 'golang 1.26.1'
+    # Companion tools (m-7/TASK-100) ride along under --all same as any
+    # other .tool-versions line - no special-casing needed for that path.
+    The contents of file "$out_file" should include 'pnpm 10.33.0'
+    The contents of file "$out_file" should include 'gradle 9.4.1'
     rm -f "$out_file"
   End
 

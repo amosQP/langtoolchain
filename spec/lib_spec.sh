@@ -73,6 +73,38 @@ Describe 'scripts/lib.sh'
     End
   End
 
+  Describe 'lt_companion_for_plugin() (m-7/TASK-99)'
+    It 'maps nodejs -> pnpm'
+      When call lt_companion_for_plugin nodejs
+      The output should eq 'pnpm'
+    End
+
+    It 'maps java -> gradle'
+      When call lt_companion_for_plugin java
+      The output should eq 'gradle'
+    End
+
+    It 'has no companion for python'
+      When call lt_companion_for_plugin python
+      The output should eq ''
+    End
+
+    It 'has no companion for rust (cargo already bundled)'
+      When call lt_companion_for_plugin rust
+      The output should eq ''
+    End
+
+    It 'has no companion for golang (go tool already bundled)'
+      When call lt_companion_for_plugin golang
+      The output should eq ''
+    End
+
+    It 'has no companion for an unknown plugin'
+      When call lt_companion_for_plugin some-custom-plugin
+      The output should eq ''
+    End
+  End
+
   Describe 'flag_for_binary()'
     It 'uses -v for node'
       When call flag_for_binary node
