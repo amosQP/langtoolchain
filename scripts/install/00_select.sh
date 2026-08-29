@@ -154,7 +154,24 @@ tty_out "== Select languages to install (Enter = yes) =="
 # file first and reads that on fd 3 instead of the loop's own stdin (fd 0).
 EACH_TOOL_TMP="$(mktemp)"
 each_tool "$DEFAULT_CONFIG" > "$EACH_TOOL_TMP"
+
+# Companion plugins (m-7/TASK-100, e.g. pnpm for nodejs, gradle for java —
+# see lt_companion_for_plugin() in lib.sh) don't get their own top-level
+# "Install X?" question here: asked alone, out of context, "Install pnpm
+# (pnpm)? [Y/n]" gives no hint it's tied to nodejs. Instead they're offered
+# as a follow-up right after their parent is accepted, below. Precomputed
+# once here (plain stdin, not fd 3 - this small loop doesn't touch
+# /dev/tty) so the main loop can skip them on sight.
+ALL_COMPANIONS=""
+while read -r each_plugin _each_version; do
+  companion="$(lt_companion_for_plugin "$each_plugin")"
+  [ -n "$companion" ] && ALL_COMPANIONS="$ALL_COMPANIONS $companion"
+done < "$EACH_TOOL_TMP"
+
 while read -r plugin default_version <&3; do
+  # Companion plugin: handled as a follow-up to its parent below, not here.
+  case " $ALL_COMPANIONS " in *" $plugin "*) continue ;; esac
+
   # Just for a friendlier prompt line, e.g. "nodejs (node)".
   cmd="$(binary_for_plugin "$plugin")"
   tty_out ""
@@ -174,6 +191,25 @@ while read -r plugin default_version <&3; do
 
   # Record this language/version as one line of the selection file.
   printf '%s %s\n' "$plugin" "$version" >> "$OUT_FILE"
+
+  # Offer this language's companion(s), if it has any AND the config file
+  # actually carries a default version for it (a config file with no
+  # companion line - e.g. this repo's own custom TOOL_VERSIONS_FILE users
+  # can pass - has nothing to offer, so silently skip rather than prompting
+  # for a version with no default).
+  for companion in $(lt_companion_for_plugin "$plugin"); do
+    companion_default="$(awk -v p="$companion" '$1 == p { print $2; exit }' "$EACH_TOOL_TMP")"
+    [ -n "$companion_default" ] || continue
+    tty_prompt "  Also install $companion (companion to $plugin)? [Y/n] > "
+    read -r companion_answer < /dev/tty || companion_answer=""
+    case "$companion_answer" in
+      n|N|no|NO) continue ;;
+    esac
+    tty_prompt "    Version [default: $companion_default] > "
+    read -r companion_version < /dev/tty || companion_version=""
+    [ -n "$companion_version" ] || companion_version="$companion_default"
+    printf '%s %s\n' "$companion" "$companion_version" >> "$OUT_FILE"
+  done
 done 3< "$EACH_TOOL_TMP"
 rm -f "$EACH_TOOL_TMP"
 

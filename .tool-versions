@@ -1,5 +1,7 @@
 nodejs lts
+pnpm 10.33.0
 java temurin-25.0.2+10.0.LTS
+gradle 9.4.1
 python 3.12.13
 rust 1.94.0
 golang 1.26.1
