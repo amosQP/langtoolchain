@@ -139,7 +139,7 @@ lt_env_var_defs() {
   homebrew_prefix="$(lt_homebrew_prefix)"
   printf '%s\n' \
     "brew shellenv|||prepend|||eval \"\$($homebrew_prefix/bin/brew shellenv)\"" \
-    "ASDF_DATA_DIR|||append|||export ASDF_DATA_DIR=\"\$HOME/$LT_ASDF_DATA_DIR_NAME\"" \
+    "export ASDF_DATA_DIR=|||append|||export ASDF_DATA_DIR=\"\$HOME/$LT_ASDF_DATA_DIR_NAME\"" \
     "ASDF_DATA_DIR/shims|||append|||export PATH=\"\$ASDF_DATA_DIR/shims:\$PATH\"" \
     "set-java-home\.|||append|||. \$HOME/$LT_ASDF_DATA_DIR_NAME/plugins/java/$java_hook_file" \
     "opt/sqlite/bin|||append|||export PATH=\"$homebrew_prefix/opt/sqlite/bin:\$PATH\"" \
@@ -237,11 +237,28 @@ LT_CHILD_PID=""
 # `asdf install`'s own compiler subprocesses) — sufficient to make the
 # *lock* release promptly, which is what re-running depends on; deeper
 # orphans left briefly behind (if any) aren't this process's to manage.
+# Returns the phase's own exit status (not just whatever the trailing
+# `LT_CHILD_PID=""` assignment would return, which is always 0) so a
+# failing phase under the caller's `set -eu` actually stops the run instead
+# of being silently treated as success.
 run_phase() {
+  # Between backgrounding the child and capturing its PID there's a brief
+  # window where handle_interrupt has nothing to kill yet: a signal landing
+  # exactly there would see an empty LT_CHILD_PID, skip the kill, and still
+  # exit 130 — freeing the lock while this phase's child keeps running
+  # unsupervised, the very orphan-plus-early-unlock this function exists to
+  # prevent. Ignoring INT/TERM for that instant closes the window: POSIX
+  # signals aren't queued while ignored, so a signal delivered there is
+  # simply dropped rather than deferred — worst case it takes a second
+  # Ctrl-C, which beats leaking an orphaned child.
+  trap '' INT TERM
   sh "$1" &
   LT_CHILD_PID=$!
-  wait "$LT_CHILD_PID"
+  trap 'handle_interrupt' INT TERM
+  local status=0
+  wait "$LT_CHILD_PID" || status=$?
   LT_CHILD_PID=""
+  return "$status"
 }
 
 # handle_interrupt (TASK-90): registered via `trap handle_interrupt INT
@@ -283,8 +300,23 @@ acquire_lock() {
     if [ -n "$holder_pid" ] && kill -0 "$holder_pid" 2>/dev/null; then
       die "Another langtoolchain install/uninstall (pid $holder_pid) appears to be running. If you're sure it isn't, remove $LT_LOCK_DIR and retry."
     fi
-    rm -rf "$LT_LOCK_DIR"
-    mkdir "$LT_LOCK_DIR" 2>/dev/null || die "Could not acquire lock at $LT_LOCK_DIR"
+    # Stale lock (holder died before its own release_lock trap could run):
+    # reclaim it. Two processes can observe the same stale lock at the same
+    # instant and both reach this point — `rm -rf` on an already-removed
+    # directory is a silent no-op, so at most one of the two `mkdir`s right
+    # after it actually succeeds. The loser re-checks who holds the lock
+    # now instead of assuming the worst: if the winner just legitimately
+    # took it, that's reported as a real concurrent run, not a mystery
+    # "could not acquire" failure.
+    rm -rf "$LT_LOCK_DIR" 2>/dev/null
+    if ! mkdir "$LT_LOCK_DIR" 2>/dev/null; then
+      holder_pid=""
+      [ -f "$LT_LOCK_DIR/pid" ] && holder_pid="$(cat "$LT_LOCK_DIR/pid" 2>/dev/null)"
+      if [ -n "$holder_pid" ] && kill -0 "$holder_pid" 2>/dev/null; then
+        die "Another langtoolchain install/uninstall (pid $holder_pid) appears to be running. If you're sure it isn't, remove $LT_LOCK_DIR and retry."
+      fi
+      die "Could not acquire lock at $LT_LOCK_DIR"
+    fi
   fi
   echo $$ > "$LT_LOCK_DIR/pid"
 }

@@ -79,6 +79,7 @@ EOF
       # (bash builtins, awk, mktemp, head, grep) so "not found" is genuine.
       export PATH="/usr/bin:/bin:/usr/sbin:/sbin"
       When run "$SCRIPT"
+      The status should be failure
       The output should include "FAIL: 'rustc' not found in PATH."
     End
   End

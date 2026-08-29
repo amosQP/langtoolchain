@@ -21,6 +21,8 @@ fi
 
 RC_FILE="$(detect_rc_file)"
 
+OK=true
+
 # fd 3, not stdin — the `"$cmd" ... | head -n 1` pipe below would otherwise
 # race this loop's own `read` over the same fd (see 02_install_plugins.sh).
 # POSIX sh has no process substitution, so each_tool's output goes to a
@@ -38,6 +40,7 @@ while read -r plugin version <&3; do
   resolved_path="$(command -v "$cmd" 2>/dev/null || true)"
   if [ -z "$resolved_path" ]; then
     log "  FAIL: '$cmd' not found in PATH."
+    OK=false
     continue
   fi
   case "$resolved_path" in
@@ -72,3 +75,13 @@ rm -f "$EACH_TOOL_TMP"
 
 log ""
 log "FAIL/WARN 항목이 있다면: 'source $RC_FILE' (또는 새 터미널) 실행 후 다시 확인하세요."
+
+# Mirrors 06_validate_teardown.sh's OK-tracking exit: a FAIL here means a
+# tool a phase claimed to install isn't actually usable, so a CI/wrapper
+# script checking this phase's exit code must be able to tell — logging
+# alone let a broken install report success before this.
+if $OK; then
+  exit 0
+else
+  exit 1
+fi
