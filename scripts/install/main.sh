@@ -35,13 +35,9 @@ SELECT_OPTS=""
 for arg in "$@"; do
   case "$arg" in
     --dry-run) DRY_RUN=true ;;
-    --all) SELECT_OPTS="${SELECT_OPTS}--all
-" ;;
-    --yes) SELECT_OPTS="${SELECT_OPTS}--yes
-" ;;
-    --local) SELECT_OPTS="${SELECT_OPTS}--local
-" ;;
-    --local=*) SELECT_OPTS="${SELECT_OPTS}${arg}
+    # These four all forward verbatim to 00_select.sh — $arg already IS the
+    # exact flag text in each case, so one arm covers all of them.
+    --all|--yes|--local|--local=*) SELECT_OPTS="${SELECT_OPTS}${arg}
 " ;;
     *) echo "Unknown option: $arg" >&2; exit 1 ;;
   esac

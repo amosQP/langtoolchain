@@ -26,8 +26,8 @@ log "Using rc file: $RC_FILE"
 # writing to, so it's made here and handed to lib.sh's lt_env_var_defs()
 # rather than lib.sh guessing it.
 case "$RC_FILE" in
-  *.zshrc) JAVA_HOOK="set-java-home.zsh" ;;
-  *)       JAVA_HOOK="set-java-home.bash" ;;
+  *"$LT_RC_FILE_ZSH") JAVA_HOOK="set-java-home.zsh" ;;
+  *)                  JAVA_HOOK="set-java-home.bash" ;;
 esac
 
 # Every rc-file line this installer manages — search pattern, placement

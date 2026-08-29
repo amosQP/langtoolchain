@@ -56,12 +56,18 @@ for arg in "$@"; do
   esac
 done
 
+# resolve_scope_dir <dir>: validates <dir> exists, then prints its absolute
+# path — resolved now, once, so 06_set_globals.sh (running later, as its own
+# process, possibly with a different cwd) gets an unambiguous path
+# regardless of where it happens to be invoked from. Shared by both the
+# --local=DIR flag path here and the interactive local-scope prompt below.
+resolve_scope_dir() {
+  [ -d "$1" ] || die "Directory not found: $1"
+  ( cd "$1" && pwd )
+}
+
 if [ "$SCOPE" = "local" ]; then
-  [ -d "$SCOPE_DIR" ] || die "Directory not found: $SCOPE_DIR"
-  # Resolve to an absolute path now, once, so 06_set_globals.sh (running
-  # later, as its own process, possibly with a different cwd) gets an
-  # unambiguous path regardless of where it happens to be invoked from.
-  SCOPE_DIR="$(cd "$SCOPE_DIR" && pwd)"
+  SCOPE_DIR="$(resolve_scope_dir "$SCOPE_DIR")"
 fi
 
 # scope_line: the "# scope: ..." line written as the first line of the
@@ -186,9 +192,7 @@ if [ -z "$SCOPE" ]; then
     로컬|local|Local|l|L)
       tty_prompt "  어느 디렉토리에 고정할까요? [기본값: 현재 디렉토리] > "
       read -r scope_dir_answer < /dev/tty || scope_dir_answer=""
-      SCOPE_DIR="${scope_dir_answer:-$(pwd)}"
-      [ -d "$SCOPE_DIR" ] || die "Directory not found: $SCOPE_DIR"
-      SCOPE_DIR="$(cd "$SCOPE_DIR" && pwd)"
+      SCOPE_DIR="$(resolve_scope_dir "${scope_dir_answer:-$(pwd)}")"
       SCOPE="local"
       ;;
     *)

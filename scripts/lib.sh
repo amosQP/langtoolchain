@@ -62,6 +62,16 @@ lt_homebrew_prefix() {
 LT_ASDF_DATA_DIR_NAME=".asdf"
 LT_ASDF_DATA_DIR_DEFAULT="$HOME/$LT_ASDF_DATA_DIR_NAME"
 
+# lt_asdf_data_dir: prints the effective asdf data directory — a live
+# ASDF_DATA_DIR override if the caller's environment already has one, else
+# the default above. Split out of ensure_asdf_on_path() (which also exports
+# it and touches PATH) so callers that only need the *value* — teardown
+# checks that must NOT put asdf back on PATH — don't have to re-type the
+# same "${ASDF_DATA_DIR:-$LT_ASDF_DATA_DIR_DEFAULT}" fallback themselves.
+lt_asdf_data_dir() {
+  echo "${ASDF_DATA_DIR:-$LT_ASDF_DATA_DIR_DEFAULT}"
+}
+
 # LT_RC_FILE_ZSH / LT_RC_FILE_BASH / LT_RC_FILE_BASH_INTERACTIVE /
 # LT_KNOWN_RC_FILES (TASK-66): the rc filenames (bare, relative to $HOME)
 # this tool knows how to write into or clean up.
@@ -282,6 +292,18 @@ handle_interrupt() {
   exit 130
 }
 
+# lt_die_if_lock_held: reads $LT_LOCK_DIR/pid and dies with the "another
+# instance is running" message if that PID is still alive. Shared by
+# acquire_lock()'s two check points below (the initial mkdir failure and the
+# stale-lock reclaim race) so the message/logic can't drift between them.
+lt_die_if_lock_held() {
+  local holder_pid=""
+  [ -f "$LT_LOCK_DIR/pid" ] && holder_pid="$(cat "$LT_LOCK_DIR/pid" 2>/dev/null)"
+  if [ -n "$holder_pid" ] && kill -0 "$holder_pid" 2>/dev/null; then
+    die "Another langtoolchain install/uninstall (pid $holder_pid) appears to be running. If you're sure it isn't, remove $LT_LOCK_DIR and retry."
+  fi
+}
+
 # acquire_lock (TASK-84): takes the exclusive lock at LT_LOCK_DIR so two
 # install/uninstall runs can never mutate asdf/Homebrew state at the same
 # time. `mkdir` either succeeds (lock acquired) or fails because the
@@ -295,11 +317,7 @@ handle_interrupt() {
 # EXIT` (or fold it into an existing combined trap) right after calling this.
 acquire_lock() {
   if ! mkdir "$LT_LOCK_DIR" 2>/dev/null; then
-    local holder_pid=""
-    [ -f "$LT_LOCK_DIR/pid" ] && holder_pid="$(cat "$LT_LOCK_DIR/pid" 2>/dev/null)"
-    if [ -n "$holder_pid" ] && kill -0 "$holder_pid" 2>/dev/null; then
-      die "Another langtoolchain install/uninstall (pid $holder_pid) appears to be running. If you're sure it isn't, remove $LT_LOCK_DIR and retry."
-    fi
+    lt_die_if_lock_held
     # Stale lock (holder died before its own release_lock trap could run):
     # reclaim it. Two processes can observe the same stale lock at the same
     # instant and both reach this point — `rm -rf` on an already-removed
@@ -310,11 +328,7 @@ acquire_lock() {
     # "could not acquire" failure.
     rm -rf "$LT_LOCK_DIR" 2>/dev/null
     if ! mkdir "$LT_LOCK_DIR" 2>/dev/null; then
-      holder_pid=""
-      [ -f "$LT_LOCK_DIR/pid" ] && holder_pid="$(cat "$LT_LOCK_DIR/pid" 2>/dev/null)"
-      if [ -n "$holder_pid" ] && kill -0 "$holder_pid" 2>/dev/null; then
-        die "Another langtoolchain install/uninstall (pid $holder_pid) appears to be running. If you're sure it isn't, remove $LT_LOCK_DIR and retry."
-      fi
+      lt_die_if_lock_held
       die "Could not acquire lock at $LT_LOCK_DIR"
     fi
   fi
@@ -430,7 +444,7 @@ read_scope() {
 ensure_asdf_on_path() {
   # Default to asdf's own default data directory if the caller's
   # environment hasn't already set ASDF_DATA_DIR.
-  export ASDF_DATA_DIR="${ASDF_DATA_DIR:-$LT_ASDF_DATA_DIR_DEFAULT}"
+  export ASDF_DATA_DIR="$(lt_asdf_data_dir)"
   # Only prepend the shims directory if it isn't already on PATH — colons
   # bracket the check so a partial/substring match (e.g. a differently
   # named sibling directory) can't produce a false positive.
@@ -482,13 +496,22 @@ ensure_build_flags() {
   # swallowed — `export LDFLAGS="...$(cmd)..."` always "succeeds" as a
   # command even if the command substitution inside it failed, masking the
   # real error and leaving LDFLAGS built from an empty/wrong path.
-  local homebrew_prefix openssl_prefix readline_prefix sqlite_prefix zlib_prefix
+  local homebrew_prefix openssl_prefix readline_prefix sqlite_prefix zlib_prefix prefixes
   homebrew_prefix="$(lt_homebrew_prefix)"
   export PATH="$homebrew_prefix/opt/sqlite/bin:$PATH"
-  openssl_prefix="$(brew --prefix openssl)"
-  readline_prefix="$(brew --prefix readline)"
-  sqlite_prefix="$(brew --prefix sqlite3)"
-  zlib_prefix="$(brew --prefix zlib)"
+  # One `brew --prefix` call for all four formulas (each spawns brew's own
+  # Ruby interpreter, so four separate calls means four avoidable startups)
+  # instead of one call per formula. Order matches the arguments, one prefix
+  # per line; `set --` (not `read`, which would eat the last line without a
+  # trailing newline) re-splits that into positional params on newlines only,
+  # same idiom used for SELECT_OPTS/SED_ARGS elsewhere in this codebase.
+  prefixes="$(brew --prefix openssl readline sqlite3 zlib)"
+  IFS="
+"
+  # shellcheck disable=SC2086
+  set -- $prefixes
+  unset IFS
+  openssl_prefix="$1" readline_prefix="$2" sqlite_prefix="$3" zlib_prefix="$4"
   export LDFLAGS="-L$openssl_prefix/lib -L$readline_prefix/lib -L$sqlite_prefix/lib -L$zlib_prefix/lib"
   export CPPFLAGS="-I$openssl_prefix/include -I$readline_prefix/include -I$sqlite_prefix/include -I$zlib_prefix/include"
   export PKG_CONFIG_PATH="$openssl_prefix/lib/pkgconfig:$readline_prefix/lib/pkgconfig:$sqlite_prefix/lib/pkgconfig"

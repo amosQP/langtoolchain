@@ -17,11 +17,11 @@ if brew list asdf >/dev/null 2>&1; then
   run brew uninstall asdf || true
 fi
 
-# Respect a live ASDF_DATA_DIR override (same "${VAR:-default}" pattern
-# ensure_asdf_on_path() uses) instead of always assuming the default — a
+# Respect a live ASDF_DATA_DIR override (same fallback ensure_asdf_on_path()
+# uses, via lt_asdf_data_dir()) instead of always assuming the default — a
 # user who installed with a custom ASDF_DATA_DIR would otherwise have their
 # real data directory silently left behind (TASK-70).
-TARGET_ASDF_DATA_DIR="${ASDF_DATA_DIR:-$LT_ASDF_DATA_DIR_DEFAULT}"
+TARGET_ASDF_DATA_DIR="$(lt_asdf_data_dir)"
 
 if [ -d "$TARGET_ASDF_DATA_DIR" ]; then
   # This is where EVERYTHING asdf-managed actually lives: downloads,
