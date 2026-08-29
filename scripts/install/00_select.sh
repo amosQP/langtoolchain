@@ -133,7 +133,7 @@ fi
 : > "$OUT_FILE"
 
 tty_out ""
-tty_out "== 설치할 언어를 선택하세요 (Enter = 예) =="
+tty_out "== Select languages to install (Enter = yes) =="
 
 # fd 3, not stdin — see scripts/install/02_install_plugins.sh for why
 # (the /dev/tty reads below are already redirected per-command so they're
@@ -148,7 +148,7 @@ while read -r plugin default_version <&3; do
   # Just for a friendlier prompt line, e.g. "nodejs (node)".
   cmd="$(binary_for_plugin "$plugin")"
   tty_out ""
-  tty_prompt "$plugin ($cmd) 설치할까요? [Y/n] > "
+  tty_prompt "Install $plugin ($cmd)? [Y/n] > "
   # Read the answer straight from the terminal device, not this loop's fd
   # 3/fd 0 — `|| answer=""` treats Ctrl-D / a closed tty as "no answer" so
   # the script degrades gracefully instead of erroring under `set -e`.
@@ -157,7 +157,7 @@ while read -r plugin default_version <&3; do
     n|N|no|NO) continue ;;   # skip this language entirely; move to the next
   esac
 
-  tty_prompt "  버전 [기본값: $default_version] > "
+  tty_prompt "  Version [default: $default_version] > "
   read -r version < /dev/tty || version=""
   # Empty input (plain Enter) means "use the default version".
   [ -n "$version" ] || version="$default_version"
@@ -172,13 +172,13 @@ rm -f "$EACH_TOOL_TMP"
 # silently proceeding with an empty plan.
 if [ ! -s "$OUT_FILE" ]; then
   tty_out ""
-  tty_out "선택된 언어가 없습니다. 설치를 취소합니다."
+  tty_out "No languages selected. Cancelling installation."
   exit 1
 fi
 
 # Recap what was selected before asking for final confirmation.
 tty_out ""
-tty_out "== 설치 목록 =="
+tty_out "== Install list =="
 while read -r plugin version; do
   tty_out "  $plugin  $version"
 done < "$OUT_FILE"
@@ -186,11 +186,11 @@ tty_out ""
 
 # Ask where to pin these versions, unless --local[=DIR] already decided it.
 if [ -z "$SCOPE" ]; then
-  tty_prompt "전역으로 고정할까요, 이 디렉토리에만 고정할까요? [전역/로컬, 기본값: 전역] > "
+  tty_prompt "Pin globally, or only in this directory? [global/local, default: global] > "
   read -r scope_answer < /dev/tty || scope_answer=""
   case "$scope_answer" in
-    로컬|local|Local|l|L)
-      tty_prompt "  어느 디렉토리에 고정할까요? [기본값: 현재 디렉토리] > "
+    local|Local|l|L)
+      tty_prompt "  Which directory? [default: current directory] > "
       read -r scope_dir_answer < /dev/tty || scope_dir_answer=""
       SCOPE_DIR="$(resolve_scope_dir "${scope_dir_answer:-$(pwd)}")"
       SCOPE="local"
@@ -202,10 +202,10 @@ if [ -z "$SCOPE" ]; then
 fi
 
 if ! $AUTO_YES; then
-  tty_prompt "설치할까요? [Y/n] > "
+  tty_prompt "Install? [Y/n] > "
   read -r confirm < /dev/tty || confirm=""
   case "$confirm" in
-    n|N|no|NO) tty_out "취소되었습니다."; exit 1 ;;
+    n|N|no|NO) tty_out "Cancelled."; exit 1 ;;
   esac
 fi
 

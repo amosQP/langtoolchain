@@ -190,25 +190,25 @@ git clone https://github.com/amosQP/langtoolchain.git && cd langtoolchain
 언어별 설치 여부(Enter = 예)와 버전을 확인한 뒤, 마지막 확인을 거쳐 설치를 시작합니다.
 
 ```text
-== 설치할 언어를 선택하세요 (Enter = 예) ==
+== Select languages to install (Enter = yes) ==
 
-nodejs (node) 설치할까요? [Y/n] > ⏎
-  버전 [기본값: lts] > ⏎
+Install nodejs (node)? [Y/n] > ⏎
+  Version [default: lts] > ⏎
 
-java (java) 설치할까요? [Y/n] > n
+Install java (java)? [Y/n] > n
 
-python (python) 설치할까요? [Y/n] > ⏎
-  버전 [기본값: 3.12.13] > ⏎
+Install python (python)? [Y/n] > ⏎
+  Version [default: 3.12.13] > ⏎
 ...
-== 설치 목록 ==
+== Install list ==
   nodejs  lts
   python  3.12.13
   rust    1.94.0
   golang  1.26.1
 
-전역으로 고정할까요, 이 디렉토리에만 고정할까요? [전역/로컬, 기본값: 전역] > ⏎
+Pin globally, or only in this directory? [global/local, default: global] > ⏎
 
-설치할까요? [Y/n] > ⏎
+Install? [Y/n] > ⏎
 ```
 
 > 마지막 프롬프트는 이번에 설치한 버전을 **어디에** 활성화할지 고릅니다 — 자세한 내용은
@@ -306,8 +306,8 @@ asdf는 언어 런타임을 **한 번만 설치**하고(`~/.asdf/installs/<plugi
 
 **대화형**: 설치 마지막 확인 직전에 물어봅니다 (Enter = 전역).
 ```text
-전역으로 고정할까요, 이 디렉토리에만 고정할까요? [전역/로컬, 기본값: 전역] > 로컬
-  어느 디렉토리에 고정할까요? [기본값: 현재 디렉토리] > ⏎
+Pin globally, or only in this directory? [global/local, default: global] > local
+  Which directory? [default: current directory] > ⏎
 ```
 
 **플래그** (비대화형, 프롬프트를 건너뜀):

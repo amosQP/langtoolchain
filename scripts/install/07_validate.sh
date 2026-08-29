@@ -74,7 +74,7 @@ done 3< "$EACH_TOOL_TMP"
 rm -f "$EACH_TOOL_TMP"
 
 log ""
-log "FAIL/WARN 항목이 있다면: 'source $RC_FILE' (또는 새 터미널) 실행 후 다시 확인하세요."
+log "If there are any FAIL/WARN items above: run 'source $RC_FILE' (or open a new terminal) and check again."
 
 # Mirrors 06_validate_teardown.sh's OK-tracking exit: a FAIL here means a
 # tool a phase claimed to install isn't actually usable, so a CI/wrapper

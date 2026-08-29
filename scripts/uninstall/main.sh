@@ -32,16 +32,28 @@ done
 export DRY_RUN
 
 echo "langtoolchain uninstaller"
-echo "asdf, 모든 asdf 런타임, 관련 Homebrew 패키지, 이 도구가 추가한 셸 설정을 제거합니다."
+echo "This will remove asdf, every asdf-managed runtime, the related Homebrew packages, and the shell config this tool added."
 
-if ! $AUTO_YES; then
-  printf "계속할까요? [y/N] > "
+# Probe for a controlling terminal first - same technique as
+# install/00_select.sh's own INTERACTIVE check (`true < /dev/tty` either
+# succeeds, or fails with its own stderr suppressed here). Without this, the
+# `read` below would leak a raw "/dev/tty: Device not configured" shell
+# error straight to the user the moment there's no tty at all (CI, or this
+# script piped through something with no terminal) - found during a UX pass
+# (m-6/TASK-97.1). No tty and no --yes: proceed anyway, the same way
+# 00_select.sh auto-falls-back to --all under those conditions, rather than
+# leaving the user staring at a prompt that can never be answered.
+INTERACTIVE=true
+{ true < /dev/tty; } 2>/dev/null || INTERACTIVE=false
+
+if ! $AUTO_YES && $INTERACTIVE; then
+  printf "Continue? [y/N] > "
   # Read straight from the terminal device, not this script's own stdin —
   # matters when this file itself was piped in via `curl | bash`.
   read -r reply < /dev/tty || reply=""
   case "$reply" in
     y|Y|yes|YES) ;;
-    *) echo "취소되었습니다."; exit 1 ;;
+    *) echo "Cancelled."; exit 1 ;;
   esac
 fi
 
@@ -69,9 +81,15 @@ sh "$SCRIPT_DIR/06_validate_teardown.sh"
 VALIDATION_EXIT_CODE=$?
 set -e
 
-if [ "$VALIDATION_EXIT_CODE" -eq 0 ]; then
-  echo "제거가 완료되었습니다. 'exec \$SHELL'로 새 세션을 여세요."
+# DRY_RUN-aware (found during a UX pass, m-6/TASK-94.3): under --dry-run,
+# 06_validate_teardown.sh above exits 0 via its own dry-run skip path (there
+# was nothing to validate, not "validated clean") - without this branch a
+# preview-only run would print the same "complete" message as a real one.
+if [ "$DRY_RUN" = "true" ]; then
+  echo "Dry run complete. Nothing was actually removed or changed."
+elif [ "$VALIDATION_EXIT_CODE" -eq 0 ]; then
+  echo "Removal complete. Run 'exec \$SHELL' to start a fresh session."
 else
-  echo "제거는 끝났지만 위 경고를 확인하세요."
+  echo "Removal finished, but check the warnings above."
   exit "$VALIDATION_EXIT_CODE"
 fi

@@ -454,7 +454,7 @@ EOF
       # same process — same reasoning as acquire_lock's die() path above.
       When run command sh -c '. ./scripts/lib.sh && handle_interrupt'
       The status should equal 130
-      The output should include '중단되었습니다'
+      The output should include 'Interrupted'
     End
 
     It 'kills the tracked LT_CHILD_PID before exiting'

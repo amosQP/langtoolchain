@@ -288,7 +288,7 @@ handle_interrupt() {
     kill "$LT_CHILD_PID" 2>/dev/null || true
   fi
   log ""
-  log "중단되었습니다. 이미 끝난 부분은 다시 실행해도 건너뜁니다 — 이어서 하려면 같은 명령을 다시 실행하세요."
+  log "Interrupted. Anything already finished will be skipped on a re-run - just run the same command again to continue."
   exit 130
 }
 

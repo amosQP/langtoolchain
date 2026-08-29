@@ -49,4 +49,12 @@ while IFS= read -r def; do
 done < "$ENV_VAR_DEFS_TMP"
 rm -f "$ENV_VAR_DEFS_TMP"
 
-log "Shell config written to $RC_FILE."
+# DRY_RUN-aware (found during a UX pass, m-6/TASK-94.3): every write above
+# went through append_env_var/prepend_env_var's own DRY_RUN branch (preview
+# only, nothing on disk), so saying "written" unconditionally here would
+# misreport a no-op preview as a real change.
+if [ "$DRY_RUN" = "true" ]; then
+  log "(dry-run: nothing was actually written to $RC_FILE)"
+else
+  log "Shell config written to $RC_FILE."
+fi

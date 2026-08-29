@@ -52,12 +52,12 @@ esac
 
 log ""
 if $OK; then
-  log "검증 통과: 정리가 완료되었습니다."
+  log "Validation passed: cleanup complete."
   exit 0
 else
   # A still-open shell keeps the OLD PATH/JAVA_HOME cached even after the
   # underlying files are gone — this isn't a real failure, just stale state
   # in the current process's environment.
-  log "위 FAIL 항목은 현재 셸 세션에 남은 캐시입니다. 'exec \$SHELL' (또는 새 터미널) 후 다시 확인하세요."
+  log "The FAIL items above are cached state left in this shell session. Run 'exec \$SHELL' (or open a new terminal) and check again."
   exit 1
 fi

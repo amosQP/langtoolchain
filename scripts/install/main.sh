@@ -84,7 +84,7 @@ if SELECTION_FILE="$(sh "$SCRIPT_DIR/00_select.sh" "$@")"; then
   # a script has only one EXIT trap at a time.
   trap 'rm -f "$SELECTION_FILE"; release_lock' EXIT
 else
-  echo "설치가 취소되었습니다."
+  echo "Installation cancelled."
   exit 1
 fi
 
@@ -107,4 +107,11 @@ do
 done
 
 echo ""
-echo "완료되었습니다. 'source ~/.zshrc' (또는 새 터미널)을 실행해 PATH를 반영하세요."
+# DRY_RUN-aware (found during a UX pass, m-6/TASK-94.3): every write below
+# this point was only ever previewed under --dry-run, so a plain "Done" here
+# would misreport a no-op run as a real completed install.
+if [ "$DRY_RUN" = "true" ]; then
+  echo "Dry run complete. Nothing was actually installed or changed."
+else
+  echo "Done. Run 'source ~/.zshrc' (or open a new terminal) to pick up the PATH changes."
+fi
