@@ -204,6 +204,20 @@ EOF
     End
   End
 
+  Describe 'lt_asdf_data_dir()'
+    It 'prints the default $HOME/.asdf when ASDF_DATA_DIR is unset'
+      unset ASDF_DATA_DIR
+      When call lt_asdf_data_dir
+      The output should eq "$HOME/.asdf"
+    End
+
+    It 'prints a live ASDF_DATA_DIR override instead of the default'
+      export ASDF_DATA_DIR=/tmp/custom-asdf-data
+      When call lt_asdf_data_dir
+      The output should eq '/tmp/custom-asdf-data'
+    End
+  End
+
   Describe 'ensure_asdf_on_path()'
     It 'defaults ASDF_DATA_DIR to $HOME/.asdf when unset'
       unset ASDF_DATA_DIR
@@ -259,6 +273,22 @@ EOF
     End
   End
 
+  Describe 'ensure_build_flags() (batched brew --prefix)'
+    It 'builds LDFLAGS/CPPFLAGS/PKG_CONFIG_PATH from one batched "brew --prefix" call, in argument order'
+      # One Mocked `brew` handles both ensure_brew_on_path's `command -v brew`
+      # check and the actual `--prefix openssl readline sqlite3 zlib` call -
+      # its four-line output must land in the same openssl/readline/sqlite/
+      # zlib order the positional-parameter split assumes.
+      Mock brew
+        printf '%s\n' /fake/openssl /fake/readline /fake/sqlite /fake/zlib
+      End
+      When call ensure_build_flags
+      The variable LDFLAGS should eq '-L/fake/openssl/lib -L/fake/readline/lib -L/fake/sqlite/lib -L/fake/zlib/lib'
+      The variable CPPFLAGS should eq '-I/fake/openssl/include -I/fake/readline/include -I/fake/sqlite/include -I/fake/zlib/include'
+      The variable PKG_CONFIG_PATH should eq '/fake/openssl/lib/pkgconfig:/fake/readline/lib/pkgconfig:/fake/sqlite/lib/pkgconfig'
+    End
+  End
+
   Describe 'acquire_lock() / release_lock() (TASK-84)'
     setup() {
       scratch="$(mktemp -d)"
@@ -303,6 +333,61 @@ EOF
       When call acquire_lock
       The status should be success
       The contents of file "$LT_LOCK_DIR/pid" should eq "$$"
+    End
+
+    It 'reports the live winner instead of a generic failure when this process loses the stale-lock reclaim race'
+      # Simulates two processes reclaiming the same stale lock at once
+      # (lib.sh's own comment on this branch): pre-seed a dead pid so the
+      # first check finds it stale, then make `mkdir` behave as if another
+      # process's reclaim won the race right after this one's `rm -rf` -
+      # the second `mkdir` "fails" but leaves behind a directory a live pid
+      # actually owns, instead of leaving nothing (a real crash) behind.
+      mkdir "$LT_LOCK_DIR"
+      printf '999999999\n' > "$LT_LOCK_DIR/pid"
+      When run command env LT_LOCK_DIR="$LT_LOCK_DIR" sh -c '
+        . ./scripts/lib.sh
+        mkdir() {
+          if [ "$1" = "$LT_LOCK_DIR" ] && [ -d "$LT_LOCK_DIR" ]; then
+            command mkdir "$LT_LOCK_DIR" 2>/dev/null
+            echo $$ > "$LT_LOCK_DIR/pid"
+            return 1
+          fi
+          command mkdir "$@"
+        }
+        acquire_lock
+      '
+      The status should be failure
+      The error should include 'appears to be running'
+      The error should not include 'Could not acquire lock'
+    End
+  End
+
+  Describe 'lt_die_if_lock_held()'
+    setup() {
+      scratch="$(mktemp -d)"
+      LT_LOCK_DIR="$scratch/lt-test.lock"
+      mkdir "$LT_LOCK_DIR"
+    }
+    cleanup() { rm -rf "$scratch"; }
+    BeforeEach 'setup'
+    AfterEach 'cleanup'
+
+    It 'is a no-op when there is no pid file'
+      When call lt_die_if_lock_held
+      The status should be success
+    End
+
+    It 'is a no-op when the recorded pid is no longer alive'
+      printf '999999999\n' > "$LT_LOCK_DIR/pid"
+      When call lt_die_if_lock_held
+      The status should be success
+    End
+
+    It 'dies with a clear message when the recorded pid is alive'
+      printf '%s\n' "$$" > "$LT_LOCK_DIR/pid"
+      When run command env LT_LOCK_DIR="$LT_LOCK_DIR" sh -c '. ./scripts/lib.sh && lt_die_if_lock_held'
+      The status should be failure
+      The error should include 'appears to be running'
     End
   End
 
@@ -370,6 +455,100 @@ EOF
       When run command sh -c '. ./scripts/lib.sh && handle_interrupt'
       The status should equal 130
       The output should include '중단되었습니다'
+    End
+
+    It 'kills the tracked LT_CHILD_PID before exiting'
+      # Everything - the background sleep, the kill, and the liveness poll -
+      # runs inside one subprocess script, not directly in this It block:
+      # a bare `sleep 30 &` started straight in shellspec's own evaluation
+      # shell leaks its async "Terminated" job-control notification into
+      # shellspec's own signal handling once killed, which shellspec then
+      # misreads as this example itself having been interrupted (an
+      # "Example aborted" false failure, not a real one - the actual
+      # regression to catch is only about handle_interrupt's own kill).
+      runner_script="$(mktemp)"
+      cat > "$runner_script" <<'RUNNER_EOF'
+# The shell's own async "job N Terminated" notification for the killed
+# background sleep below is diagnostic noise, not this test's concern -
+# silence it rather than let it register as unexpected stderr output.
+exec 2>/dev/null
+sleep 30 &
+child_pid=$!
+# LT_CHILD_PID must be set AFTER sourcing lib.sh, not via env before it -
+# lib.sh's own top-level `LT_CHILD_PID=""` initialization would otherwise
+# clobber an inherited env value right back to empty, same as it does on
+# every real run_phase() invocation between phases.
+sh -c ". ./scripts/lib.sh; LT_CHILD_PID=$child_pid; handle_interrupt" >/dev/null 2>&1
+child_alive=true
+i=0
+while [ "$i" -lt 20 ]; do
+  kill -0 "$child_pid" 2>/dev/null || { child_alive=false; break; }
+  sleep 0.1
+  i=$((i + 1))
+done
+echo "child_alive:$child_alive"
+kill "$child_pid" 2>/dev/null   # safety net if the loop above ever finds it still alive
+exit 0
+RUNNER_EOF
+      When run command sh "$runner_script"
+      The output should include 'child_alive:false'
+      rm -f "$runner_script"
+    End
+  End
+
+  Describe 'run_phase() (TASK-93)'
+    It "returns the phase script's own exit status instead of always 0"
+      phase_script="$(mktemp)"
+      echo 'exit 1' > "$phase_script"
+      When call run_phase "$phase_script"
+      The status should be failure
+      rm -f "$phase_script"
+    End
+
+    It 'returns success when the phase script succeeds'
+      phase_script="$(mktemp)"
+      echo 'exit 0' > "$phase_script"
+      When call run_phase "$phase_script"
+      The status should be success
+      rm -f "$phase_script"
+    End
+
+    It 'clears LT_CHILD_PID once the phase has finished'
+      phase_script="$(mktemp)"
+      echo 'exit 0' > "$phase_script"
+      run_phase "$phase_script"
+      The variable LT_CHILD_PID should eq ''
+      rm -f "$phase_script"
+    End
+
+    It 'terminates a long-running phase promptly on SIGTERM instead of waiting for it to finish (regression)'
+      # Reproduces the exact TASK-32/TASK-93 CI failure at unit-test speed:
+      # a phase mid-sleep must be killed and its lock released the instant
+      # SIGTERM arrives, not only after the phase finishes naturally.
+      phase_script="$(mktemp)"
+      echo 'sleep 30' > "$phase_script"
+      runner_script="$(mktemp)"
+      cat > "$runner_script" <<'RUNNER_EOF'
+. ./scripts/lib.sh
+trap 'handle_interrupt' INT TERM
+run_phase "$1" &
+runner_pid=$!
+sleep 1
+kill -TERM "$runner_pid"
+wait "$runner_pid" 2>/dev/null
+exit 0
+RUNNER_EOF
+      start_ts=$(date +%s)
+      sh "$runner_script" "$phase_script" || true
+      end_ts=$(date +%s)
+      elapsed=$((end_ts - start_ts))
+      # 1s built-in delay before the kill, generous slack for CI jitter -
+      # nowhere near the 30s the un-fixed bug would have blocked for.
+      fast_enough=false
+      [ "$elapsed" -lt 10 ] && fast_enough=true
+      When call true
+      The variable fast_enough should eq 'true'
+      rm -f "$phase_script" "$runner_script"
     End
   End
 

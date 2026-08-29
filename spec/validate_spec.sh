@@ -37,8 +37,25 @@ EOF
       printf 'rust 1.94.0\n' > "$tool_versions"
       export ASDF_DATA_DIR="$data_dir" TOOL_VERSIONS_FILE="$tool_versions" DRY_RUN=false
       When run "$SCRIPT"
+      The status should be success
       The output should include 'OK:   rustc ->'
       The output should not include 'WARN: rustc resolves outside asdf shims'
+    End
+
+    It 'WARNs (but still exits success) when the binary resolves outside asdf shims'
+      # A system-wide install shadowing the asdf shim - real regression this
+      # check exists to catch (see the WARN branch in 07_validate.sh's own
+      # case statement), never exercised by any existing test until now.
+      outside_dir="$(mktemp -d)"
+      printf '#!/usr/bin/env bash\necho "rustc 1.94.0 (abc 2026-01-01)"\n' > "$outside_dir/rustc"
+      chmod +x "$outside_dir/rustc"
+      printf 'rust 1.94.0\n' > "$tool_versions"
+      export ASDF_DATA_DIR="$data_dir" TOOL_VERSIONS_FILE="$tool_versions" DRY_RUN=false
+      export PATH="$outside_dir:$PATH"
+      When run "$SCRIPT"
+      The status should be success
+      The output should include 'WARN: rustc resolves outside asdf shims'
+      rm -rf "$outside_dir"
     End
   End
 
