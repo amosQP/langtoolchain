@@ -4,6 +4,7 @@ title: TASK-90 시그널 trap이 phase 도중 kill 시 lock을 안 놓아줌 (�
 status: To Do
 assignee: []
 created_date: '2026-08-28 14:17'
+updated_date: '2026-08-28 14:17'
 labels:
   - bug
   - shell
@@ -22,7 +23,16 @@ ordinal: 93000
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 phase 실행 도중 SIGTERM을 받으면 즉시(자식이 끝날 때까지 기다리지 않고) lock을 해제한다
-- [ ] #2 로컬 재현 테스트로 확인
+- [x] #1 phase 실행 도중 SIGTERM을 받으면 즉시(자식이 끝날 때까지 기다리지 않고) lock을 해제한다
+- [x] #2 로컬 재현 테스트로 확인
 - [ ] #3 실기기 CI(e2e-verify.yml)의 kill mid-install then re-run 잡이 통과한다
 <!-- AC:END -->
+
+## Comments
+
+<!-- COMMENTS:BEGIN -->
+created: 2026-08-28 14:17
+---
+run_phase()로 백그라운드+wait 패턴 적용, handle_interrupt()가 LT_CHILD_PID를 먼저 kill. shellcheck -s sh/dash -n 클린, shellspec 99/99(bash+dash) 통과. 로컬 재현: sleep 30을 자식으로 백그라운드+wait 후 SIGTERM → 이전엔 30초 내내 안 죽었을 걸로 예상되는 시나리오가 수정 후 0초만에 종료+lock 해제 확인. AC #3(실기기 CI)은 푸시 후 별도 확인.
+---
+<!-- COMMENTS:END -->
