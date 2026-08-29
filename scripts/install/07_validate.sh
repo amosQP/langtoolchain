@@ -52,9 +52,14 @@ while read -r plugin version <&3; do
     *) log "  WARN: $cmd resolves outside asdf shims ($resolved_path)" ;;
   esac
 
-  # Some tools (java) print their version to stderr, hence 2>&1; `head -n 1`
-  # keeps the log to one line even for multi-line version banners.
-  version_line="$("$cmd" "$flag" 2>&1 | head -n 1)"
+  # Some tools (java) print their version to stderr, hence 2>&1. First line
+  # containing a digit, not just the first line (m-7/TASK-101) - gradle's
+  # `--version` banner opens with a bare "----..." separator line before
+  # "Gradle 9.4.1", so a plain `head -n 1` would grab the separator instead
+  # of the version. Every version string this tool already compares against
+  # (node/java/python/rustc/go) already puts its version on line 1 too, so
+  # this is behavior-identical for all of them - not gradle-specific.
+  version_line="$("$cmd" "$flag" 2>&1 | grep -m 1 '[0-9]')"
   # Compare against the version requested in .tool-versions. Aliases like
   # "lts" have no numeric core, so version_core is empty and we skip the
   # check rather than false-warn.

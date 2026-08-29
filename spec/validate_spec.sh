@@ -31,6 +31,18 @@ EOF
     chmod +x "$data_dir/shims/$1"
   }
 
+  # fake_banner_cmd <name> <banner-first-line> <banner-version-line>: like
+  # fake_cmd, but for tools (gradle) whose --version output opens with a
+  # non-version banner line before the actual version line.
+  fake_banner_cmd() {
+    cat > "$data_dir/shims/$1" <<EOF
+#!/usr/bin/env bash
+echo "$2"
+echo "$3"
+EOF
+    chmod +x "$data_dir/shims/$1"
+  }
+
   Describe 'shim-path check (TASK-57 regression)'
     It 'reports OK when the binary resolves under a custom (non-".asdf") ASDF_DATA_DIR'
       fake_cmd rustc 'rustc 1.94.0 (abc 2026-01-01)'
@@ -84,6 +96,18 @@ EOF
       When run "$SCRIPT"
       The output should not include 'WARN: node reports'
       The output should include 'v24.14.0'
+    End
+  End
+
+  Describe 'multi-line version banner (m-7/TASK-101 regression)'
+    It 'finds the version on a later line when the first line has no digits (gradle-style banner)'
+      fake_banner_cmd gradle '------------------------------------------------------------' 'Gradle 9.4.1'
+      printf 'gradle 9.4.1\n' > "$tool_versions"
+      export ASDF_DATA_DIR="$data_dir" TOOL_VERSIONS_FILE="$tool_versions" DRY_RUN=false
+      When run "$SCRIPT"
+      The status should be success
+      The output should not include 'WARN: gradle reports'
+      The output should include 'Gradle 9.4.1'
     End
   End
 
