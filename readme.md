@@ -40,15 +40,25 @@ curl -fsSL https://raw.githubusercontent.com/amosQP/langtoolchain/main/install.s
 
 ## 📦 관리 범위
 
-langtoolchain이 설치·관리하는 건 **Node.js·Java·Python·Rust·Go 5개 언어**와 그걸 위한 Homebrew 패키지
-6개(`asdf`, `openssl` 등)뿐입니다. 그 외에 Mac에 이미 있거나 앞으로 `brew install`할 다른 패키지,
-다른 언어의 asdf 플러그인, 다른 버전 관리자는 전혀 건드리지 않습니다.
+langtoolchain이 설치·관리하는 건 **Node.js·Java·Python·Rust·Go 5개 언어**(+ 각 언어의 동반 도구인
+pnpm·gradle)와 그걸 위한 Homebrew 패키지 6개(`asdf`, `openssl` 등)뿐입니다. 그 외에 Mac에 이미
+있거나 앞으로 `brew install`할 다른 패키지, 이 도구가 설치하지 않은 다른 asdf 플러그인은 **install
+쪽에서는** 전혀 건드리지 않습니다.
 
 | | langtoolchain이 관리 | 관리 안 함 |
 |---|---|---|
 | 🍺 Homebrew | `asdf` + 컴파일용 시스템 패키지 6개 | 그 외 모든 `brew` 패키지 |
-| 🧬 asdf | `nodejs`/`java`/`python`/`rust`/`golang` 플러그인 | 다른 언어·도구용 플러그인 |
-| 🗂️ 버전 고정 | 고른 언어를, 고른 범위(전역/디렉토리)에만 | 나머지 프로젝트·설정 |
+| 🧬 asdf | `nodejs`/`java`/`python`/`rust`/`golang` + 동반 도구 `pnpm`(nodejs)/`gradle`(java) 플러그인 | 다른 언어·도구용 플러그인 (단, uninstall은 예외 — 아래 참고) |
+| 🗂️ 버전 고정 | 고른 언어(+동반 도구)를, 고른 범위(전역/디렉토리)에만 | 나머지 프로젝트·설정 |
+
+> ⚠️ **uninstall은 예외입니다**: asdf 자체를 통째로 지우기 때문에, langtoolchain이 설치하지 않은
+> 다른 asdf 플러그인이 있어도 `~/.asdf/` 전체와 함께 지워집니다 — 자세한 내용은 아래 "제거 시
+> 지워지는 것" 섹션 참고. install 쪽 "관리 안 함"과 uninstall의 실제 동작이 다르다는 점에 유의하세요.
+
+**pnpm/gradle이 동반 도구인 이유**: nodejs·java의 asdf 플러그인은 각각 순수 Node 런타임/JDK만
+설치할 뿐 별도 패키지·빌드 매니저가 없어서, 실제 프로젝트에는 pnpm(node)이나 gradle(java)이 거의
+필수급으로 따라붙습니다. 반대로 Rust는 asdf-rust가 cargo를 이미 번들로 포함하고, Go도 `go` 자체에
+모듈/빌드 기능이 내장돼 있어서 별도 동반 도구가 없습니다 — 그래서 이 둘만 있습니다.
 
 <br>
 
@@ -113,7 +123,8 @@ git clone https://github.com/amosQP/langtoolchain.git && cd langtoolchain
 ```zsh
 source ~/.zshrc                                    # 새 터미널 탭을 열어도 동일
 node -v && java -version && python --version && rustc --version && go version
-which node java python rustc go                     # ~/.asdf/shims/... 아래를 가리켜야 정상
+pnpm --version && gradle --version                  # 동반 도구도 설치했다면
+which node java python rustc go pnpm gradle          # ~/.asdf/shims/... 아래를 가리켜야 정상
 asdf current                                         # 지금 활성화된 버전 전체 목록
 asdf current nodejs                                  # 특정 언어만
 asdf list nodejs                                     # 이 머신에 설치된 nodejs 버전들
@@ -194,6 +205,8 @@ git clone https://github.com/amosQP/langtoolchain.git && cd langtoolchain
 
 Install nodejs (node)? [Y/n] > ⏎
   Version [default: lts] > ⏎
+  Also install pnpm (companion to nodejs)? [Y/n] > ⏎
+    Version [default: 10.33.0] > ⏎
 
 Install java (java)? [Y/n] > n
 
@@ -202,6 +215,7 @@ Install python (python)? [Y/n] > ⏎
 ...
 == Install list ==
   nodejs  lts
+  pnpm    10.33.0
   python  3.12.13
   rust    1.94.0
   golang  1.26.1
@@ -213,6 +227,9 @@ Install? [Y/n] > ⏎
 
 > 마지막 프롬프트는 이번에 설치한 버전을 **어디에** 활성화할지 고릅니다 — 자세한 내용은
 > 바로 아래 [버전 고정 범위](#-버전-고정-범위-전역-vs-디렉토리별) 참고.
+>
+> 동반 도구(pnpm/gradle) 질문은 그 부모 언어(nodejs/java)를 수락했을 때만 따라 나옵니다 — 위
+> 예시에서 java를 `n`으로 거절하니 gradle 질문 자체가 안 뜨는 걸 볼 수 있습니다.
 
 <details>
 <summary><b>옵션 플래그</b> (<code>curl | sh -s -- &lt;옵션&gt;</code> 형태로 전달 가능)</summary>
@@ -245,11 +262,14 @@ Install? [Y/n] > ⏎
 ## 📦 설치되는 것
 
 `.tool-versions`에 정의된 기본 언어/버전 — 설치 화면에서 개별적으로 켜고 끄거나 버전을 바꿀 수 있습니다.
+동반 도구(pnpm/gradle)는 각각 그 부모 언어를 설치할 때만 물어보는 선택 사항입니다.
 
-| 언어 | 기본 버전 |
+| 언어 / 동반 도구 | 기본 버전 |
 |---|---|
 | 🟩 Node.js | `lts` |
+| &nbsp;&nbsp;└ pnpm (동반) | `10.33.0` |
 | ☕ Java (Temurin) | `temurin-25.0.2+10.0.LTS` |
+| &nbsp;&nbsp;└ gradle (동반) | `9.4.1` |
 | 🐍 Python | `3.12.13` |
 | 🦀 Rust | `1.94.0` |
 | 🐹 Go | `1.26.1` |
@@ -352,7 +372,9 @@ langtoolchain은 표준 asdf 명령을 대신 실행해줄 뿐입니다 — `.to
 | 언어 | plugin 이름 | 설치 디렉토리 (`asdf install`) | shim (PATH가 실제로 가리키는 것) |
 |---|---|---|---|
 | 🟩 Node.js | `nodejs` | `~/.asdf/installs/nodejs/<version>/` | `~/.asdf/shims/node`, `npm`, `npx` 등 |
+| &nbsp;&nbsp;└ pnpm (동반) | `pnpm` | `~/.asdf/installs/pnpm/<version>/` | `~/.asdf/shims/pnpm` |
 | ☕ Java | `java` | `~/.asdf/installs/java/<version>/` | `~/.asdf/shims/java`, `javac` 등 |
+| &nbsp;&nbsp;└ gradle (동반) | `gradle` | `~/.asdf/installs/gradle/<version>/` | `~/.asdf/shims/gradle` |
 | 🐍 Python | `python` | `~/.asdf/installs/python/<version>/` | `~/.asdf/shims/python`, `pip` 등 |
 | 🦀 Rust | `rust` | `~/.asdf/installs/rust/<version>/` | `~/.asdf/shims/rustc`, `cargo` 등 |
 | 🐹 Go | `golang` | `~/.asdf/installs/golang/<version>/` | `~/.asdf/shims/go`, `gofmt` 등 |
