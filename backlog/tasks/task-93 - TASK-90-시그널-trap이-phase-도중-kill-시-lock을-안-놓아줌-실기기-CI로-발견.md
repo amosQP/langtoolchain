@@ -1,10 +1,10 @@
 ---
 id: TASK-93
 title: TASK-90 시그널 trap이 phase 도중 kill 시 lock을 안 놓아줌 (실기기 CI로 발견)
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-08-28 14:17'
-updated_date: '2026-08-28 14:17'
+updated_date: '2026-08-29 13:36'
 labels:
   - bug
   - shell
@@ -25,8 +25,14 @@ ordinal: 93000
 <!-- AC:BEGIN -->
 - [x] #1 phase 실행 도중 SIGTERM을 받으면 즉시(자식이 끝날 때까지 기다리지 않고) lock을 해제한다
 - [x] #2 로컬 재현 테스트로 확인
-- [ ] #3 실기기 CI(e2e-verify.yml)의 kill mid-install then re-run 잡이 통과한다
+- [x] #3 실기기 CI(e2e-verify.yml)의 kill mid-install then re-run 잡이 통과한다
 <!-- AC:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+AC #3 확인: e2e-verify.yml CI 실행 33179437716(commit 5ee855f, run_phase() 수정 포함)에서 'kill mid-install then re-run (TASK-32)' 잡이 2m44s에 통과함 — 'start install, kill it partway through phase 5' 및 're-run to completion' 스텝 모두 성공. 수정 전 CI 실행(33162354973)에서는 're-run to completion' 스텝이 실패했던 것과 대조됨.
+<!-- SECTION:NOTES:END -->
 
 ## Comments
 
