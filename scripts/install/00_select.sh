@@ -123,6 +123,16 @@ trap '$SUCCESS || rm -f "$OUT_FILE"' EXIT
 # still comes from --local if given; otherwise there's no tty to ask, so
 # it defaults to global (scope_line() already does this when SCOPE="").
 if ! $INTERACTIVE || $SELECT_ALL; then
+  # Only announce this when it's the SILENT fallback (no tty, no --all) -
+  # a caller who explicitly passed --all already knows what they asked for.
+  # Without this, a CI run with no flags at all installs every language with
+  # no indication that's what just happened (found during a UX pass,
+  # m-6/TASK-95.1). To stderr, not tty_out - there may be no /dev/tty to
+  # write to at all in this exact branch, and stdout is reserved for the
+  # OUT_FILE path handoff below.
+  if ! $INTERACTIVE && ! $SELECT_ALL; then
+    echo "No controlling terminal detected - installing every language in $DEFAULT_CONFIG (same as --all)." >&2
+  fi
   write_with_scope "$DEFAULT_CONFIG" "$OUT_FILE"
   SUCCESS=true
   echo "$OUT_FILE"   # the one line of "real" stdout output

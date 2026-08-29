@@ -42,6 +42,18 @@ Describe 'scripts/install/00_select.sh'
     The status should be success
     The output should include "$out_file"
     The contents of file "$out_file" should include '# scope: global'
+    # The silent-fallback case must say so (TASK-95.1 regression) - unlike
+    # explicit --all above, nothing here told this run to install everything.
+    The error should include 'No controlling terminal detected'
+    rm -f "$out_file"
+  End
+
+  It 'does not announce the fallback when --all was explicitly given (the user already knows)'
+    When run "$SCRIPT" --all
+    out_file="$(tail -n1 "$SHELLSPEC_STDOUT_FILE")"
+    The status should be success
+    The output should include "$out_file"
+    The error should not include 'No controlling terminal detected'
     rm -f "$out_file"
   End
 End

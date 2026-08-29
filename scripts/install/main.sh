@@ -84,7 +84,12 @@ if SELECTION_FILE="$(sh "$SCRIPT_DIR/00_select.sh" "$@")"; then
   # a script has only one EXIT trap at a time.
   trap 'rm -f "$SELECTION_FILE"; release_lock' EXIT
 else
-  echo "Installation cancelled."
+  # No message here - 00_select.sh already explained why it exited non-zero
+  # (a die() error like an invalid --local directory, or its own
+  # "No languages selected"/"Cancelled" message on a genuine user decline).
+  # Printing a blanket "Installation cancelled." on top used to make a real
+  # error read as if the user had backed out voluntarily (found during a UX
+  # pass, m-6/TASK-96.1).
   exit 1
 fi
 
