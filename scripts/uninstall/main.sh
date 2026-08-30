@@ -34,19 +34,39 @@ export DRY_RUN
 printf '%s\n' "langtoolchain uninstaller"
 printf '%s\n' "This will remove asdf, every asdf-managed runtime, the related Homebrew packages, and the shell config this tool added."
 
-# Probe for a controlling terminal first - same technique as
-# install/00_select.sh's own INTERACTIVE check (`true < /dev/tty` either
-# succeeds, or fails with its own stderr suppressed here). Without this, the
-# `read` below would leak a raw "/dev/tty: Device not configured" shell
-# error straight to the user the moment there's no tty at all (CI, or this
-# script piped through something with no terminal) - found during a UX pass
-# (m-6/TASK-97.1). No tty and no --yes: proceed anyway, the same way
-# 00_select.sh auto-falls-back to --all under those conditions, rather than
-# leaving the user staring at a prompt that can never be answered.
-INTERACTIVE=true
-{ true < /dev/tty; } 2>/dev/null || INTERACTIVE=false
+# confirm_uninstall (m-8): extracted so main.sh's own top-level flow reads
+# as a named step (see the call right below this function) instead of this
+# whole block sitting inline between the intro message and the phase loop.
+confirm_uninstall() {
+  local interactive=true reply
+  # Probe for a controlling terminal first - same technique as
+  # install/00_select.sh's own INTERACTIVE check (`true < /dev/tty` either
+  # succeeds, or fails with its own stderr suppressed here). Without this,
+  # the `read` below would leak a raw "/dev/tty: Device not configured"
+  # shell error straight to the user the moment there's no tty at all (CI,
+  # or this script piped through something with no terminal) - found
+  # during a UX pass (m-6/TASK-97.1).
+  { true < /dev/tty; } 2>/dev/null || interactive=false
 
-if ! $AUTO_YES && $INTERACTIVE; then
+  # --yes given, or no tty and no --yes: proceed anyway, the same way
+  # 00_select.sh auto-falls-back to --all under those conditions, rather
+  # than leaving the user staring at a prompt that can never be answered.
+  #
+  # `if COND; then return; fi`, not a bare `COND && return` - found the
+  # hard way (m-8 refactor regression): under `set -e`, a standalone
+  # `A && B` statement where A fails still counts as a failing statement
+  # (B never running doesn't save it) and kills the script right there,
+  # silently, since `return` swallows the failure before anything gets a
+  # chance to report it. Wrapping the same check in an explicit `if`
+  # sidesteps this - failing a condition inside `if` is exactly what `if`
+  # exists to handle safely under `set -e`.
+  if $AUTO_YES; then
+    return
+  fi
+  if ! $interactive; then
+    return
+  fi
+
   printf "Continue? [y/N] > "
   # Read straight from the terminal device, not this script's own stdin —
   # matters when this file itself was piped in via `curl | bash`.
@@ -55,7 +75,9 @@ if ! $AUTO_YES && $INTERACTIVE; then
     y|Y|yes|YES) ;;
     *) printf '%s\n' "Cancelled."; exit 1 ;;
   esac
-fi
+}
+
+confirm_uninstall
 
 # Each phase runs as its own `sh` process, independent of the others —
 # same reasoning as scripts/install/main.sh. run_phase (not a plain

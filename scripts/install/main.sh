@@ -57,41 +57,49 @@ if [ "$DRY_RUN" != "true" ]; then
   ensure_disk_space 5
 fi
 
-# 00_select.sh writes prompts to /dev/tty and its actual result (a file
-# path) to stdout, so command substitution here captures just that path.
-# If the user backs out (answers "n" to everything, or declines the final
-# confirmation), it exits non-zero and prints nothing — the `if` catches
-# that instead of letting `set -e` kill this script with a confusing error.
-# IFS=newline turns $SELECT_OPTS back into separate positional parameters
-# (splitting only on the newlines added above, not on spaces inside a
-# --local=<dir with spaces> value); an empty $SELECT_OPTS splits into zero
-# parameters, matching the "no extra flags" case.
-IFS="
+# run_language_selection (m-8): extracted so main.sh's own top-level flow
+# reads as named steps (see the call right below this function) instead of
+# this whole block sitting inline between the disk-space check and the
+# phase loop.
+run_language_selection() {
+  # IFS=newline turns $SELECT_OPTS back into separate positional parameters
+  # (splitting only on the newlines added above, not on spaces inside a
+  # --local=<dir with spaces> value); an empty $SELECT_OPTS splits into zero
+  # parameters, matching the "no extra flags" case.
+  IFS="
 "
-# shellcheck disable=SC2086
-set -- $SELECT_OPTS
-unset IFS
-if SELECTION_FILE="$(sh "$SCRIPT_DIR/00_select.sh" "$@")"; then
-  # Every later phase reads $TOOL_VERSIONS_FILE instead of the repo's own
-  # .tool-versions, so they only touch what the user actually picked.
-  export TOOL_VERSIONS_FILE="$SELECTION_FILE"
-  # Clean up this temp file on ANY exit from here on, not just the success
-  # path at the bottom of this script — otherwise a phase failing partway
-  # through (network blip during 05_install_runtimes.sh, etc.) leaves it
-  # behind, since `set -eu` kills the script before it ever reaches the
-  # unconditional `rm -f` that used to be the only cleanup. Replaces (not
-  # adds to) the lock-only trap set above — folds release_lock in too, since
-  # a script has only one EXIT trap at a time.
-  trap 'rm -f "$SELECTION_FILE"; release_lock' EXIT
-else
-  # No message here - 00_select.sh already explained why it exited non-zero
-  # (a die() error like an invalid --local directory, or its own
-  # "No languages selected"/"Cancelled" message on a genuine user decline).
-  # Printing a blanket "Installation cancelled." on top used to make a real
-  # error read as if the user had backed out voluntarily (found during a UX
-  # pass, m-6/TASK-96.1).
-  exit 1
-fi
+  # shellcheck disable=SC2086
+  set -- $SELECT_OPTS
+  unset IFS
+  # 00_select.sh writes prompts to /dev/tty and its actual result (a file
+  # path) to stdout, so command substitution here captures just that path.
+  # If the user backs out (answers "n" to everything, or declines the final
+  # confirmation), it exits non-zero and prints nothing — the `if` catches
+  # that instead of letting `set -e` kill this script with a confusing error.
+  if SELECTION_FILE="$(sh "$SCRIPT_DIR/00_select.sh" "$@")"; then
+    # Every later phase reads $TOOL_VERSIONS_FILE instead of the repo's own
+    # .tool-versions, so they only touch what the user actually picked.
+    export TOOL_VERSIONS_FILE="$SELECTION_FILE"
+    # Clean up this temp file on ANY exit from here on, not just the
+    # success path at the bottom of this script — otherwise a phase failing
+    # partway through (network blip during 05_install_runtimes.sh, etc.)
+    # leaves it behind, since `set -eu` kills the script before it ever
+    # reaches the unconditional `rm -f` that used to be the only cleanup.
+    # Replaces (not adds to) the lock-only trap set above — folds
+    # release_lock in too, since a script has only one EXIT trap at a time.
+    trap 'rm -f "$SELECTION_FILE"; release_lock' EXIT
+  else
+    # No message here - 00_select.sh already explained why it exited
+    # non-zero (a die() error like an invalid --local directory, or its own
+    # "No languages selected"/"Cancelled" message on a genuine user
+    # decline). Printing a blanket "Installation cancelled." on top used to
+    # make a real error read as if the user had backed out voluntarily
+    # (found during a UX pass, m-6/TASK-96.1).
+    exit 1
+  fi
+}
+
+run_language_selection
 
 # Each phase runs as its OWN `sh` process (not sourced) — this is what
 # makes them independent: none of them can accidentally rely on a variable
