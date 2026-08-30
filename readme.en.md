@@ -23,6 +23,10 @@ curl -fsSL https://raw.githubusercontent.com/amosQP/langtoolchain/main/install.s
 
 <br>
 
+> ⚠️ **macOS-only, personal tooling.** There's no plan to support Linux/Windows (including
+> WSL), and this wasn't built as a general-purpose production tool — it's shaped around my
+> own Mac workflow. No guarantees about behavior on other setups or use cases.
+
 ## Why this exists
 
 Every new Mac meant reinstalling Homebrew and asdf, adding plugins, and fixing `.zshrc` by hand — the same grind every time. I got tired of it, so I built this. **Now it's one line.** Homebrew, asdf, language selection, shell config — all automatic.
