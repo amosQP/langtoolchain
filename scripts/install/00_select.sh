@@ -171,11 +171,58 @@ lt_draw_arrow_menu() {
   done
 }
 
+# lt_read_menu_key <option-count> (m-8): reads exactly one raw keypress
+# from /dev/tty (caller must already have put the tty in raw mode - this
+# just does the read) and classifies it: UP/DOWN for an arrow escape
+# sequence, ENTER for a bare Enter, a digit string for a valid 1..n
+# shortcut, or OTHER for anything else (caller ignores it and reads again).
+# Split out of lt_arrow_menu (m-8, extracted 2026 refactor pass) so "what
+# does this keypress mean" has its own name, separate from "what do I do
+# about it" (still lt_arrow_menu's job) and "how do I redraw" (already its
+# own lt_draw_arrow_menu).
+lt_read_menu_key() {
+  local n="$1" key1 key2 key3
+  key1="$(dd if=/dev/tty bs=1 count=1 2>/dev/null)"
+  if [ "$key1" = "$_LT_ESC" ]; then
+    key2="$(dd if=/dev/tty bs=1 count=1 2>/dev/null)"
+    key3="$(dd if=/dev/tty bs=1 count=1 2>/dev/null)"
+    case "$key2$key3" in
+      '[A') echo UP ;;
+      '[B') echo DOWN ;;
+      *) echo OTHER ;;
+    esac
+  elif [ -z "$key1" ]; then
+    echo ENTER
+  else
+    case "$key1" in
+      [1-9]) if [ "$key1" -le "$n" ]; then echo "$key1"; else echo OTHER; fi ;;
+      *) echo OTHER ;;
+    esac
+  fi
+}
+
+# lt_collapse_menu <question> <chosen-label> <option-count> (m-8): clears
+# the question+options block lt_draw_arrow_menu drew (option-count + 1
+# lines) and replaces it with a single confirmed "✔ <question> <chosen>"
+# summary line. Split out of lt_arrow_menu for the same reason as
+# lt_read_menu_key above - "how do I finalize" is a distinct concern from
+# "how do I read input" and "how do I redraw".
+lt_collapse_menu() {
+  local question="$1" chosen="$2" n="$3" j=0
+  printf '%s[%dA' "$_LT_ESC" "$((n + 1))" > /dev/tty
+  while [ "$j" -le "$n" ]; do
+    printf '%s[2K\n' "$_LT_ESC" > /dev/tty
+    j=$((j + 1))
+  done
+  printf '%s[%dA' "$_LT_ESC" "$((n + 1))" > /dev/tty
+  tty_out "${_LT_GREEN}✔${_LT_RESET} $question ${_LT_DIM}$chosen${_LT_RESET}"
+}
+
 # Falls back to the plain always-worked numbered prompt if raw mode isn't
 # available at all (`stty -g` failing to read the tty's own attributes —
 # some unusual terminal) - still fully interactive, just no arrow keys.
 lt_arrow_menu() {
-  local question="$1" selected="$2" n old_stty key1 key2 key3 i opt chosen j
+  local question="$1" selected="$2" n old_stty action i opt chosen
   shift 2
   n=$#
 
@@ -187,9 +234,9 @@ lt_arrow_menu() {
       i=$((i + 1))
     done
     tty_prompt "  > "
-    read -r key1 < /dev/tty || key1=""
-    case "$key1" in
-      [1-9]) [ "$key1" -le "$n" ] && selected="$key1" ;;
+    read -r action < /dev/tty || action=""
+    case "$action" in
+      [1-9]) [ "$action" -le "$n" ] && selected="$action" ;;
     esac
     printf '%s\n' "$selected"
     return
@@ -204,42 +251,24 @@ lt_arrow_menu() {
   stty -icanon -echo min 1 time 0 < /dev/tty
 
   while :; do
-    key1="$(dd if=/dev/tty bs=1 count=1 2>/dev/null)"
-    if [ "$key1" = "$_LT_ESC" ]; then
-      key2="$(dd if=/dev/tty bs=1 count=1 2>/dev/null)"
-      key3="$(dd if=/dev/tty bs=1 count=1 2>/dev/null)"
-      case "$key2$key3" in
-        '[A') if [ "$selected" -gt 1 ]; then selected=$((selected - 1)); else selected=$n; fi ;;
-        '[B') if [ "$selected" -lt "$n" ]; then selected=$((selected + 1)); else selected=1; fi ;;
-      esac
-    elif [ -z "$key1" ]; then
-      break   # Enter
-    else
-      case "$key1" in
-        [1-9]) if [ "$key1" -le "$n" ]; then selected="$key1"; break; fi ;;
-      esac
-    fi
+    action="$(lt_read_menu_key "$n")"
+    case "$action" in
+      UP)   if [ "$selected" -gt 1 ]; then selected=$((selected - 1)); else selected=$n; fi ;;
+      DOWN) if [ "$selected" -lt "$n" ]; then selected=$((selected + 1)); else selected=1; fi ;;
+      ENTER) stty "$old_stty" < /dev/tty; _LT_RAW_STTY=""; break ;;
+      [1-9]) selected="$action"; stty "$old_stty" < /dev/tty; _LT_RAW_STTY=""; break ;;
+    esac
     printf '%s[%dA' "$_LT_ESC" "$((n + 1))" > /dev/tty
     lt_draw_arrow_menu "$question" "$@"
   done
-  stty "$old_stty" < /dev/tty
-  _LT_RAW_STTY=""
 
-  # Collapse the question+options block down to one confirmed summary line.
-  printf '%s[%dA' "$_LT_ESC" "$((n + 1))" > /dev/tty
-  j=0
-  while [ "$j" -le "$n" ]; do
-    printf '%s[2K\n' "$_LT_ESC" > /dev/tty
-    j=$((j + 1))
-  done
-  printf '%s[%dA' "$_LT_ESC" "$((n + 1))" > /dev/tty
   i=1
   chosen=""
   for opt in "$@"; do
     [ "$i" -eq "$selected" ] && chosen="$opt"
     i=$((i + 1))
   done
-  tty_out "${_LT_GREEN}✔${_LT_RESET} $question ${_LT_DIM}$chosen${_LT_RESET}"
+  lt_collapse_menu "$question" "$chosen" "$n"
 
   printf '%s\n' "$selected"
 }
@@ -331,10 +360,13 @@ while read -r each_plugin _each_version; do
   [ -n "$companion" ] && ALL_COMPANIONS="$ALL_COMPANIONS $companion"
 done < "$EACH_TOOL_TMP"
 
-while read -r plugin default_version <&3; do
-  # Companion plugin: handled as a follow-up to its parent below, not here.
-  case " $ALL_COMPANIONS " in *" $plugin "*) continue ;; esac
-
+# lt_offer_language <plugin> <default-version> (m-8): asks whether to
+# install one language, its version, then loops through that language's
+# companion tool(s) (if any). Extracted from the while loop below so the
+# loop itself reads as "for each candidate language, offer it" instead of
+# carrying the full per-language interaction inline.
+lt_offer_language() {
+  local plugin="$1" default_version="$2" cmd version companion companion_default companion_version
   # Just for a friendlier prompt line, e.g. "nodejs (node)".
   cmd="$(binary_for_plugin "$plugin")"
   tty_out ""
@@ -358,6 +390,12 @@ while read -r plugin default_version <&3; do
       fi
     done
   fi
+}
+
+while read -r plugin default_version <&3; do
+  # Companion plugin: handled as a follow-up to its parent below, not here.
+  case " $ALL_COMPANIONS " in *" $plugin "*) continue ;; esac
+  lt_offer_language "$plugin" "$default_version"
 done 3< "$EACH_TOOL_TMP"
 rm -f "$EACH_TOOL_TMP"
 

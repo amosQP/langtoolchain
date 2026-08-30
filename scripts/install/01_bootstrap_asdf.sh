@@ -24,9 +24,14 @@ step "Phase 1: Ensuring Homebrew and asdf are installed"
 # in this fresh process (see ensure_brew_on_path in lib.sh for why).
 ensure_brew_on_path
 
-if command -v brew >/dev/null 2>&1; then
-  log "Homebrew found: $(command -v brew)"
-else
+# install_homebrew_if_missing (m-8): extracted so this script's own
+# top-level flow reads as two named steps (see the two calls at the bottom
+# of this file) instead of two inline if/else blocks back to back.
+install_homebrew_if_missing() {
+  if command -v brew >/dev/null 2>&1; then
+    log "Homebrew found: $(command -v brew)"
+    return
+  fi
   log "Homebrew not found — installing (this will ask for your password once, via sudo)..."
   if [ "$DRY_RUN" = "true" ]; then
     # `run` alone can't gate this: `$(curl ...)` is a command substitution,
@@ -60,17 +65,23 @@ else
     log "Homebrew installed: $(command -v brew)"
     lt_report installed "Homebrew ($(command -v brew))"
   fi
-fi
+}
 
-if command -v asdf >/dev/null 2>&1; then
-  # Already installed (e.g. re-running the installer) — nothing to do.
-  # `|| true` covers the (unlikely) case asdf exists but `version` errors.
-  log "asdf already installed: $(asdf version 2>/dev/null || true)"
-else
+# install_asdf_if_missing (m-8): same reasoning as install_homebrew_if_missing above.
+install_asdf_if_missing() {
+  if command -v asdf >/dev/null 2>&1; then
+    # Already installed (e.g. re-running the installer) — nothing to do.
+    # `|| true` covers the (unlikely) case asdf exists but `version` errors.
+    log "asdf already installed: $(asdf version 2>/dev/null || true)"
+    return
+  fi
   # `run` respects --dry-run: prints "+ brew install asdf" instead of
   # actually installing under DRY_RUN=true. retry (TASK-88): a formula
   # download failing on a flaky connection shouldn't need a full manual
   # re-run.
   retry 3 5 run brew install asdf
   lt_report installed "asdf (Homebrew)"
-fi
+}
+
+install_homebrew_if_missing
+install_asdf_if_missing

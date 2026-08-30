@@ -29,7 +29,13 @@ OK=true
 # temp file first.
 EACH_TOOL_TMP="$(mktemp)"
 each_tool "$CONFIG_FILE" > "$EACH_TOOL_TMP"
-while read -r plugin version <&3; do
+# validate_one_tool <plugin> <version> (m-8): checks one tool's PATH
+# resolution and reported version; logs FAIL/OK/WARN lines itself and
+# returns failure only for the FAIL case (not-found), so the loop below can
+# do `validate_one_tool ... || OK=false` instead of carrying the full
+# per-tool check inline.
+validate_one_tool() {
+  local plugin="$1" version="$2" cmd flag resolved_path version_line expected_core
   # e.g. "nodejs" -> "node", so we know which command to actually check.
   cmd="$(binary_for_plugin "$plugin")"
   # e.g. "node" -> "-v", the flag that prints that command's version.
@@ -40,8 +46,7 @@ while read -r plugin version <&3; do
   resolved_path="$(command -v "$cmd" 2>/dev/null || true)"
   if [ -z "$resolved_path" ]; then
     log "  FAIL: '$cmd' not found in PATH."
-    OK=false
-    continue
+    return 1
   fi
   case "$resolved_path" in
     # Resolving through an asdf shim is the success case — it means asdf,
@@ -75,6 +80,11 @@ while read -r plugin version <&3; do
   else
     log "        $version_line"
   fi
+  return 0
+}
+
+while read -r plugin version <&3; do
+  validate_one_tool "$plugin" "$version" || OK=false
 done 3< "$EACH_TOOL_TMP"
 rm -f "$EACH_TOOL_TMP"
 
