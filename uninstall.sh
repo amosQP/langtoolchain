@@ -30,7 +30,7 @@ fi
 
 # `curl | sh`: no local checkout exists, so fetch a throwaway one.
 command -v git >/dev/null 2>&1 || {
-  echo "ERROR: git is required for the one-line uninstaller (macOS ships it with Xcode Command Line Tools)." >&2
+  printf '%s\n' "ERROR: git is required for the one-line uninstaller (macOS ships it with Xcode Command Line Tools)." >&2
   exit 1
 }
 
@@ -46,10 +46,10 @@ trap 'rm -rf "$WORKDIR"' EXIT
 CLONE_ATTEMPT=1
 until git clone --depth 1 --branch "$BRANCH" "$REPO_URL" "$WORKDIR/langtoolchain" >/dev/null 2>&1; do
   if [ "$CLONE_ATTEMPT" -ge 3 ]; then
-    echo "ERROR: git clone failed after $CLONE_ATTEMPT attempts." >&2
+    printf '%s\n' "ERROR: git clone failed after $CLONE_ATTEMPT attempts." >&2
     exit 1
   fi
-  echo "git clone failed (attempt $CLONE_ATTEMPT/3) — retrying..." >&2
+  printf '%s\n' "git clone failed (attempt $CLONE_ATTEMPT/3) — retrying..." >&2
   rm -rf "$WORKDIR/langtoolchain"
   sleep $((CLONE_ATTEMPT * 5))
   CLONE_ATTEMPT=$((CLONE_ATTEMPT + 1))

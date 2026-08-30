@@ -39,14 +39,14 @@ for arg in "$@"; do
     # exact flag text in each case, so one arm covers all of them.
     --all|--yes|--local|--local=*) SELECT_OPTS="${SELECT_OPTS}${arg}
 " ;;
-    *) echo "Unknown option: $arg" >&2; exit 1 ;;
+    *) printf '%s\n' "Unknown option: $arg" >&2; exit 1 ;;
   esac
 done
 # Exported so every phase script (each launched as its own `sh` process
 # below) can see it via lib.sh's `DRY_RUN="${DRY_RUN:-false}"`.
 export DRY_RUN
 
-echo "langtoolchain installer"
+printf '%s\n' "langtoolchain installer"
 
 # TASK-91: fail fast on insufficient disk space, before asking the user
 # anything below — better than getting through the whole language picker
@@ -111,12 +111,12 @@ do
   run_phase "$SCRIPT_DIR/$phase"
 done
 
-echo ""
+printf '\n'
 # DRY_RUN-aware (found during a UX pass, m-6/TASK-94.3): every write below
 # this point was only ever previewed under --dry-run, so a plain "Done" here
 # would misreport a no-op run as a real completed install.
 if [ "$DRY_RUN" = "true" ]; then
-  echo "Dry run complete. Nothing was actually installed or changed."
+  printf '%s\n' "Dry run complete. Nothing was actually installed or changed."
 else
-  echo "Done. Run 'source ~/.zshrc' (or open a new terminal) to pick up the PATH changes."
+  printf '%s\n' "Done. Run 'source ~/.zshrc' (or open a new terminal) to pick up the PATH changes."
 fi

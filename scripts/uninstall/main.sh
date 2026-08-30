@@ -24,15 +24,15 @@ for arg in "$@"; do
   case "$arg" in
     --dry-run) DRY_RUN=true ;;
     --yes) AUTO_YES=true ;;
-    *) echo "Unknown option: $arg" >&2; exit 1 ;;
+    *) printf '%s\n' "Unknown option: $arg" >&2; exit 1 ;;
   esac
 done
 # Exported so every phase script below (each its own `sh` process) can
 # see it via lib.sh.
 export DRY_RUN
 
-echo "langtoolchain uninstaller"
-echo "This will remove asdf, every asdf-managed runtime, the related Homebrew packages, and the shell config this tool added."
+printf '%s\n' "langtoolchain uninstaller"
+printf '%s\n' "This will remove asdf, every asdf-managed runtime, the related Homebrew packages, and the shell config this tool added."
 
 # Probe for a controlling terminal first - same technique as
 # install/00_select.sh's own INTERACTIVE check (`true < /dev/tty` either
@@ -53,7 +53,7 @@ if ! $AUTO_YES && $INTERACTIVE; then
   read -r reply < /dev/tty || reply=""
   case "$reply" in
     y|Y|yes|YES) ;;
-    *) echo "Cancelled."; exit 1 ;;
+    *) printf '%s\n' "Cancelled."; exit 1 ;;
   esac
 fi
 
@@ -71,7 +71,7 @@ do
   run_phase "$SCRIPT_DIR/$phase"
 done
 
-echo ""
+printf '\n'
 # Temporarily allow the validation phase to fail without killing this
 # script outright — its exit code is meaningful (0 = clean, 1 = stale
 # session state) and we want to report on it ourselves below rather than
@@ -86,10 +86,10 @@ set -e
 # was nothing to validate, not "validated clean") - without this branch a
 # preview-only run would print the same "complete" message as a real one.
 if [ "$DRY_RUN" = "true" ]; then
-  echo "Dry run complete. Nothing was actually removed or changed."
+  printf '%s\n' "Dry run complete. Nothing was actually removed or changed."
 elif [ "$VALIDATION_EXIT_CODE" -eq 0 ]; then
-  echo "Removal complete. Run 'exec \$SHELL' to start a fresh session."
+  printf '%s\n' "Removal complete. Run 'exec \$SHELL' to start a fresh session."
 else
-  echo "Removal finished, but check the warnings above."
+  printf '%s\n' "Removal finished, but check the warnings above."
   exit "$VALIDATION_EXIT_CODE"
 fi
