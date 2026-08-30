@@ -105,6 +105,47 @@ INTERACTIVE=true
 tty_out() { printf '%s\n' "$*" > /dev/tty; }
 tty_prompt() { printf '%s' "$*" > /dev/tty; }   # no trailing newline: prompt stays on the input line
 
+# ask_yes_no <label> (m-10/TASK-106): numbered 1/Yes-2/No menu instead of
+# free-text y/n typing. Returns success for yes, failure for no. Still
+# accepts the old y/n/no keywords too (muscle memory, and scriptable paste)
+# — this is about not REQUIRING typing, not forbidding it.
+ask_yes_no() {
+  local choice
+  tty_out "$1"
+  tty_out "  1) Yes (default)"
+  tty_out "  2) No"
+  tty_prompt "  > "
+  read -r choice < /dev/tty || choice=""
+  case "$choice" in
+    2|n|N|no|NO) return 1 ;;
+    *) return 0 ;;
+  esac
+}
+
+# ask_version <default-version> (m-10/TASK-106): numbered default-or-custom
+# menu instead of an always-blank free-text field. Prints the chosen
+# version. A real "pick from actually-installable versions" menu (`asdf
+# list all <plugin>`) isn't reliable here: this script runs as phase 0,
+# before asdf/the plugin are even guaranteed to exist yet (phases 1-2), and
+# `list all` can be slow (network fetch) even when they do — so this stays
+# a plain default-vs-custom choice, not a live version browser.
+ask_version() {
+  local default="$1" choice custom
+  tty_out "  Version:"
+  tty_out "    1) $default (default)"
+  tty_out "    2) Enter a specific version"
+  tty_prompt "  > "
+  read -r choice < /dev/tty || choice=""
+  case "$choice" in
+    2)
+      tty_prompt "    Version > "
+      read -r custom < /dev/tty || custom=""
+      [ -n "$custom" ] && printf '%s\n' "$custom" || printf '%s\n' "$default"
+      ;;
+    *) printf '%s\n' "$default" ;;
+  esac
+}
+
 # Create the file the selection will be written to. `-t` gives it a
 # predictable prefix under the system temp dir (e.g. /tmp on Linux,
 # $TMPDIR on macOS) with a random unique suffix.
@@ -175,41 +216,26 @@ while read -r plugin default_version <&3; do
   # Just for a friendlier prompt line, e.g. "nodejs (node)".
   cmd="$(binary_for_plugin "$plugin")"
   tty_out ""
-  tty_prompt "Install $plugin ($cmd)? [Y/n] > "
-  # Read the answer straight from the terminal device, not this loop's fd
-  # 3/fd 0 — `|| answer=""` treats Ctrl-D / a closed tty as "no answer" so
-  # the script degrades gracefully instead of erroring under `set -e`.
-  read -r answer < /dev/tty || answer=""
-  case "$answer" in
-    n|N|no|NO) continue ;;   # skip this language entirely; move to the next
-  esac
+  if ask_yes_no "Install $plugin ($cmd)?"; then
+    version="$(ask_version "$default_version")"
 
-  tty_prompt "  Version [default: $default_version] > "
-  read -r version < /dev/tty || version=""
-  # Empty input (plain Enter) means "use the default version".
-  [ -n "$version" ] || version="$default_version"
+    # Record this language/version as one line of the selection file.
+    printf '%s %s\n' "$plugin" "$version" >> "$OUT_FILE"
 
-  # Record this language/version as one line of the selection file.
-  printf '%s %s\n' "$plugin" "$version" >> "$OUT_FILE"
-
-  # Offer this language's companion(s), if it has any AND the config file
-  # actually carries a default version for it (a config file with no
-  # companion line - e.g. this repo's own custom TOOL_VERSIONS_FILE users
-  # can pass - has nothing to offer, so silently skip rather than prompting
-  # for a version with no default).
-  for companion in $(lt_companion_for_plugin "$plugin"); do
-    companion_default="$(awk -v p="$companion" '$1 == p { print $2; exit }' "$EACH_TOOL_TMP")"
-    [ -n "$companion_default" ] || continue
-    tty_prompt "  Also install $companion (companion to $plugin)? [Y/n] > "
-    read -r companion_answer < /dev/tty || companion_answer=""
-    case "$companion_answer" in
-      n|N|no|NO) continue ;;
-    esac
-    tty_prompt "    Version [default: $companion_default] > "
-    read -r companion_version < /dev/tty || companion_version=""
-    [ -n "$companion_version" ] || companion_version="$companion_default"
-    printf '%s %s\n' "$companion" "$companion_version" >> "$OUT_FILE"
-  done
+    # Offer this language's companion(s), if it has any AND the config file
+    # actually carries a default version for it (a config file with no
+    # companion line - e.g. this repo's own custom TOOL_VERSIONS_FILE users
+    # can pass - has nothing to offer, so silently skip rather than
+    # prompting for a version with no default).
+    for companion in $(lt_companion_for_plugin "$plugin"); do
+      companion_default="$(awk -v p="$companion" '$1 == p { print $2; exit }' "$EACH_TOOL_TMP")"
+      [ -n "$companion_default" ] || continue
+      if ask_yes_no "  Also install $companion (companion to $plugin)?"; then
+        companion_version="$(ask_version "$companion_default")"
+        printf '%s %s\n' "$companion" "$companion_version" >> "$OUT_FILE"
+      fi
+    done
+  fi
 done 3< "$EACH_TOOL_TMP"
 rm -f "$EACH_TOOL_TMP"
 
@@ -232,10 +258,13 @@ tty_out ""
 
 # Ask where to pin these versions, unless --local[=DIR] already decided it.
 if [ -z "$SCOPE" ]; then
-  tty_prompt "Pin globally, or only in this directory? [global/local, default: global] > "
+  tty_out "Pin these versions:"
+  tty_out "  1) Globally (default)"
+  tty_out "  2) Only in this directory"
+  tty_prompt "  > "
   read -r scope_answer < /dev/tty || scope_answer=""
   case "$scope_answer" in
-    local|Local|l|L)
+    2|local|Local|l|L)
       tty_prompt "  Which directory? [default: current directory] > "
       read -r scope_dir_answer < /dev/tty || scope_dir_answer=""
       SCOPE_DIR="$(resolve_scope_dir "${scope_dir_answer:-$(pwd)}")"
@@ -248,11 +277,11 @@ if [ -z "$SCOPE" ]; then
 fi
 
 if ! $AUTO_YES; then
-  tty_prompt "Install? [Y/n] > "
-  read -r confirm < /dev/tty || confirm=""
-  case "$confirm" in
-    n|N|no|NO) tty_out "Cancelled."; exit 1 ;;
-  esac
+  tty_out ""
+  if ! ask_yes_no "Install?"; then
+    tty_out "Cancelled."
+    exit 1
+  fi
 fi
 
 # Prepend the scope line now that it's finally settled (flag or prompt).

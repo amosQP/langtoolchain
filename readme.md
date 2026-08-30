@@ -203,15 +203,27 @@ git clone https://github.com/amosQP/langtoolchain.git && cd langtoolchain
 ```text
 == Select languages to install (Enter = yes) ==
 
-Install nodejs (node)? [Y/n] > ⏎
-  Version [default: lts] > ⏎
-  Also install pnpm (companion to nodejs)? [Y/n] > ⏎
-    Version [default: 10.33.0] > ⏎
+Install nodejs (node)?
+  1) Yes (default)
+  2) No
+  > ⏎
+  Version:
+    1) lts (default)
+    2) Enter a specific version
+  > ⏎
+  Also install pnpm (companion to nodejs)?
+  1) Yes (default)
+  2) No
+  > ⏎
+    Version:
+      1) 10.33.0 (default)
+      2) Enter a specific version
+    > ⏎
 
-Install java (java)? [Y/n] > n
-
-Install python (python)? [Y/n] > ⏎
-  Version [default: 3.12.13] > ⏎
+Install java (java)?
+  1) Yes (default)
+  2) No
+  > 2
 ...
 == Install list ==
   nodejs  lts
@@ -220,9 +232,15 @@ Install python (python)? [Y/n] > ⏎
   rust    1.94.0
   golang  1.26.1
 
-Pin globally, or only in this directory? [global/local, default: global] > ⏎
+Pin these versions:
+  1) Globally (default)
+  2) Only in this directory
+  > ⏎
 
-Install? [Y/n] > ⏎
+Install?
+  1) Yes (default)
+  2) No
+  > ⏎
 ```
 
 > 마지막 프롬프트는 이번에 설치한 버전을 **어디에** 활성화할지 고릅니다 — 자세한 내용은
@@ -326,7 +344,10 @@ asdf는 언어 런타임을 **한 번만 설치**하고(`~/.asdf/installs/<plugi
 
 **대화형**: 설치 마지막 확인 직전에 물어봅니다 (Enter = 전역).
 ```text
-Pin globally, or only in this directory? [global/local, default: global] > local
+Pin these versions:
+  1) Globally (default)
+  2) Only in this directory
+  > 2
   Which directory? [default: current directory] > ⏎
 ```
 
