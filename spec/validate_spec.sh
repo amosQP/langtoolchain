@@ -125,6 +125,25 @@ EOF
     End
   End
 
+  Describe 'multiple tools (m-8 validate_one_tool() extraction regression)'
+    It 'still fails overall when an earlier tool fails even if a later tool succeeds'
+      # validate_one_tool() now returns per-tool status and the loop does
+      # `validate_one_tool ... || OK=false` - this pins down that a later
+      # successful call can't accidentally clear an earlier failure's
+      # OK=false (nothing in the loop or the function ever sets OK back to
+      # true). golang listed first (fails: `go` isn't on the restricted
+      # PATH), rust listed second (succeeds: rustc is faked into shims).
+      fake_cmd rustc 'rustc 1.94.0 (abc 2026-01-01)'
+      printf 'golang 1.26.1\nrust 1.94.0\n' > "$tool_versions"
+      export ASDF_DATA_DIR="$data_dir" TOOL_VERSIONS_FILE="$tool_versions" DRY_RUN=false
+      export PATH="$data_dir/shims:/usr/bin:/bin:/usr/sbin:/sbin"
+      When run "$SCRIPT"
+      The status should be failure
+      The output should include "FAIL: 'go' not found in PATH."
+      The output should include 'OK:   rustc ->'
+    End
+  End
+
   Describe 'DRY_RUN=true'
     It 'skips all validation instead of reporting false failures'
       printf 'rust 1.94.0\n' > "$tool_versions"
