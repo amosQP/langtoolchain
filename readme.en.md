@@ -40,16 +40,26 @@ Every new Mac meant reinstalling Homebrew and asdf, adding plugins, and fixing `
 
 ## 📦 Scope
 
-langtoolchain installs and manages exactly **5 languages (Node.js, Java, Python, Rust, Go)** and the
-6 Homebrew packages they need to build (`asdf`, `openssl`, etc.) — nothing else. It never touches
-other packages already on your Mac or installed later via `brew install`, asdf plugins for other
-languages, or other version managers.
+langtoolchain installs and manages exactly **5 languages (Node.js, Java, Python, Rust, Go)** (+ each
+language's companion tool, pnpm and gradle) and the 6 Homebrew packages they need to build (`asdf`,
+`openssl`, etc.) — nothing else. **On the install side**, it never touches other packages already on
+your Mac or installed later via `brew install`, or asdf plugins this tool didn't install itself.
 
 | | Managed by langtoolchain | Not managed |
 |---|---|---|
 | 🍺 Homebrew | `asdf` + 6 system packages for compiling | every other `brew` package |
-| 🧬 asdf | `nodejs`/`java`/`python`/`rust`/`golang` plugins | plugins for other languages/tools |
-| 🗂️ Version pinning | the languages you pick, at the scope you pick (global/directory) | everything else |
+| 🧬 asdf | `nodejs`/`java`/`python`/`rust`/`golang` + companion plugins `pnpm`(nodejs)/`gradle`(java) | plugins for other languages/tools (uninstall is an exception — see below) |
+| 🗂️ Version pinning | the languages you pick (+ companions), at the scope you pick (global/directory) | everything else |
+
+> ⚠️ **uninstall is an exception**: since it purges asdf entirely, any other asdf plugins you have
+> — even ones langtoolchain never installed — get removed along with the rest of `~/.asdf/`. See
+> "What Gets Removed" below. The install side's "not managed" column and uninstall's actual behavior
+> differ — keep that in mind.
+
+**Why pnpm/gradle are companions**: the nodejs/java asdf plugins install only a bare Node runtime /
+JDK, with no separate package or build manager — real projects almost always need pnpm (node) or
+gradle (java) on top. Rust and Go don't get one: asdf-rust already bundles cargo, and `go` itself
+already has modules/build tooling built in — so there's nothing missing to fill in for those two.
 
 <br>
 
@@ -114,7 +124,8 @@ git clone https://github.com/amosQP/langtoolchain.git && cd langtoolchain
 ```zsh
 source ~/.zshrc                                     # or open a new terminal tab
 node -v && java -version && python --version && rustc --version && go version
-which node java python rustc go                      # should point under ~/.asdf/shims/...
+pnpm --version && gradle --version                   # if you installed the companions too
+which node java python rustc go pnpm gradle           # should point under ~/.asdf/shims/...
 asdf current                                          # every currently active version
 asdf current nodejs                                   # just one language
 asdf list nodejs                                      # versions installed on this machine
@@ -196,6 +207,8 @@ Confirms install/skip and version per language (Enter = yes), then asks once mor
 
 Install nodejs (node)? [Y/n] > ⏎
   Version [default: lts] > ⏎
+  Also install pnpm (companion to nodejs)? [Y/n] > ⏎
+    Version [default: 10.33.0] > ⏎
 
 Install java (java)? [Y/n] > n
 
@@ -204,6 +217,7 @@ Install python (python)? [Y/n] > ⏎
 ...
 == Install list ==
   nodejs  lts
+  pnpm    10.33.0
   python  3.12.13
   rust    1.94.0
   golang  1.26.1
@@ -215,6 +229,10 @@ Install these? [Y/n] > ⏎
 
 > The last prompt decides **where** the versions you just picked get activated — see
 > [Version Pin Scope](#-version-pin-scope-global-vs-per-directory) right below for details.
+>
+> A companion tool (pnpm/gradle) is only offered right after you accept its parent language
+> (nodejs/java) — in the example above, declining java with `n` means the gradle question never
+> shows up at all.
 
 <details>
 <summary><b>Flags</b> (pass them as <code>curl | sh -s -- &lt;flags&gt;</code>)</summary>
@@ -247,12 +265,15 @@ Install these? [Y/n] > ⏎
 ## 📦 What Gets Installed
 
 The default languages/versions from `.tool-versions` — toggle each one on/off or override its version
-on the install screen.
+on the install screen. Companion tools (pnpm/gradle) are optional and only offered when you install
+their parent language.
 
-| Language | Default version |
+| Language / companion | Default version |
 |---|---|
 | 🟩 Node.js | `lts` |
+| &nbsp;&nbsp;└ pnpm (companion) | `10.33.0` |
 | ☕ Java (Temurin) | `temurin-25.0.2+10.0.LTS` |
+| &nbsp;&nbsp;└ gradle (companion) | `9.4.1` |
 | 🐍 Python | `3.12.13` |
 | 🦀 Rust | `1.94.0` |
 | 🐹 Go | `1.26.1` |
@@ -358,7 +379,9 @@ Everything is managed by asdf, following these two path rules.
 | Language | Plugin name | Install dir (`asdf install`) | Shim (what PATH actually points to) |
 |---|---|---|---|
 | 🟩 Node.js | `nodejs` | `~/.asdf/installs/nodejs/<version>/` | `~/.asdf/shims/node`, `npm`, `npx`, etc. |
+| &nbsp;&nbsp;└ pnpm (companion) | `pnpm` | `~/.asdf/installs/pnpm/<version>/` | `~/.asdf/shims/pnpm` |
 | ☕ Java | `java` | `~/.asdf/installs/java/<version>/` | `~/.asdf/shims/java`, `javac`, etc. |
+| &nbsp;&nbsp;└ gradle (companion) | `gradle` | `~/.asdf/installs/gradle/<version>/` | `~/.asdf/shims/gradle` |
 | 🐍 Python | `python` | `~/.asdf/installs/python/<version>/` | `~/.asdf/shims/python`, `pip`, etc. |
 | 🦀 Rust | `rust` | `~/.asdf/installs/rust/<version>/` | `~/.asdf/shims/rustc`, `cargo`, etc. |
 | 🐹 Go | `golang` | `~/.asdf/installs/golang/<version>/` | `~/.asdf/shims/go`, `gofmt`, etc. |
@@ -460,6 +483,10 @@ langtoolchain/
 | `install.sh` | curl entry point. Runs `scripts/install/main.sh` directly if this is a local clone, otherwise `git clone`s into a scratch directory and runs it from there |
 | `uninstall.sh` | The uninstall entry point, same pattern (calls `scripts/uninstall/main.sh`) |
 | `.tool-versions` | The default language/version list to install. Uses asdf's standard format (`plugin version`) as-is — to add or change a language, edit this one file |
+
+> `install.sh`/`uninstall.sh` are deliberately separate entry points — they're not bundled into one.
+> Each needs to be independently `curl | sh`-able (one script shouldn't hide a different command
+> behind it), and fetching only what you actually need is clearer.
 
 ### `scripts/lib.sh`
 
