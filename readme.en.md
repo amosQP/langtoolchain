@@ -200,32 +200,19 @@ git clone https://github.com/amosQP/langtoolchain.git && cd langtoolchain
 ./install.sh
 ```
 
-Confirms install/skip and version per language (Enter = yes), then asks once more before starting.
+Confirms install/skip and version per language (↑/↓ + Enter, or a digit key to jump straight to an
+option), then asks once more before starting. Each answer collapses in place into a single confirmed
+line as you go — here's what stays on screen after answering.
 
 ```text
-== Choose which languages to install (Enter = yes) ==
+== Select languages to install ==
 
-Install nodejs (node)?
-  1) Yes (default)
-  2) No
-  > ⏎
-  Version:
-    1) lts (default)
-    2) Enter a specific version
-  > ⏎
-  Also install pnpm (companion to nodejs)?
-  1) Yes (default)
-  2) No
-  > ⏎
-    Version:
-      1) 10.33.0 (default)
-      2) Enter a specific version
-    > ⏎
+✔ Install nodejs (node)? Yes
+✔ Version: lts (default)
+✔ Also install pnpm (companion to nodejs)? Yes
+✔ Version: 10.33.0 (default)
 
-Install java (java)?
-  1) Yes (default)
-  2) No
-  > 2
+✔ Install java (java)? No
 ...
 == Install list ==
   nodejs  lts
@@ -234,15 +221,8 @@ Install java (java)?
   rust    1.94.0
   golang  1.26.1
 
-Pin these versions:
-  1) Globally (default)
-  2) Only in this directory
-  > ⏎
-
-Install these?
-  1) Yes (default)
-  2) No
-  > ⏎
+✔ Pin these versions: Globally
+✔ Install these? Yes
 ```
 
 > The last prompt decides **where** the versions you just picked get activated — see
@@ -348,12 +328,9 @@ just that project's directory, and nothing else on the machine is affected.
 
 ### Usage
 
-**Interactive**: asked right before the final install confirmation (Enter = global).
+**Interactive**: asked right before the final install confirmation (↑/↓ + Enter, default is global).
 ```text
-Pin these versions:
-  1) Globally (default)
-  2) Only in this directory
-  > 2
+✔ Pin these versions: Only in this directory
   Which directory should this pin to? [default: current directory] > ⏎
 ```
 

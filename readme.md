@@ -198,32 +198,19 @@ git clone https://github.com/amosQP/langtoolchain.git && cd langtoolchain
 ./install.sh
 ```
 
-언어별 설치 여부(Enter = 예)와 버전을 확인한 뒤, 마지막 확인을 거쳐 설치를 시작합니다.
+언어별 설치 여부(↑/↓로 고르고 Enter로 확정, 숫자 키로 바로 선택도 가능)와 버전을 확인한 뒤,
+마지막 확인을 거쳐 설치를 시작합니다. 각 질문에 답하면 그 자리에서 한 줄로 접혀서 다음 질문으로
+넘어갑니다 — 아래는 답변 후 화면에 남는 모습입니다.
 
 ```text
-== Select languages to install (Enter = yes) ==
+== Select languages to install ==
 
-Install nodejs (node)?
-  1) Yes (default)
-  2) No
-  > ⏎
-  Version:
-    1) lts (default)
-    2) Enter a specific version
-  > ⏎
-  Also install pnpm (companion to nodejs)?
-  1) Yes (default)
-  2) No
-  > ⏎
-    Version:
-      1) 10.33.0 (default)
-      2) Enter a specific version
-    > ⏎
+✔ Install nodejs (node)? Yes
+✔ Version: lts (default)
+✔ Also install pnpm (companion to nodejs)? Yes
+✔ Version: 10.33.0 (default)
 
-Install java (java)?
-  1) Yes (default)
-  2) No
-  > 2
+✔ Install java (java)? No
 ...
 == Install list ==
   nodejs  lts
@@ -232,15 +219,8 @@ Install java (java)?
   rust    1.94.0
   golang  1.26.1
 
-Pin these versions:
-  1) Globally (default)
-  2) Only in this directory
-  > ⏎
-
-Install?
-  1) Yes (default)
-  2) No
-  > ⏎
+✔ Pin these versions: Globally
+✔ Install? Yes
 ```
 
 > 마지막 프롬프트는 이번에 설치한 버전을 **어디에** 활성화할지 고릅니다 — 자세한 내용은
@@ -342,12 +322,9 @@ asdf는 언어 런타임을 **한 번만 설치**하고(`~/.asdf/installs/<plugi
 
 ### 사용법
 
-**대화형**: 설치 마지막 확인 직전에 물어봅니다 (Enter = 전역).
+**대화형**: 설치 마지막 확인 직전에 물어봅니다 (↑/↓ + Enter, 기본값은 전역).
 ```text
-Pin these versions:
-  1) Globally (default)
-  2) Only in this directory
-  > 2
+✔ Pin these versions: Only in this directory
   Which directory? [default: current directory] > ⏎
 ```
 

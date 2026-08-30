@@ -105,45 +105,167 @@ INTERACTIVE=true
 tty_out() { printf '%s\n' "$*" > /dev/tty; }
 tty_prompt() { printf '%s' "$*" > /dev/tty; }   # no trailing newline: prompt stays on the input line
 
-# ask_yes_no <label> (m-10/TASK-106): numbered 1/Yes-2/No menu instead of
-# free-text y/n typing. Returns success for yes, failure for no. Still
-# accepts the old y/n/no keywords too (muscle memory, and scriptable paste)
-# — this is about not REQUIRING typing, not forbidding it.
-ask_yes_no() {
-  local choice
-  tty_out "$1"
-  tty_out "  1) Yes (default)"
-  tty_out "  2) No"
-  tty_prompt "  > "
-  read -r choice < /dev/tty || choice=""
-  case "$choice" in
-    2|n|N|no|NO) return 1 ;;
-    *) return 0 ;;
-  esac
+# ANSI escape building blocks for lt_arrow_menu below, and the raw-mode
+# safety net: _LT_RAW_STTY holds the terminal's pre-raw-mode settings
+# whenever a menu is actually mid-read, so the EXIT trap (registered after
+# OUT_FILE below) can restore it even if a signal interrupts mid-keypress -
+# without this, Ctrl-C during a menu would leave the terminal stuck in raw/
+# no-echo mode (typing invisible, no line editing) for the rest of the
+# session. `printf '\033[...'` (not `tput`) - this repo has no other tput
+# dependency and printf's escapes are simpler to reason about here.
+_LT_ESC="$(printf '\033')"
+_LT_CYAN="$(printf '\033[36m')"
+_LT_GREEN="$(printf '\033[32m')"
+_LT_DIM="$(printf '\033[2m')"
+_LT_BOLD="$(printf '\033[1m')"
+_LT_RESET="$(printf '\033[0m')"
+_LT_RAW_STTY=""
+lt_restore_raw_stty() {
+  # Always exits 0 - this runs from the EXIT trap, where a failing command
+  # would otherwise override the script's actual exit status (the whole
+  # point of `$SUCCESS || rm -f "$OUT_FILE"` right after it is to preserve
+  # that status, which a failure here would clobber). The common case -
+  # nothing was ever put into raw mode - is not an error, just a no-op.
+  if [ -n "$_LT_RAW_STTY" ]; then
+    stty "$_LT_RAW_STTY" < /dev/tty 2>/dev/null || true
+  fi
 }
 
-# ask_version <default-version> (m-10/TASK-106): numbered default-or-custom
-# menu instead of an always-blank free-text field. Prints the chosen
-# version. A real "pick from actually-installable versions" menu (`asdf
-# list all <plugin>`) isn't reliable here: this script runs as phase 0,
-# before asdf/the plugin are even guaranteed to exist yet (phases 1-2), and
-# `list all` can be slow (network fetch) even when they do — so this stays
-# a plain default-vs-custom choice, not a live version browser.
+# lt_arrow_menu <question> <default-index 1-based> <option...> (m-10/
+# TASK-106 v2): a real arrow-key-navigable menu, drawn and read straight
+# against /dev/tty — Up/Down moves the highlighted option, Enter confirms,
+# a bare digit jumps straight to that option. Redraws the whole block in
+# place (cursor-up + reprint) on every keypress, clack-prompts-style, then
+# collapses it to a single "✔ <question> <chosen>" summary line once
+# confirmed. Prints the chosen option's 1-based index to stdout.
+#
+# Reads one raw keypress at a time via `stty -icanon -echo` (put the tty in
+# non-canonical mode) + `dd bs=1 count=1` (read exactly one byte) — NOT
+# bash's `read -n1`, which POSIX sh has no equivalent of and dash flatly
+# rejects ("Illegal option -n"). `stty`/`dd` are ordinary external commands
+# with no such gap, so this works identically under dash — verified against
+# a real dash process over an actual pty (not just bash) before landing.
+# Escape sequences for arrow keys are 3 bytes (ESC, `[`, `A`/`B`); a lone
+# byte that isn't ESC is either Enter (empty read) or a digit shortcut.
+#
+# lt_draw_arrow_menu <question> <option...>: prints one frame of the menu
+# lt_arrow_menu below draws/redraws. Reads $selected as a shell dynamic-
+# scope variable rather than taking it as a parameter — every caller is
+# lt_arrow_menu itself, which always has `selected` set as a local right
+# before calling this, and POSIX sh functions see their caller's locals
+# (there's no lexical closure to fake otherwise). Split out to a top-level
+# function instead of nested inside lt_arrow_menu purely so it's defined
+# once, not redefined on every single lt_arrow_menu call.
+lt_draw_arrow_menu() {
+  local i opt
+  tty_out "${_LT_CYAN}?${_LT_RESET} $1"
+  shift
+  i=1
+  for opt in "$@"; do
+    if [ "$i" -eq "$selected" ]; then
+      tty_out "  ${_LT_CYAN}>${_LT_RESET} ${_LT_BOLD}$opt${_LT_RESET}"
+    else
+      tty_out "    ${_LT_DIM}$opt${_LT_RESET}"
+    fi
+    i=$((i + 1))
+  done
+}
+
+# Falls back to the plain always-worked numbered prompt if raw mode isn't
+# available at all (`stty -g` failing to read the tty's own attributes —
+# some unusual terminal) - still fully interactive, just no arrow keys.
+lt_arrow_menu() {
+  local question="$1" selected="$2" n old_stty key1 key2 key3 i opt chosen j
+  shift 2
+  n=$#
+
+  old_stty="$(stty -g < /dev/tty 2>/dev/null)" || {
+    tty_out "$question"
+    i=1
+    for opt in "$@"; do
+      if [ "$i" -eq "$selected" ]; then tty_out "  $i) $opt (default)"; else tty_out "  $i) $opt"; fi
+      i=$((i + 1))
+    done
+    tty_prompt "  > "
+    read -r key1 < /dev/tty || key1=""
+    case "$key1" in
+      [1-9]) [ "$key1" -le "$n" ] && selected="$key1" ;;
+    esac
+    printf '%s\n' "$selected"
+    return
+  }
+
+  lt_draw_arrow_menu "$question" "$@"
+  # Tracked globally so the safety-net EXIT trap (see below) can restore
+  # the terminal even if this function never reaches its own restore below
+  # - a signal arriving mid-read would otherwise leave the tty stuck in
+  # raw/no-echo mode (invisible typing) for the rest of the session.
+  _LT_RAW_STTY="$old_stty"
+  stty -icanon -echo min 1 time 0 < /dev/tty
+
+  while :; do
+    key1="$(dd if=/dev/tty bs=1 count=1 2>/dev/null)"
+    if [ "$key1" = "$_LT_ESC" ]; then
+      key2="$(dd if=/dev/tty bs=1 count=1 2>/dev/null)"
+      key3="$(dd if=/dev/tty bs=1 count=1 2>/dev/null)"
+      case "$key2$key3" in
+        '[A') if [ "$selected" -gt 1 ]; then selected=$((selected - 1)); else selected=$n; fi ;;
+        '[B') if [ "$selected" -lt "$n" ]; then selected=$((selected + 1)); else selected=1; fi ;;
+      esac
+    elif [ -z "$key1" ]; then
+      break   # Enter
+    else
+      case "$key1" in
+        [1-9]) if [ "$key1" -le "$n" ]; then selected="$key1"; break; fi ;;
+      esac
+    fi
+    printf '%s[%dA' "$_LT_ESC" "$((n + 1))" > /dev/tty
+    lt_draw_arrow_menu "$question" "$@"
+  done
+  stty "$old_stty" < /dev/tty
+  _LT_RAW_STTY=""
+
+  # Collapse the question+options block down to one confirmed summary line.
+  printf '%s[%dA' "$_LT_ESC" "$((n + 1))" > /dev/tty
+  j=0
+  while [ "$j" -le "$n" ]; do
+    printf '%s[2K\n' "$_LT_ESC" > /dev/tty
+    j=$((j + 1))
+  done
+  printf '%s[%dA' "$_LT_ESC" "$((n + 1))" > /dev/tty
+  i=1
+  chosen=""
+  for opt in "$@"; do
+    [ "$i" -eq "$selected" ] && chosen="$opt"
+    i=$((i + 1))
+  done
+  tty_out "${_LT_GREEN}✔${_LT_RESET} $question ${_LT_DIM}$chosen${_LT_RESET}"
+
+  printf '%s\n' "$selected"
+}
+
+# ask_yes_no <label> (m-10/TASK-106): arrow-key Yes/No menu. Returns success
+# for yes, failure for no.
+ask_yes_no() {
+  [ "$(lt_arrow_menu "$1" 1 "Yes" "No")" = "1" ]
+}
+
+# ask_version <default-version> (m-10/TASK-106): arrow-key default-or-
+# custom menu. Prints the chosen version. A real "pick from actually-
+# installable versions" menu (`asdf list all <plugin>`) isn't reliable
+# here: this script runs as phase 0, before asdf/the plugin are even
+# guaranteed to exist yet (phases 1-2), and `list all` can be slow (network
+# fetch) even when they do — so this stays a plain default-vs-custom
+# choice, not a live version browser.
 ask_version() {
-  local default="$1" choice custom
-  tty_out "  Version:"
-  tty_out "    1) $default (default)"
-  tty_out "    2) Enter a specific version"
-  tty_prompt "  > "
-  read -r choice < /dev/tty || choice=""
-  case "$choice" in
-    2)
-      tty_prompt "    Version > "
-      read -r custom < /dev/tty || custom=""
-      [ -n "$custom" ] && printf '%s\n' "$custom" || printf '%s\n' "$default"
-      ;;
-    *) printf '%s\n' "$default" ;;
-  esac
+  local default="$1" custom
+  if [ "$(lt_arrow_menu "Version:" 1 "$default (default)" "Enter a specific version")" = "2" ]; then
+    tty_prompt "  Version > "
+    read -r custom < /dev/tty || custom=""
+    [ -n "$custom" ] && printf '%s\n' "$custom" || printf '%s\n' "$default"
+  else
+    printf '%s\n' "$default"
+  fi
 }
 
 # Create the file the selection will be written to. `-t` gives it a
@@ -157,7 +279,7 @@ OUT_FILE="$(mktemp -t langtoolchain-selection)"
 # "successful" to an emptiness check and leak the file. SUCCESS is only
 # ever set true right before the two real `echo "$OUT_FILE"` handoffs.
 SUCCESS=false
-trap '$SUCCESS || rm -f "$OUT_FILE"' EXIT
+trap 'lt_restore_raw_stty; $SUCCESS || rm -f "$OUT_FILE"' EXIT
 
 # Non-interactive session, or the caller explicitly asked for everything:
 # skip the language menu entirely and use the default config as-is. Scope
@@ -258,22 +380,14 @@ tty_out ""
 
 # Ask where to pin these versions, unless --local[=DIR] already decided it.
 if [ -z "$SCOPE" ]; then
-  tty_out "Pin these versions:"
-  tty_out "  1) Globally (default)"
-  tty_out "  2) Only in this directory"
-  tty_prompt "  > "
-  read -r scope_answer < /dev/tty || scope_answer=""
-  case "$scope_answer" in
-    2|local|Local|l|L)
-      tty_prompt "  Which directory? [default: current directory] > "
-      read -r scope_dir_answer < /dev/tty || scope_dir_answer=""
-      SCOPE_DIR="$(resolve_scope_dir "${scope_dir_answer:-$(pwd)}")"
-      SCOPE="local"
-      ;;
-    *)
-      SCOPE="global"
-      ;;
-  esac
+  if [ "$(lt_arrow_menu "Pin these versions:" 1 "Globally" "Only in this directory")" = "2" ]; then
+    tty_prompt "  Which directory? [default: current directory] > "
+    read -r scope_dir_answer < /dev/tty || scope_dir_answer=""
+    SCOPE_DIR="$(resolve_scope_dir "${scope_dir_answer:-$(pwd)}")"
+    SCOPE="local"
+  else
+    SCOPE="global"
+  fi
 fi
 
 if ! $AUTO_YES; then
