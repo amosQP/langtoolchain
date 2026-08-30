@@ -21,6 +21,10 @@ for pkg in $LT_BUILD_DEPS; do
     # Homebrew refuses to uninstall a formula something else still depends
     # on; treat that refusal as informational, not fatal, since these
     # formulas are commonly shared with other tools on the machine.
-    run brew uninstall "$pkg" || log "  Skipped $pkg (likely required by another package)."
+    if run brew uninstall "$pkg"; then
+      lt_report removed "Homebrew package: $pkg"
+    else
+      log "  Skipped $pkg (likely required by another package)."
+    fi
   fi
 done

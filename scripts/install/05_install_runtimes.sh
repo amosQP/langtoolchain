@@ -36,7 +36,9 @@ while read -r plugin version <&3; do
   # the whole installer. `run` still respects --dry-run. retry (TASK-88):
   # this is the single most network/time-intensive step in the whole
   # installer, so it's the one most worth retrying automatically.
-  if ! retry 3 5 run asdf install "$plugin" "$version"; then
+  if retry 3 5 run asdf install "$plugin" "$version"; then
+    lt_report installed "$plugin $version (asdf)"
+  else
     log "  FAILED: $plugin $version (continuing with remaining languages)"
     FAILED="${FAILED}${FAILED:+, }$plugin $version"
   fi

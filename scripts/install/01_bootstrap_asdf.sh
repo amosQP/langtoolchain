@@ -58,6 +58,7 @@ else
     command -v brew >/dev/null 2>&1 || die \
       "Homebrew install finished but 'brew' still isn't on PATH. Open a new terminal and re-run this installer."
     log "Homebrew installed: $(command -v brew)"
+    lt_report installed "Homebrew ($(command -v brew))"
   fi
 fi
 
@@ -71,4 +72,5 @@ else
   # download failing on a flaky connection shouldn't need a full manual
   # re-run.
   retry 3 5 run brew install asdf
+  lt_report installed "asdf (Homebrew)"
 fi

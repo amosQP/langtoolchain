@@ -111,6 +111,23 @@ LT_LOCAL_PINS_FILE_NAME="langtoolchain-local-pins"
 # real shared path without that being a special case in acquire_lock itself.
 LT_LOCK_DIR="${LT_LOCK_DIR:-${TMPDIR:-/tmp}/langtoolchain.lock}"
 
+# LT_REPORT_FILE (m-10/TASK-107): a human-readable audit trail of every
+# real change install/uninstall made - what got installed/removed/modified
+# and where. Deliberately under $HOME directly, not $ASDF_DATA_DIR (unlike
+# LT_LOCAL_PINS_FILE_NAME above) - a `rm -rf $ASDF_DATA_DIR` during
+# uninstall would otherwise erase the very history someone might want to
+# check right before/after running it. Override-able like LT_LOCK_DIR, so
+# tests can point it at a scratch file instead of a real $HOME.
+LT_REPORT_FILE="${LT_REPORT_FILE:-$HOME/.langtoolchain-report.log}"
+
+# lt_report <action> <detail>: appends one line to LT_REPORT_FILE. Skipped
+# under DRY_RUN by design - a preview run didn't actually change anything,
+# so it has nothing real to add to the audit trail.
+lt_report() {
+  [ "$DRY_RUN" = "true" ] && return
+  printf '%s [%s] %s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$1" "$2" >> "$LT_REPORT_FILE"
+}
+
 # lt_env_var_defs [java_hook_file] (TASK-64): prints one line per rc-file
 # entry this tool's installer manages, formatted
 # "<search-pattern>|||<placement>|||<line-to-write>" (triple-pipe

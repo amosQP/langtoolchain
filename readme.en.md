@@ -427,6 +427,7 @@ Everything is managed by asdf, following these two path rules.
 | `<given directory>/.tool-versions` (only with `--local`) | The version that applies only inside that directory | `06_set_globals.sh`'s `asdf set` — see [Version Pin Scope](#-version-pin-scope-global-vs-per-directory) |
 | `~/.zshrc` or `~/.bash_profile` (auto-picked from your login shell) | `eval "$(brew shellenv)"` (prepended at the top of the file), `ASDF_DATA_DIR`/PATH shim export, Java home hook, `LDFLAGS`/`CPPFLAGS`/`PKG_CONFIG_PATH` | `04_configure_shell_env.sh` |
 | This repo's own `.tool-versions` | **Read-only** — the source of the default language/version list. The installer never writes to it | Every phase script only reads it |
+| `~/.langtoolchain-report.log` | Audit trail of what this tool actually installed/removed/modified (`timestamp [installed/removed/modified] detail`, one line appended per event) — nothing gets written under `--dry-run`. Lives directly under `HOME`, not inside `ASDF_DATA_DIR`, so the log survives even a full `rm -rf ~/.asdf` during uninstall | `lt_report()` (lib.sh), called from every install/uninstall phase at each real mutation |
 
 ### What gets installed via Homebrew (under `/opt/homebrew/`, on Apple Silicon)
 

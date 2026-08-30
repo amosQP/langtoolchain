@@ -36,6 +36,7 @@ case "$SCOPE_INFO" in
       # instead of the global ~/.tool-versions — subshell so the `cd` here
       # never affects this script's own cwd.
       ( cd "$TARGET_DIR" && run asdf set "$plugin" "$version" )
+      lt_report modified "$plugin -> $version (local, $TARGET_DIR/.tool-versions)"
     done 3< "$EACH_TOOL_TMP"
     # Record this directory (TASK-83) so uninstall/01_uninstall_runtimes.sh
     # can find it later and asdf-uninstall whatever got pinned here — the
@@ -60,6 +61,7 @@ case "$SCOPE_INFO" in
       # chosen version applies everywhere on the machine, not just this
       # repo directory.
       run asdf set -u "$plugin" "$version"
+      lt_report modified "$plugin -> $version (global, ~/.tool-versions)"
     done 3< "$EACH_TOOL_TMP"
     ;;
 esac

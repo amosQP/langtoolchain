@@ -14,8 +14,13 @@ Describe 'scripts/install/06_set_globals.sh'
     export ASDF_DATA_DIR="$data_dir"
     export TOOL_VERSIONS_FILE="$config_file"
     pins_file="$data_dir/langtoolchain-local-pins"
+    # LT_REPORT_FILE: redirect away from the real $HOME/.langtoolchain-
+    # report.log - this spec doesn't override HOME, and the DRY_RUN=false
+    # tests below would otherwise have lt_report() write there for real.
+    report_file="$(mktemp)"
+    export LT_REPORT_FILE="$report_file"
   }
-  cleanup() { rm -rf "$(dirname "$data_dir")" "$target_dir" "$config_file"; }
+  cleanup() { rm -rf "$(dirname "$data_dir")" "$target_dir" "$config_file" "$report_file"; }
   BeforeEach 'setup'
   AfterEach 'cleanup'
 

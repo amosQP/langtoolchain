@@ -57,4 +57,5 @@ if [ "$DRY_RUN" = "true" ]; then
   log "(dry-run: nothing was actually written to $RC_FILE)"
 else
   log "Shell config written to $RC_FILE."
+  lt_report modified "$RC_FILE (added asdf/build-flag lines)"
 fi

@@ -60,4 +60,5 @@ for rc_name in $LT_KNOWN_RC_FILES; do
   unset IFS
   sed -E -i '.bak' "$@" "$rc"
   log "  Backup preserved at ${rc}.bak"
+  lt_report modified "$rc (removed asdf/build-flag lines, backup: ${rc}.bak)"
 done

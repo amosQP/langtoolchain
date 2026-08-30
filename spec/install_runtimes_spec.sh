@@ -11,9 +11,13 @@ Describe 'scripts/install/05_install_runtimes.sh'
     data_dir="$(mktemp -d)/toolchain-data"
     mkdir -p "$data_dir/shims"
     tool_versions="$(mktemp)"
-    export ASDF_DATA_DIR="$data_dir" TOOL_VERSIONS_FILE="$tool_versions" DRY_RUN=false
+    # LT_REPORT_FILE: redirect away from the real $HOME/.langtoolchain-
+    # report.log (this spec doesn't override HOME, and DRY_RUN=false below
+    # means lt_report() would otherwise write there for real).
+    report_file="$(mktemp)"
+    export ASDF_DATA_DIR="$data_dir" TOOL_VERSIONS_FILE="$tool_versions" DRY_RUN=false LT_REPORT_FILE="$report_file"
   }
-  cleanup() { rm -rf "$(dirname "$data_dir")" "$tool_versions"; }
+  cleanup() { rm -rf "$(dirname "$data_dir")" "$tool_versions" "$report_file"; }
   BeforeEach 'setup'
   AfterEach 'cleanup'
 

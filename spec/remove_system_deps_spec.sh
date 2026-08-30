@@ -8,8 +8,16 @@
 Describe 'scripts/uninstall/04_remove_system_deps.sh'
   SCRIPT='./scripts/uninstall/04_remove_system_deps.sh'
 
-  setup() { export DRY_RUN=false; }
+  setup() {
+    # LT_REPORT_FILE: redirect away from the real $HOME/.langtoolchain-
+    # report.log - this spec doesn't override HOME, and DRY_RUN=false here
+    # means lt_report() would otherwise write there for real.
+    report_file="$(mktemp)"
+    export DRY_RUN=false LT_REPORT_FILE="$report_file"
+  }
+  cleanup() { rm -f "$report_file"; }
   BeforeEach 'setup'
+  AfterEach 'cleanup'
 
   It 'uninstalls every installed LT_BUILD_DEPS formula'
     Mock brew

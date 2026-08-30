@@ -52,7 +52,9 @@ while read -r plugin version <&3; do
     log "Plugin already present: $plugin"
   else
     log "Adding plugin: $plugin"
-    if ! retry 3 5 run asdf plugin add "$plugin"; then
+    if retry 3 5 run asdf plugin add "$plugin"; then
+      lt_report installed "asdf plugin: $plugin"
+    else
       log "  FAILED: $plugin (continuing with remaining languages)"
       FAILED="${FAILED}${FAILED:+ }$plugin"
     fi

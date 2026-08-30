@@ -420,6 +420,7 @@ langtoolchain은 표준 asdf 명령을 대신 실행해줄 뿐입니다 — `.to
 | `<지정 디렉토리>/.tool-versions` (`--local` 사용 시에만) | 그 디렉토리 안에서만 적용되는 버전 | `06_set_globals.sh`의 `asdf set` — [버전 고정 범위](#-버전-고정-범위-전역-vs-디렉토리별) 참고 |
 | `~/.zshrc` 또는 `~/.bash_profile` (로그인 셸에 따라 자동 선택) | `eval "$(brew shellenv)"`(파일 맨 위에 prepend), `ASDF_DATA_DIR`/PATH shim export, Java 홈 훅, `LDFLAGS`/`CPPFLAGS`/`PKG_CONFIG_PATH` | `04_configure_shell_env.sh` |
 | 이 저장소의 `.tool-versions` | **읽기 전용** — 언어/기본 버전 목록의 소스. 설치기가 여기에 쓰지 않음 | 모든 phase 스크립트가 읽기만 함 |
+| `~/.langtoolchain-report.log` | 이 도구가 실제로 설치/제거/수정한 내역 감사 로그 (`타임스탬프 [installed/removed/modified] 상세내용`, 한 줄씩 append) — `--dry-run`일 땐 기록 안 됨. `ASDF_DATA_DIR` 안이 아니라 `HOME` 바로 밑이라 uninstall이 `~/.asdf`를 통째로 지워도 로그는 남음 | `lt_report()` (lib.sh), 모든 install/uninstall phase에서 실제 변경 시점마다 호출 |
 
 ### Homebrew로 설치되는 것 (`/opt/homebrew/` 아래, Apple Silicon 기준)
 

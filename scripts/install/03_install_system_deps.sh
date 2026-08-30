@@ -16,3 +16,9 @@ step "Phase 3: Installing system build dependencies (Homebrew)"
 # this is safe (and fast) to re-run. retry (TASK-88): worth a couple of
 # attempts before giving up on a network blip.
 retry 3 5 run brew install $LT_BUILD_DEPS
+# Reports the whole batch, not just the subset actually newly-installed
+# this run (unlike 02_install_plugins.sh) - brew install is idempotent
+# per-package but this is one combined call, and splitting it just to get
+# a precise per-package "already had this one" distinction isn't worth the
+# extra `brew list` round-trips for an audit log entry.
+lt_report installed "Homebrew packages: $LT_BUILD_DEPS"

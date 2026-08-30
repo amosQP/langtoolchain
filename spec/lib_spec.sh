@@ -597,4 +597,39 @@ RUNNER_EOF
       The output should eq '  + echo hello-from-run'
     End
   End
+
+  Describe 'lt_report() (m-10/TASK-107)'
+    setup() { LT_REPORT_FILE="$(mktemp)"; }
+    cleanup() { rm -f "$LT_REPORT_FILE"; }
+    BeforeEach 'setup'
+    AfterEach 'cleanup'
+
+    It 'appends a timestamped action/detail line when DRY_RUN is false'
+      DRY_RUN=false
+      When call lt_report installed 'asdf plugin: pnpm'
+      The status should be success
+      The contents of file "$LT_REPORT_FILE" should include '[installed] asdf plugin: pnpm'
+      # e.g. "2026-08-30 12:34:56 [installed] ..." - a real date, not literal text.
+      The contents of file "$LT_REPORT_FILE" should match pattern '[0-9][0-9][0-9][0-9]-*'
+    End
+
+    It 'writes nothing under DRY_RUN=true - a preview made no real change to report'
+      DRY_RUN=true
+      When call lt_report installed 'asdf plugin: pnpm'
+      The status should be success
+      The contents of file "$LT_REPORT_FILE" should eq ''
+    End
+
+    It 'appends multiple calls as separate lines, not overwriting'
+      DRY_RUN=false
+      lt_report installed 'first'
+      lt_report removed 'second'
+      # awk, not `wc -l` - BSD wc (macOS) pads its count with leading
+      # whitespace ("       2"), which a plain numeric `eq` comparison
+      # would then fail on.
+      count="$(awk 'END { print NR }' "$LT_REPORT_FILE")"
+      When call true
+      The variable count should eq 2
+    End
+  End
 End

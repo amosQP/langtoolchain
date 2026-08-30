@@ -46,7 +46,9 @@ uninstall_from_config_file() {
     if asdf list "$plugin" "$version" >/dev/null 2>&1; then
       log "Uninstalling $plugin $version ..."
       # `|| true`: don't let one stubborn uninstall abort the whole loop.
-      run asdf uninstall "$plugin" "$version" || true
+      if run asdf uninstall "$plugin" "$version"; then
+        lt_report removed "$plugin $version (asdf)"
+      fi
     else
       log "Already absent: $plugin $version"
     fi

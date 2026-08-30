@@ -25,6 +25,8 @@ asdf plugin list 2>/dev/null > "$PLUGIN_LIST_TMP" || true
 while read -r plugin <&3 || [ -n "$plugin" ]; do
   [ -n "$plugin" ] || continue   # skip a stray blank line, if any
   log "Removing plugin: $plugin"
-  run asdf plugin remove "$plugin" || true
+  if run asdf plugin remove "$plugin"; then
+    lt_report removed "asdf plugin: $plugin"
+  fi
 done 3< "$PLUGIN_LIST_TMP"
 rm -f "$PLUGIN_LIST_TMP"

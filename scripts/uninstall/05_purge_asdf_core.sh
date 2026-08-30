@@ -14,7 +14,9 @@ step "Phase 5: Removing asdf core"
 
 if brew list asdf >/dev/null 2>&1; then
   log "Uninstalling asdf (Homebrew) ..."
-  run brew uninstall asdf || true
+  if run brew uninstall asdf; then
+    lt_report removed "asdf (Homebrew)"
+  fi
 fi
 
 # Respect a live ASDF_DATA_DIR override (same fallback ensure_asdf_on_path()
@@ -29,6 +31,7 @@ if [ -d "$TARGET_ASDF_DATA_DIR" ]; then
   # every compiled runtime this tool ever installed.
   log "Removing $TARGET_ASDF_DATA_DIR ..."
   run rm -rf "$TARGET_ASDF_DATA_DIR"
+  lt_report removed "$TARGET_ASDF_DATA_DIR (entire asdf data dir: installs, plugins, shims)"
 fi
 
 if [ -f "$HOME/.tool-versions" ]; then
@@ -37,4 +40,5 @@ if [ -f "$HOME/.tool-versions" ]; then
   # this git repo and not something an uninstaller should ever delete.
   log "Removing $HOME/.tool-versions ..."
   run rm -f "$HOME/.tool-versions"
+  lt_report removed "$HOME/.tool-versions"
 fi
