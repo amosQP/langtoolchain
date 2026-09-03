@@ -33,13 +33,17 @@ Describe 'scripts/uninstall/05_purge_asdf_core.sh'
   BeforeEach 'setup'
   AfterEach 'cleanup'
 
+  # Hoisted (TASK-134): identical across every example below - each one
+  # only cares that `brew list asdf`/`brew uninstall asdf` are shadowed, not
+  # about per-example variation.
+  Mock brew
+    case "$1 $2" in
+      "list asdf") exit 0 ;;
+      "uninstall asdf") echo "MOCK: brew uninstall asdf" ;;
+    esac
+  End
+
   It 'removes the default $HOME/.asdf when the snapshot says it did NOT pre-exist'
-    Mock brew
-      case "$1 $2" in
-        "list asdf") exit 0 ;;
-        "uninstall asdf") echo "MOCK: brew uninstall asdf" ;;
-      esac
-    End
     mkdir -p "$fake_home/.asdf/shims"
     printf 'asdf_data_dir_preexisting=false\n' > "$LT_PRIOR_STATE_FILE"
     export HOME="$fake_home" DRY_RUN=false
@@ -51,12 +55,6 @@ Describe 'scripts/uninstall/05_purge_asdf_core.sh'
   End
 
   It 'removes the custom ASDF_DATA_DIR instead of the default (TASK-70), snapshot says not pre-existing'
-    Mock brew
-      case "$1 $2" in
-        "list asdf") exit 0 ;;
-        "uninstall asdf") echo "MOCK: brew uninstall asdf" ;;
-      esac
-    End
     custom_dir="$(mktemp -d)/custom-asdf-data"
     mkdir -p "$custom_dir/shims"
     mkdir -p "$fake_home/.asdf/shims"   # decoy default dir - must survive
@@ -70,12 +68,6 @@ Describe 'scripts/uninstall/05_purge_asdf_core.sh'
   End
 
   It 'does DRY_RUN without deleting anything'
-    Mock brew
-      case "$1 $2" in
-        "list asdf") exit 0 ;;
-        "uninstall asdf") echo "MOCK: brew uninstall asdf" ;;
-      esac
-    End
     mkdir -p "$fake_home/.asdf/shims"
     printf 'asdf_data_dir_preexisting=false\n' > "$LT_PRIOR_STATE_FILE"
     export HOME="$fake_home" DRY_RUN=true
@@ -86,12 +78,6 @@ Describe 'scripts/uninstall/05_purge_asdf_core.sh'
   End
 
   It 'skips the data dir when the snapshot says it pre-existed langtoolchain (TASK-124.1 AC #1)'
-    Mock brew
-      case "$1 $2" in
-        "list asdf") exit 0 ;;
-        "uninstall asdf") echo "MOCK: brew uninstall asdf" ;;
-      esac
-    End
     mkdir -p "$fake_home/.asdf/shims"
     printf 'asdf_data_dir_preexisting=true\n' > "$LT_PRIOR_STATE_FILE"
     export HOME="$fake_home" DRY_RUN=false
@@ -102,12 +88,6 @@ Describe 'scripts/uninstall/05_purge_asdf_core.sh'
   End
 
   It 'skips the data dir when the snapshot file is entirely missing (TASK-124.1 AC #2, safe default)'
-    Mock brew
-      case "$1 $2" in
-        "list asdf") exit 0 ;;
-        "uninstall asdf") echo "MOCK: brew uninstall asdf" ;;
-      esac
-    End
     mkdir -p "$fake_home/.asdf/shims"
     # No LT_PRIOR_STATE_FILE written at all - simulates a machine that
     # installed before this feature existed, or via --dry-run (which never
@@ -120,12 +100,6 @@ Describe 'scripts/uninstall/05_purge_asdf_core.sh'
   End
 
   It 'skips the data dir when the snapshot exists but has no asdf_data_dir_preexisting key (safe default)'
-    Mock brew
-      case "$1 $2" in
-        "list asdf") exit 0 ;;
-        "uninstall asdf") echo "MOCK: brew uninstall asdf" ;;
-      esac
-    End
     mkdir -p "$fake_home/.asdf/shims"
     printf 'asdf_preexisting=false\n' > "$LT_PRIOR_STATE_FILE"   # no data-dir key
     export HOME="$fake_home" DRY_RUN=false
@@ -136,12 +110,6 @@ Describe 'scripts/uninstall/05_purge_asdf_core.sh'
   End
 
   It 'still uninstalls the asdf Homebrew formula even when the data dir is skipped (scope: only the rm -rf block is gated)'
-    Mock brew
-      case "$1 $2" in
-        "list asdf") exit 0 ;;
-        "uninstall asdf") echo "MOCK: brew uninstall asdf" ;;
-      esac
-    End
     mkdir -p "$fake_home/.asdf/shims"
     printf 'asdf_data_dir_preexisting=true\n' > "$LT_PRIOR_STATE_FILE"
     export HOME="$fake_home" DRY_RUN=false
