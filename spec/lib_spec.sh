@@ -84,9 +84,9 @@ Describe 'scripts/lib.sh'
       The output should eq 'gradle'
     End
 
-    It 'has no companion for python'
+    It 'maps python -> uv (m-12/TASK-121, decision-2)'
       When call lt_companion_for_plugin python
-      The output should eq ''
+      The output should eq 'uv'
     End
 
     It 'has no companion for rust (cargo already bundled)'
@@ -750,6 +750,229 @@ RUNNER_EOF
       When call lt_prior_state_get asdf_data_dir_preexisting
       The status should be failure
       The output should eq ''
+    End
+  End
+
+  Describe 'lt_upstream_latest_version() (m-12/TASK-119, decision-1)'
+    # Every case below mocks curl/git so these tests never touch the real
+    # network (mandatory for this repo - see spec_helper/README safety
+    # rules) - each Mock's canned response is a trimmed real-shape fixture
+    # captured from the actual upstream API/manifest during TASK-118's
+    # research, not an invented shape.
+
+    It 'passes nodejs straight through as "lts" - no network call at all'
+      Mock curl
+        echo 'MOCK CURL SHOULD NEVER RUN FOR nodejs' >&2
+        exit 1
+      End
+      When call lt_upstream_latest_version nodejs
+      The status should be success
+      The output should eq 'lts'
+    End
+
+    It 'extracts the version field from the npm registry for pnpm'
+      Mock curl
+        echo '{"name":"pnpm","version":"12.3.1","dist":{"shasum":"x"}}'
+      End
+      When call lt_upstream_latest_version pnpm
+      The status should be success
+      The output should eq '12.3.1'
+    End
+
+    It 'extracts the version field from services.gradle.org for gradle'
+      Mock curl
+        echo '{"version":"9.7.1","current":true,"snapshot":false}'
+      End
+      When call lt_upstream_latest_version gradle
+      The status should be success
+      The output should eq '9.7.1'
+    End
+
+    It 'extracts the tag_name from GitHub Releases for uv (m-12/TASK-121, decision-2)'
+      Mock curl
+        echo '{"tag_name":"0.12.9","name":"0.12.9","draft":false,"prerelease":false}'
+      End
+      When call lt_upstream_latest_version uv
+      The status should be success
+      The output should eq '0.12.9'
+    End
+
+    It 'extracts and strips the "go" prefix from go.dev/dl for golang'
+      Mock curl
+        echo '[{"version":"go1.27.1","stable":true},{"version":"go1.26.1","stable":true}]'
+      End
+      When call lt_upstream_latest_version golang
+      The status should be success
+      The output should eq '1.27.1'
+    End
+
+    It 'extracts the [pkg.rust] version from the channel manifest for rust'
+      Mock curl
+        printf 'manifest-version = "2"\ndate = "2026-08-20"\n\n[pkg.cargo]\nversion = "0.99.0 (deadbeef 2026-08-05)"\n\n[pkg.rust]\nversion = "1.98.0 (88d9e12ae 2026-08-18)"\ngit_commit_hash = "88d9e12ae"\n'
+      End
+      When call lt_upstream_latest_version rust
+      The status should be success
+      The output should eq '1.98.0'
+    End
+
+    It 'filters cpython pre-release tags and numerically sorts final releases for python'
+      Mock git
+        printf 'aaa\trefs/tags/v3.9.9\n'
+        printf 'bbb\trefs/tags/v3.14.7\n'
+        printf 'ccc\trefs/tags/v3.14.7rc1\n'
+        printf 'ddd\trefs/tags/v3.14.10\n'
+        printf 'eee\trefs/tags/v3.14.7a1\n'
+        printf 'fff\trefs/tags/v3.14.2\n'
+      End
+      When call lt_upstream_latest_version python
+      The status should be success
+      # 3.14.10 must sort after 3.14.7/3.14.9 numerically (field-by-field),
+      # not lexicographically (where "3.14.10" < "3.14.7" as plain text) -
+      # this is exactly the macOS-BSD-sort-has-no--V gap the implementation
+      # comment calls out.
+      The output should eq '3.14.10'
+    End
+
+    It 'resolves the current LTS major then its latest GA build for java (two curl calls)'
+      Mock curl
+        case "$*" in
+          *available_releases*)
+            echo '{"available_lts_releases":[8,11,17,21,25],"most_recent_lts":25}'
+            ;;
+          *assets/latest*)
+            echo '{"version":{"semver":"25.0.4+101.0.LTS"}}'
+            ;;
+          *)
+            exit 1
+            ;;
+        esac
+      End
+      When call lt_upstream_latest_version java
+      The status should be success
+      The output should eq 'temurin-25.0.4+101.0.LTS'
+    End
+
+    It 'fails without printing anything for an unknown plugin'
+      When call lt_upstream_latest_version some-unmapped-plugin
+      The status should be failure
+      The output should eq ''
+    End
+
+    It 'fails cleanly (not a script abort) when the network call itself fails'
+      Mock curl
+        exit 1
+      End
+      When call lt_upstream_latest_version pnpm
+      The status should be failure
+      The output should eq ''
+    End
+
+    It 'fails cleanly when java second call (asset lookup) fails after the first succeeds'
+      Mock curl
+        case "$*" in
+          *available_releases*) echo '{"most_recent_lts":25}' ;;
+          *) exit 1 ;;
+        esac
+      End
+      When call lt_upstream_latest_version java
+      The status should be failure
+      The output should eq ''
+    End
+  End
+
+  Describe 'lt_resolve_default_version() (m-12/TASK-119.2/TASK-119.3)'
+    # Every example here points the cache at a scratch file, never the real
+    # $HOME/.langtoolchain-version-cache - lt_resolve_default_version's
+    # success path writes to LT_VERSION_CACHE_FILE, and this repo's own
+    # safety rule is that tests never touch real machine state.
+    setup() { LT_VERSION_CACHE_FILE="$(mktemp)"; rm -f "$LT_VERSION_CACHE_FILE"; }
+    cleanup() { rm -f "$LT_VERSION_CACHE_FILE"; }
+    BeforeEach 'setup'
+    AfterEach 'cleanup'
+
+    It 'prefers the dynamic lookup when it succeeds (and caches it)'
+      Mock curl
+        echo '{"version":"12.3.1"}'
+      End
+      When call lt_resolve_default_version pnpm '10.33.0'
+      The status should be success
+      The output should eq '12.3.1'
+      The contents of file "$LT_VERSION_CACHE_FILE" should include 'pnpm|||'
+      The contents of file "$LT_VERSION_CACHE_FILE" should include '|||12.3.1'
+    End
+
+    It 'falls back to the static default when the dynamic lookup fails (and does not cache it)'
+      Mock curl
+        exit 1
+      End
+      When call lt_resolve_default_version pnpm '10.33.0'
+      The status should be success
+      The output should eq '10.33.0'
+      The path "$LT_VERSION_CACHE_FILE" should not be exist
+    End
+
+    It 'falls back to the static default for a plugin lt_upstream_latest_version does not map'
+      When call lt_resolve_default_version some-unmapped-plugin '1.2.3'
+      The status should be success
+      The output should eq '1.2.3'
+    End
+
+    It 'never fails itself even when the network is completely unreachable (install must not stop)'
+      Mock curl
+        exit 7
+      End
+      Mock git
+        exit 1
+      End
+      When call lt_resolve_default_version python '3.12.13'
+      The status should be success
+      The output should eq '3.12.13'
+    End
+
+    It 'reuses a fresh cache entry instead of calling curl again'
+      Mock curl
+        echo 'MOCK CURL SHOULD NOT RUN - CACHE SHOULD HAVE SHORT-CIRCUITED' >&2
+        exit 1
+      End
+      printf 'pnpm|||%s|||9.9.9\n' "$(date +%s)" > "$LT_VERSION_CACHE_FILE"
+      When call lt_resolve_default_version pnpm '10.33.0'
+      The status should be success
+      The output should eq '9.9.9'
+    End
+
+    It 'ignores a stale (past-TTL) cache entry and re-fetches'
+      LT_VERSION_CACHE_TTL=60
+      # 3600s old - well past a 60s TTL.
+      printf 'pnpm|||%s|||9.9.9\n' "$(($(date +%s) - 3600))" > "$LT_VERSION_CACHE_FILE"
+      Mock curl
+        echo '{"version":"12.3.1"}'
+      End
+      When call lt_resolve_default_version pnpm '10.33.0'
+      The status should be success
+      The output should eq '12.3.1'
+    End
+
+    It 'only refreshes the plugin it looked up - other cached plugins are left alone'
+      printf 'pnpm|||%s|||9.9.9\n' "$(date +%s)" > "$LT_VERSION_CACHE_FILE"
+      Mock curl
+        echo '{"version":"9.7.1"}'
+      End
+      When call lt_resolve_default_version gradle '9.4.1'
+      The status should be success
+      The output should eq '9.7.1'
+      The contents of file "$LT_VERSION_CACHE_FILE" should include 'pnpm|||'
+      The contents of file "$LT_VERSION_CACHE_FILE" should include '|||9.9.9'
+      The contents of file "$LT_VERSION_CACHE_FILE" should include 'gradle|||'
+    End
+
+    It 'resolves the companion tool uv through the same dynamic+cache path as the 7 languages (m-12/TASK-121.3)'
+      Mock curl
+        echo '{"tag_name":"0.12.9"}'
+      End
+      When call lt_resolve_default_version uv '0.12.9'
+      The status should be success
+      The output should eq '0.12.9'
+      The contents of file "$LT_VERSION_CACHE_FILE" should include 'uv|||'
     End
   End
 End

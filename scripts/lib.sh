@@ -628,23 +628,29 @@ binary_for_plugin() {
   esac
 }
 
-# lt_companion_for_plugin <asdf-plugin-name> (m-7/TASK-99): prints the
-# space-separated companion plugin(s) this language commonly needs alongside
-# it - a package/build manager the base language plugin does NOT already
-# bundle. nodejs's asdf plugin installs a bare Node runtime with only npm,
-# so pnpm is a genuinely separate, commonly-wanted install; java's plugin
-# installs only a JDK with no build tool at all, so gradle is closer to
-# required than optional for real projects. rust and golang have no entry
-# here on purpose, not by omission: asdf-rust bundles cargo and the golang
-# plugin's `go` binary already includes modules/build tooling, so there's no
-# equivalent "separate package manager" gap to fill for them. Same `case`
-# pattern as binary_for_plugin() above, for the same bash-3.2-has-no-
-# associative-arrays reason. Empty output means "no companion for this
+# lt_companion_for_plugin <asdf-plugin-name> (m-7/TASK-99; python/uv added
+# m-12/TASK-121, decision-2): prints the space-separated companion
+# plugin(s) this language commonly needs alongside it - a package/build
+# manager the base language plugin does NOT already bundle. nodejs's asdf
+# plugin installs a bare Node runtime with only npm, so pnpm is a genuinely
+# separate, commonly-wanted install; java's plugin installs only a JDK with
+# no build tool at all, so gradle is closer to required than optional for
+# real projects; python's plugin installs a bare interpreter with only pip,
+# so uv (decision-2: chosen over poetry - single-binary install fits this
+# repo's asdf-plugin-per-tool model, and leads poetry in both ecosystem
+# adoption and asdf plugin activity as of that decision) fills the same gap
+# pnpm/gradle fill for their languages. rust and golang have no entry here
+# on purpose, not by omission: asdf-rust bundles cargo and the golang
+# plugin's `go` binary already includes modules/build tooling, so there's
+# no equivalent "separate package manager" gap to fill for them. Same
+# `case` pattern as binary_for_plugin() above, for the same bash-3.2-has-
+# no-associative-arrays reason. Empty output means "no companion for this
 # plugin" - callers must treat that as a valid, common case, not an error.
 lt_companion_for_plugin() {
   case "$1" in
     nodejs) echo pnpm ;;
     java)   echo gradle ;;
+    python) echo uv ;;
     *)      echo "" ;;
   esac
 }
@@ -679,4 +685,227 @@ version_core() {
   result="$(printf '%s\n' "$1" | sed -n 's/[^0-9]*\([0-9][0-9]*\.[0-9][0-9]*\(\.[0-9][0-9]*\)*\).*/\1/p')"
   [ -n "$result" ] || return 1
   printf '%s\n' "$result"
+}
+
+# LT_VERSION_FETCH_TIMEOUT (m-12/TASK-119): per-network-call timeout, in
+# seconds, for lt_upstream_latest_version()'s curl/git calls below.
+# Override-able like LT_LOCK_DIR/LT_REPORT_FILE elsewhere in this file, so
+# a test can shrink it instead of waiting out a real timeout.
+LT_VERSION_FETCH_TIMEOUT="${LT_VERSION_FETCH_TIMEOUT:-5}"
+
+# lt_adoptium_arch: prints the CPU architecture name Adoptium's API expects
+# (used by lt_upstream_latest_version's java case below) - different from
+# lt_homebrew_prefix's own uname -m mapping only in spelling ("aarch64" vs
+# "arm64"), so this can't just reuse that function.
+lt_adoptium_arch() {
+  case "$(uname -m)" in
+    arm64) echo aarch64 ;;  # Apple Silicon
+    *)     echo x64 ;;      # Intel
+  esac
+}
+
+# lt_upstream_latest_version <plugin> (m-12/TASK-118 decision, decision-1):
+# fetches this plugin's latest stable version straight from that language's
+# own official distribution index/API - deliberately NOT via `asdf latest`/
+# `asdf list all` (see decision-1: those require the plugin to already be
+# added to asdf, which 00_select.sh can't guarantee at phase 0 - see
+# ask_version()'s own comment in scripts/install/00_select.sh). Every
+# branch below needs nothing but curl (or git, for python) and the network
+# - no asdf, no plugin - so it's safe to call directly from phase 0.
+#
+# Prints the version string on success. Returns 1 (nothing printed) on any
+# failure - missing curl, network/DNS failure, non-2xx response, empty or
+# unparseable body - so callers must always have a static fallback ready
+# (see lt_default_version below, the function every real call site uses).
+#
+# Same case-dispatch style as binary_for_plugin()/lt_companion_for_plugin()
+# above, for the same bash-3.2-has-no-associative-arrays reason.
+lt_upstream_latest_version() {
+  # No up-front `command -v curl` guard here on purpose: every branch below
+  # that needs curl (or git, for python) already chains `|| return 1` onto
+  # its own call, which catches a missing binary (exit 127) exactly like
+  # any other failure - a shared guard would also incorrectly gate the
+  # nodejs branch (which shells out to nothing at all).
+  local plugin="$1" body lts_major
+  case "$plugin" in
+    nodejs)
+      # asdf-nodejs resolves the "lts" alias itself, fresh, at actual
+      # `asdf install nodejs lts` time - a network call here would only
+      # ever produce a snapshot that's already stale by the time asdf uses
+      # it, so this passes the alias straight through instead of
+      # pre-resolving it. (This is also why .tool-versions already carries
+      # "lts", not a pinned number, for nodejs.)
+      echo lts
+      ;;
+    pnpm)
+      # npm registry - the same place asdf-pnpm's own installer downloads
+      # pnpm from.
+      body="$(curl -fsS --max-time "$LT_VERSION_FETCH_TIMEOUT" 'https://registry.npmjs.org/pnpm/latest' 2>/dev/null)" || return 1
+      printf '%s\n' "$body" | grep -o '"version"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | sed -E 's/.*"([^"]*)"$/\1/'
+      ;;
+    gradle)
+      # Gradle's own official "current version" API - a single value, no
+      # rc/milestone noise to filter (unlike asdf-gradle's list-all).
+      body="$(curl -fsS --max-time "$LT_VERSION_FETCH_TIMEOUT" 'https://services.gradle.org/versions/current' 2>/dev/null)" || return 1
+      printf '%s\n' "$body" | grep -o '"version"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | sed -E 's/.*"([^"]*)"$/\1/'
+      ;;
+    golang)
+      # go.dev's official download index - first array entry is the
+      # current stable release.
+      body="$(curl -fsS --max-time "$LT_VERSION_FETCH_TIMEOUT" 'https://go.dev/dl/?mode=json' 2>/dev/null)" || return 1
+      printf '%s\n' "$body" | grep -o '"version"[[:space:]]*:[[:space:]]*"go[^"]*"' | head -1 | sed -E 's/.*"go([^"]*)"$/\1/'
+      ;;
+    rust)
+      # Rust's official release channel manifest (TOML) - the [pkg.rust]
+      # section's version field specifically, since the file also lists
+      # cargo/rustfmt/etc.'s own versions under the same "version" key.
+      body="$(curl -fsS --max-time "$LT_VERSION_FETCH_TIMEOUT" 'https://static.rust-lang.org/dist/channel-rust-stable.toml' 2>/dev/null)" || return 1
+      printf '%s\n' "$body" | awk '/^\[pkg\.rust\]/{f=1; next} f && /^version/{print; exit}' | sed -E 's/version = "([0-9.]+).*/\1/'
+      ;;
+    python)
+      # No official JSON index with a working "just the latest" server-side
+      # filter (python.org's release API doesn't order/filter the way its
+      # own docs suggest - checked directly, see TASK-118.1 notes) - cpython's
+      # own tags are the next best official source. Tags mix final releases
+      # (vX.Y.Z) with pre-releases (vX.Y.ZaN/bN/rcN); filter down to final
+      # releases only, then sort each dotted field numerically (macOS's BSD
+      # sort has no -V/version-sort, unlike GNU sort) and take the highest.
+      body="$(git -c http.lowSpeedLimit=1000 -c http.lowSpeedTime="$LT_VERSION_FETCH_TIMEOUT" ls-remote --tags --refs https://github.com/python/cpython.git 2>/dev/null)" || return 1
+      printf '%s\n' "$body" | awk '{print $2}' | sed -n 's#^refs/tags/v##p' | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' | sort -t. -k1,1n -k2,2n -k3,3n | tail -1
+      ;;
+    java)
+      # Two-step Eclipse Adoptium (Temurin) lookup: which major version is
+      # the current LTS, then that major's latest GA JDK build for this
+      # Mac's own architecture. The "semver" field comes back pre-formatted
+      # exactly like asdf-java's own version strings (e.g.
+      # "25.0.4+101.0.LTS"), so no reformatting is needed beyond prepending
+      # "temurin-". os=mac is hardcoded - this repo is macOS-only.
+      body="$(curl -fsS --max-time "$LT_VERSION_FETCH_TIMEOUT" 'https://api.adoptium.net/v3/info/available_releases' 2>/dev/null)" || return 1
+      lts_major="$(printf '%s\n' "$body" | grep -o '"most_recent_lts"[[:space:]]*:[[:space:]]*[0-9]*' | grep -o '[0-9]*$')"
+      [ -n "$lts_major" ] || return 1
+      body="$(curl -fsS --max-time "$LT_VERSION_FETCH_TIMEOUT" "https://api.adoptium.net/v3/assets/latest/$lts_major/hotspot?vendor=eclipse&os=mac&image_type=jdk&architecture=$(lt_adoptium_arch)" 2>/dev/null)" || return 1
+      printf '%s\n' "$body" | grep -o '"semver"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | sed -E 's/.*"([^"]*)"$/temurin-\1/'
+      ;;
+    uv)
+      # uv (m-12/TASK-121, decision-2's companion pick for python) has no
+      # official JSON distribution index of its own (unlike the 7 languages
+      # above, each with a dedicated official index/API) - GitHub's Releases
+      # API is the fallback decision-1 already set aside for exactly this
+      # case. "tag_name" is already bare (e.g. "0.12.9", no leading "v"),
+      # matching asdf-uv's own version strings directly - no reformatting.
+      body="$(curl -fsS --max-time "$LT_VERSION_FETCH_TIMEOUT" 'https://api.github.com/repos/astral-sh/uv/releases/latest' 2>/dev/null)" || return 1
+      printf '%s\n' "$body" | grep -o '"tag_name"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | sed -E 's/.*"([^"]*)"$/\1/'
+      ;;
+    *)
+      # Unknown plugin (e.g. this repo's own custom TOOL_VERSIONS_FILE users
+      # could pass one this function has no case for): no source to fetch
+      # from, so fail like any other lookup miss - callers fall back to the
+      # static default.
+      return 1
+      ;;
+  esac
+}
+
+# LT_VERSION_CACHE_FILE / LT_VERSION_CACHE_TTL (m-12/TASK-119.3): where
+# lt_resolve_default_version below remembers a plugin's last successfully
+# fetched upstream version, and how long (seconds) that memory stays fresh
+# before the next call re-fetches instead of trusting it. Deliberately
+# under $HOME directly, like LT_REPORT_FILE - not under $ASDF_DATA_DIR,
+# since this cache's whole purpose (avoiding a repeat network round-trip
+# across nearby installer runs) has nothing to do with asdf's own state and
+# shouldn't be wiped by `05_purge_asdf_core.sh`'s `rm -rf $ASDF_DATA_DIR`.
+# Both override-able, same pattern as LT_LOCK_DIR/LT_REPORT_FILE, so a test
+# can point this at a scratch file/short TTL instead of touching a real
+# $HOME or waiting out a real day. 86400s = 24h: this is a personal,
+# occasionally-run installer, not a CI job re-invoked every minute - daily
+# freshness is already more current than the static .tool-versions it
+# replaces, without re-hitting every upstream API on every single run
+# during, say, a single afternoon of repeated installs while testing.
+LT_VERSION_CACHE_FILE="${LT_VERSION_CACHE_FILE:-$HOME/.langtoolchain-version-cache}"
+LT_VERSION_CACHE_TTL="${LT_VERSION_CACHE_TTL:-86400}"
+
+# lt_cached_version_lookup <plugin>: prints <plugin>'s cached version if
+# LT_VERSION_CACHE_FILE has a line for it written within the last
+# LT_VERSION_CACHE_TTL seconds; fails (nothing printed) on a cache miss -
+# no file yet, no line for this plugin, or a line older than the TTL.
+# Internal to this file - lt_resolve_default_version below is the only
+# caller, and the only supported way to read this cache.
+#
+# Cache line format: "<plugin>|||<unix-epoch>|||<version>", one per plugin,
+# same triple-pipe-delimited shape lt_env_var_defs() above already uses for
+# its own multi-field lines (none of these fields can contain "|||").
+lt_cached_version_lookup() {
+  local plugin="$1" line ts version now
+  [ -f "$LT_VERSION_CACHE_FILE" ] || return 1
+  # grep finding nothing here is a normal cache miss, not an error - `|| true`
+  # keeps that from tripping callers running under `set -e`.
+  line="$(grep "^$plugin|||" "$LT_VERSION_CACHE_FILE" 2>/dev/null | tail -1)" || true
+  [ -n "$line" ] || return 1
+  ts="$(printf '%s\n' "$line" | awk -F'\\|\\|\\|' '{print $2}')"
+  version="$(printf '%s\n' "$line" | awk -F'\\|\\|\\|' '{print $3}')"
+  [ -n "$version" ] || return 1
+  # A non-numeric ts (hand-edited/corrupted cache file - this cache is
+  # never written with anything but a real `date +%s` epoch) would make the
+  # arithmetic comparison below a hard shell error, not just a false
+  # result - reject it as a miss instead of letting that abort the caller.
+  case "$ts" in
+    '' | *[!0-9]*) return 1 ;;
+  esac
+  now="$(date +%s)"
+  [ $((now - ts)) -lt "$LT_VERSION_CACHE_TTL" ] || return 1
+  printf '%s\n' "$version"
+}
+
+# lt_cache_version <plugin> <version>: (over)writes <plugin>'s line in
+# LT_VERSION_CACHE_FILE with <version> and the current time, replacing any
+# previous line for the same plugin (never appending a stale duplicate).
+# Internal to this file, same as lt_cached_version_lookup above.
+lt_cache_version() {
+  local plugin="$1" version="$2" tmp
+  tmp="$(mktemp)"
+  if [ -f "$LT_VERSION_CACHE_FILE" ]; then
+    # No existing line for this plugin is a normal case (first time it's
+    # ever been cached), not an error - `|| true` so `set -e` callers don't
+    # abort on grep's "found nothing" exit status.
+    grep -v "^$plugin|||" "$LT_VERSION_CACHE_FILE" > "$tmp" 2>/dev/null || true
+  else
+    : > "$tmp"
+  fi
+  printf '%s|||%s|||%s\n' "$plugin" "$(date +%s)" "$version" >> "$tmp"
+  mv "$tmp" "$LT_VERSION_CACHE_FILE"
+}
+
+# lt_resolve_default_version <plugin> <static-default> (m-12/TASK-119.2/
+# TASK-119.3, decision-1): the actual call site scripts/install/
+# 00_select.sh's ask_version() comment refers to. Order of preference:
+#
+#   1. a fresh (within LT_VERSION_CACHE_TTL) cached value - no network call
+#      at all, so re-running the installer soon after a previous run (e.g.
+#      while testing, or a `--local` install right after a global one)
+#      doesn't re-hit every upstream API for versions it already just
+#      fetched.
+#   2. a live lt_upstream_latest_version() lookup - cached for next time on
+#      success.
+#   3. <static-default> (the .tool-versions value 00_select.sh already has
+#      on hand) - whenever both of the above come up empty (offline,
+#      rate-limited, timeout, unmapped plugin, or simply no cache yet and
+#      the live lookup also failed).
+#
+# Callers never see an empty default, and a completely offline machine
+# behaves exactly as it did before m-12: the static .tool-versions value,
+# install proceeds unblocked.
+lt_resolve_default_version() {
+  local plugin="$1" static_default="$2" cached fetched
+  cached="$(lt_cached_version_lookup "$plugin" 2>/dev/null)" || cached=""
+  if [ -n "$cached" ]; then
+    printf '%s\n' "$cached"
+    return 0
+  fi
+  fetched="$(lt_upstream_latest_version "$plugin" 2>/dev/null)" || fetched=""
+  if [ -n "$fetched" ]; then
+    lt_cache_version "$plugin" "$fetched"
+    printf '%s\n' "$fetched"
+    return 0
+  fi
+  printf '%s\n' "$static_default"
 }
