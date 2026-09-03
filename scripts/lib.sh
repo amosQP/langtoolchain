@@ -712,25 +712,106 @@ lt_upstream_latest_version() {
   esac
 }
 
-# lt_resolve_default_version <plugin> <static-default> (m-12/TASK-119.2,
-# decision-1): the actual call site scripts/install/00_select.sh's
-# ask_version() comment refers to - a single lt_upstream_latest_version()
-# lookup, falling back to <static-default> (the .tool-versions value
-# 00_select.sh already has on hand) whenever that lookup fails or comes
-# back empty (offline, rate-limited, timeout, or an unmapped plugin - see
-# lt_upstream_latest_version's own unknown-plugin case above). Callers
-# never see an empty default this way.
+# LT_VERSION_CACHE_FILE / LT_VERSION_CACHE_TTL (m-12/TASK-119.3): where
+# lt_resolve_default_version below remembers a plugin's last successfully
+# fetched upstream version, and how long (seconds) that memory stays fresh
+# before the next call re-fetches instead of trusting it. Deliberately
+# under $HOME directly, like LT_REPORT_FILE - not under $ASDF_DATA_DIR,
+# since this cache's whole purpose (avoiding a repeat network round-trip
+# across nearby installer runs) has nothing to do with asdf's own state and
+# shouldn't be wiped by `05_purge_asdf_core.sh`'s `rm -rf $ASDF_DATA_DIR`.
+# Both override-able, same pattern as LT_LOCK_DIR/LT_REPORT_FILE, so a test
+# can point this at a scratch file/short TTL instead of touching a real
+# $HOME or waiting out a real day. 86400s = 24h: this is a personal,
+# occasionally-run installer, not a CI job re-invoked every minute - daily
+# freshness is already more current than the static .tool-versions it
+# replaces, without re-hitting every upstream API on every single run
+# during, say, a single afternoon of repeated installs while testing.
+LT_VERSION_CACHE_FILE="${LT_VERSION_CACHE_FILE:-$HOME/.langtoolchain-version-cache}"
+LT_VERSION_CACHE_TTL="${LT_VERSION_CACHE_TTL:-86400}"
+
+# lt_cached_version_lookup <plugin>: prints <plugin>'s cached version if
+# LT_VERSION_CACHE_FILE has a line for it written within the last
+# LT_VERSION_CACHE_TTL seconds; fails (nothing printed) on a cache miss -
+# no file yet, no line for this plugin, or a line older than the TTL.
+# Internal to this file - lt_resolve_default_version below is the only
+# caller, and the only supported way to read this cache.
 #
-# Lives here rather than in 00_select.sh itself so it's unit-testable via
-# `Include scripts/lib.sh` (00_select.sh has top-level side effects the
-# moment it's sourced - mktemp, an EXIT trap, the whole interactive flow -
-# so shellspec can only exercise it via `When run`, not `Include`).
-lt_resolve_default_version() {
-  local plugin="$1" static_default="$2" dynamic
-  dynamic="$(lt_upstream_latest_version "$plugin" 2>/dev/null)" || dynamic=""
-  if [ -n "$dynamic" ]; then
-    printf '%s\n' "$dynamic"
+# Cache line format: "<plugin>|||<unix-epoch>|||<version>", one per plugin,
+# same triple-pipe-delimited shape lt_env_var_defs() above already uses for
+# its own multi-field lines (none of these fields can contain "|||").
+lt_cached_version_lookup() {
+  local plugin="$1" line ts version now
+  [ -f "$LT_VERSION_CACHE_FILE" ] || return 1
+  # grep finding nothing here is a normal cache miss, not an error - `|| true`
+  # keeps that from tripping callers running under `set -e`.
+  line="$(grep "^$plugin|||" "$LT_VERSION_CACHE_FILE" 2>/dev/null | tail -1)" || true
+  [ -n "$line" ] || return 1
+  ts="$(printf '%s\n' "$line" | awk -F'\\|\\|\\|' '{print $2}')"
+  version="$(printf '%s\n' "$line" | awk -F'\\|\\|\\|' '{print $3}')"
+  [ -n "$version" ] || return 1
+  # A non-numeric ts (hand-edited/corrupted cache file - this cache is
+  # never written with anything but a real `date +%s` epoch) would make the
+  # arithmetic comparison below a hard shell error, not just a false
+  # result - reject it as a miss instead of letting that abort the caller.
+  case "$ts" in
+    '' | *[!0-9]*) return 1 ;;
+  esac
+  now="$(date +%s)"
+  [ $((now - ts)) -lt "$LT_VERSION_CACHE_TTL" ] || return 1
+  printf '%s\n' "$version"
+}
+
+# lt_cache_version <plugin> <version>: (over)writes <plugin>'s line in
+# LT_VERSION_CACHE_FILE with <version> and the current time, replacing any
+# previous line for the same plugin (never appending a stale duplicate).
+# Internal to this file, same as lt_cached_version_lookup above.
+lt_cache_version() {
+  local plugin="$1" version="$2" tmp
+  tmp="$(mktemp)"
+  if [ -f "$LT_VERSION_CACHE_FILE" ]; then
+    # No existing line for this plugin is a normal case (first time it's
+    # ever been cached), not an error - `|| true` so `set -e` callers don't
+    # abort on grep's "found nothing" exit status.
+    grep -v "^$plugin|||" "$LT_VERSION_CACHE_FILE" > "$tmp" 2>/dev/null || true
   else
-    printf '%s\n' "$static_default"
+    : > "$tmp"
   fi
+  printf '%s|||%s|||%s\n' "$plugin" "$(date +%s)" "$version" >> "$tmp"
+  mv "$tmp" "$LT_VERSION_CACHE_FILE"
+}
+
+# lt_resolve_default_version <plugin> <static-default> (m-12/TASK-119.2/
+# TASK-119.3, decision-1): the actual call site scripts/install/
+# 00_select.sh's ask_version() comment refers to. Order of preference:
+#
+#   1. a fresh (within LT_VERSION_CACHE_TTL) cached value - no network call
+#      at all, so re-running the installer soon after a previous run (e.g.
+#      while testing, or a `--local` install right after a global one)
+#      doesn't re-hit every upstream API for versions it already just
+#      fetched.
+#   2. a live lt_upstream_latest_version() lookup - cached for next time on
+#      success.
+#   3. <static-default> (the .tool-versions value 00_select.sh already has
+#      on hand) - whenever both of the above come up empty (offline,
+#      rate-limited, timeout, unmapped plugin, or simply no cache yet and
+#      the live lookup also failed).
+#
+# Callers never see an empty default, and a completely offline machine
+# behaves exactly as it did before m-12: the static .tool-versions value,
+# install proceeds unblocked.
+lt_resolve_default_version() {
+  local plugin="$1" static_default="$2" cached fetched
+  cached="$(lt_cached_version_lookup "$plugin" 2>/dev/null)" || cached=""
+  if [ -n "$cached" ]; then
+    printf '%s\n' "$cached"
+    return 0
+  fi
+  fetched="$(lt_upstream_latest_version "$plugin" 2>/dev/null)" || fetched=""
+  if [ -n "$fetched" ]; then
+    lt_cache_version "$plugin" "$fetched"
+    printf '%s\n' "$fetched"
+    return 0
+  fi
+  printf '%s\n' "$static_default"
 }

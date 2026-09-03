@@ -751,23 +751,35 @@ RUNNER_EOF
     End
   End
 
-  Describe 'lt_resolve_default_version() (m-12/TASK-119.2)'
-    It 'prefers the dynamic lookup when it succeeds'
+  Describe 'lt_resolve_default_version() (m-12/TASK-119.2/TASK-119.3)'
+    # Every example here points the cache at a scratch file, never the real
+    # $HOME/.langtoolchain-version-cache - lt_resolve_default_version's
+    # success path writes to LT_VERSION_CACHE_FILE, and this repo's own
+    # safety rule is that tests never touch real machine state.
+    setup() { LT_VERSION_CACHE_FILE="$(mktemp)"; rm -f "$LT_VERSION_CACHE_FILE"; }
+    cleanup() { rm -f "$LT_VERSION_CACHE_FILE"; }
+    BeforeEach 'setup'
+    AfterEach 'cleanup'
+
+    It 'prefers the dynamic lookup when it succeeds (and caches it)'
       Mock curl
         echo '{"version":"12.3.1"}'
       End
       When call lt_resolve_default_version pnpm '10.33.0'
       The status should be success
       The output should eq '12.3.1'
+      The contents of file "$LT_VERSION_CACHE_FILE" should include 'pnpm|||'
+      The contents of file "$LT_VERSION_CACHE_FILE" should include '|||12.3.1'
     End
 
-    It 'falls back to the static default when the dynamic lookup fails'
+    It 'falls back to the static default when the dynamic lookup fails (and does not cache it)'
       Mock curl
         exit 1
       End
       When call lt_resolve_default_version pnpm '10.33.0'
       The status should be success
       The output should eq '10.33.0'
+      The path "$LT_VERSION_CACHE_FILE" should not be exist
     End
 
     It 'falls back to the static default for a plugin lt_upstream_latest_version does not map'
@@ -786,6 +798,42 @@ RUNNER_EOF
       When call lt_resolve_default_version python '3.12.13'
       The status should be success
       The output should eq '3.12.13'
+    End
+
+    It 'reuses a fresh cache entry instead of calling curl again'
+      Mock curl
+        echo 'MOCK CURL SHOULD NOT RUN - CACHE SHOULD HAVE SHORT-CIRCUITED' >&2
+        exit 1
+      End
+      printf 'pnpm|||%s|||9.9.9\n' "$(date +%s)" > "$LT_VERSION_CACHE_FILE"
+      When call lt_resolve_default_version pnpm '10.33.0'
+      The status should be success
+      The output should eq '9.9.9'
+    End
+
+    It 'ignores a stale (past-TTL) cache entry and re-fetches'
+      LT_VERSION_CACHE_TTL=60
+      # 3600s old - well past a 60s TTL.
+      printf 'pnpm|||%s|||9.9.9\n' "$(($(date +%s) - 3600))" > "$LT_VERSION_CACHE_FILE"
+      Mock curl
+        echo '{"version":"12.3.1"}'
+      End
+      When call lt_resolve_default_version pnpm '10.33.0'
+      The status should be success
+      The output should eq '12.3.1'
+    End
+
+    It 'only refreshes the plugin it looked up - other cached plugins are left alone'
+      printf 'pnpm|||%s|||9.9.9\n' "$(date +%s)" > "$LT_VERSION_CACHE_FILE"
+      Mock curl
+        echo '{"version":"9.7.1"}'
+      End
+      When call lt_resolve_default_version gradle '9.4.1'
+      The status should be success
+      The output should eq '9.7.1'
+      The contents of file "$LT_VERSION_CACHE_FILE" should include 'pnpm|||'
+      The contents of file "$LT_VERSION_CACHE_FILE" should include '|||9.9.9'
+      The contents of file "$LT_VERSION_CACHE_FILE" should include 'gradle|||'
     End
   End
 End
