@@ -143,9 +143,17 @@ git clone https://github.com/amosQP/langtoolchain.git && cd langtoolchain
 Python 컴파일에 필요한 Homebrew 패키지(`openssl`, `readline`, `sqlite3`, `xz`, `zlib`, `tcl-tk`)도 함께 설치됩니다.
 
 이 도구는 위 언어(+동반 도구)와 그걸 위한 Homebrew 패키지 6개만 건드립니다 — 이미 있거나 앞으로
-설치할 다른 `brew` 패키지, 이 도구가 깔지 않은 다른 asdf 플러그인은 **install 쪽에서는** 손대지
-않습니다. 단 uninstall은 `asdf` 자체를 통째로 지우기 때문에 예외입니다 — 다른 asdf 플러그인이
-있어도 `~/.asdf/` 전체와 함께 지워집니다.
+설치할 다른 `brew` 패키지, 이 도구가 깔지 않은 다른 asdf 플러그인은 install 쪽에서든 uninstall
+쪽에서든 손대지 않습니다. uninstall은 `asdf` 자체와 `~/.asdf/`(asdf 데이터 디렉토리) 전체를
+지우려고 시도하지만, **설치 시점에 `~/.asdf/`가 이미 있었다는 게 확인되면(또는 확인할 수 없으면)
+전체 삭제를 건너뛰고 경고만 남깁니다** — 다른 asdf 플러그인이 있어도 무조건 함께 지워지던 예전
+동작과 다릅니다.
+
+> **⚠️ 동작 변경 안내(m-13)**: 이 변경 이전 버전으로 이미 설치해 둔 상태에서 langtoolchain을
+> 업데이트만 한 경우, install 시점 스냅샷이 없으므로 uninstall을 실행해도 안전을 위해
+> `~/.asdf/` 삭제가 기본적으로 스킵됩니다(설치 전부터 있던 상태인지 판단할 근거가 없기
+> 때문 — "모르면 지우지 않는다"는 원칙). langtoolchain이 설치한 런타임까지 포함해 완전히
+> 지우고 싶다면, uninstall 실행 후 화면에 안내되는 대로 `rm -rf ~/.asdf`를 직접 실행하세요.
 
 ```zsh
 curl -fsSL https://raw.githubusercontent.com/amosQP/langtoolchain/main/uninstall.sh | sh
@@ -168,7 +176,7 @@ curl -fsSL https://raw.githubusercontent.com/amosQP/langtoolchain/main/uninstall
 
 ### 테스트 검증의 한계
 
-- **로컬 shellspec은 실제 Homebrew/asdf를 건드리지 않음** — `spec/`의 132개 예제는 전부 실제 `brew`/`asdf` 명령을 모킹하거나 `DRY_RUN=true`로 실행되도록 설계됨(진짜 컴파일/설치는 느리고 개발 머신을 오염시키므로). 그래서 "진짜로 설치가 되는가" 자체는 로컬 스위트가 보장하지 않고, `.github/workflows/e2e-verify.yml`(GitHub 호스팅 macOS 러너, arm64+Intel)이 유일한 실기기 검증 경로임 — `main` 브랜치에 `scripts/**`/`install.sh`/`uninstall.sh`/`.tool-versions`가 바뀔 때만 push/PR로 자동 실행(그 외 커밋은 `workflow_dispatch`로 수동 실행).
+- **로컬 shellspec은 실제 Homebrew/asdf를 건드리지 않음** — `spec/`의 143개 예제는 전부 실제 `brew`/`asdf` 명령을 모킹하거나 `DRY_RUN=true`로 실행되도록 설계됨(진짜 컴파일/설치는 느리고 개발 머신을 오염시키므로). 그래서 "진짜로 설치가 되는가" 자체는 로컬 스위트가 보장하지 않고, `.github/workflows/e2e-verify.yml`(GitHub 호스팅 macOS 러너, arm64+Intel)이 유일한 실기기 검증 경로임 — `main` 브랜치에 `scripts/**`/`install.sh`/`uninstall.sh`/`.tool-versions`가 바뀔 때만 push/PR로 자동 실행(그 외 커밋은 `workflow_dispatch`로 수동 실행).
 - **화살표 키 TUI는 표준 터미널 기준으로만 검증** — `stty`/`dd`로 raw 모드를 읽는 `lt_arrow_menu()`는 `expect`로 구동한 실제 pty(및 일반 터미널 앱)에서는 확인했지만, 모든 터미널 에뮬레이터·멀티플렉서(tmux/screen 등)·SSH 경유 세션 조합까지 다 검증하지는 않음 — 표준 3바이트 ANSI 이스케이프(`ESC [ A/B`)를 벗어나는 비표준 키 전송 방식에서는 예상과 다르게 동작할 수 있음.
 - **`curl | sh`의 진짜 원격 clone 경로는 로컬에서 임의로 재현하기 어려움** — `install.sh`/`uninstall.sh`의 `REPO_URL`/`BRANCH`가 하드코딩돼 있어(의도적으로 curl 진입점을 단순하게 유지하려는 선택) 환경변수 등으로 다른 저장소/브랜치를 가리키게 해서 테스트할 방법이 없음. 이 경로 자체는 실제 `curl | sh`로 이 저장소를 직접 당겨 검증했지만, fork나 다른 브랜치를 대상으로 한 회귀 테스트는 만들 수 없는 구조.
 

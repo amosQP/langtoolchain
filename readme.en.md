@@ -144,10 +144,19 @@ their parent language.
 
 The Homebrew packages Python needs to compile (`openssl`, `readline`, `sqlite3`, `xz`, `zlib`, `tcl-tk`) are installed alongside it.
 
-This tool only touches the languages above (+ companions) and the 6 Homebrew packages they need —
-**on the install side**, it never touches other packages already on your Mac or installed later via
-`brew install`, or asdf plugins it didn't install itself. Uninstall is the exception: it purges `asdf`
-entirely, so any other asdf plugins you have get removed along with the rest of `~/.asdf/`.
+This tool only touches the languages above (+ companions) and the 6 Homebrew packages they need — it
+never touches other packages already on your Mac or installed later via `brew install`, or asdf plugins
+it didn't install itself, on either the install or the uninstall side. Uninstall does still try to purge
+`asdf` itself and all of `~/.asdf/` (the asdf data directory), but **if install-time evidence shows
+`~/.asdf/` already existed before langtoolchain ever ran (or that can't be confirmed), it skips deleting
+it entirely and just warns instead** — unlike the old behavior, which wiped it unconditionally along with
+any other asdf plugins you had.
+
+> **⚠️ Behavior change (m-13)**: if you installed with a version of this tool from before this change and
+> have only updated since, there's no install-time snapshot for uninstall to check — so uninstall now
+> skips deleting `~/.asdf/` by default for safety (no evidence either way means "don't delete"). If you
+> want a full clean including every runtime langtoolchain installed, run uninstall and then remove it
+> yourself as it instructs: `rm -rf ~/.asdf`.
 
 ```zsh
 curl -fsSL https://raw.githubusercontent.com/amosQP/langtoolchain/main/uninstall.sh | sh
@@ -171,7 +180,7 @@ fully gone.
 
 ### Testing limitations
 
-- **The local shellspec suite never touches a real Homebrew/asdf** — all 132 examples in `spec/` either mock `brew`/`asdf` or run under `DRY_RUN=true`, since a real compile/install is slow and would pollute a dev machine. So "does this actually install" isn't something the local suite proves — `.github/workflows/e2e-verify.yml` (GitHub-hosted macOS runners, arm64 + Intel) is the only real-hardware path, and it only auto-runs on push/PR to `main` when `scripts/**`/`install.sh`/`uninstall.sh`/`.tool-versions` change (everything else needs a manual `workflow_dispatch`).
+- **The local shellspec suite never touches a real Homebrew/asdf** — all 143 examples in `spec/` either mock `brew`/`asdf` or run under `DRY_RUN=true`, since a real compile/install is slow and would pollute a dev machine. So "does this actually install" isn't something the local suite proves — `.github/workflows/e2e-verify.yml` (GitHub-hosted macOS runners, arm64 + Intel) is the only real-hardware path, and it only auto-runs on push/PR to `main` when `scripts/**`/`install.sh`/`uninstall.sh`/`.tool-versions` change (everything else needs a manual `workflow_dispatch`).
 - **The arrow-key TUI has only been verified against standard terminals** — `lt_arrow_menu()` reads raw mode via `stty`/`dd`, and has been checked against a real pty driven by `expect` and ordinary terminal apps, but not against every terminal emulator, multiplexer (tmux/screen), or SSH-relayed session — anything sending non-standard key sequences outside the plain 3-byte ANSI escape (`ESC [ A/B`) this relies on could behave unexpectedly.
 - **The real `curl | sh` remote-clone path is hard to reproduce locally on demand** — `install.sh`/`uninstall.sh` hardcode `REPO_URL`/`BRANCH` (a deliberate choice to keep the curl entry point simple), with no environment-variable override to point at a different repo/branch for testing. The path itself has been verified against this actual repo via a real `curl | sh` run, but there's no way to build a regression test against a fork or another branch.
 
