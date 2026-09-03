@@ -324,17 +324,40 @@ retry() {
 # separate process, so any variable it set would vanish with it; a file is
 # the one thing both sides can see.
 #
-# Prints whatever <cmd...> itself writes to stdout/stderr, unmodified.
-# Returns <cmd...>'s own exit status if it finished before the timeout;
-# 124 (same convention as GNU coreutils' timeout(1)) if it had to be
-# killed for running too long.
+# <cmd...>'s stdout/stderr are captured to temp files rather than left
+# connected straight through to this function's own fds, and only `cat`
+# out afterward - deliberately, not just for convenience. If <cmd...>
+# itself spawns a child of its own (e.g. `git ls-remote` on an https:// URL
+# execs a `git-remote-https` helper to do the actual network work) and this
+# function kills only the single PID it tracked, that grandchild can be
+# left running as an orphan. A POSIX-portable way to reliably signal a
+# whole process tree at once (a job-control process-group kill) turned out
+# NOT to be one: `set -m` does make bash put each background job in its own
+# process group, but verified by hand that dash does not, so `kill -TERM
+# -"$cmd_pid"` would silently fail to reach anything under dash - not an
+# option in a codebase that has to run under both. Piping <cmd...>'s output
+# straight into a caller's own `$(...)` instead would hit exactly this: a
+# pipe's read side only sees EOF once EVERY process holding its write end
+# open has exited, so a lingering orphaned grandchild - still holding that
+# same fd - would keep the caller's `$(...)` blocked for the orphan's
+# entire remaining lifetime, regardless of how fast this function itself
+# gives up. A plain file has no such problem: reading one is never blocked
+# by some other process still holding it open for writing, so an orphan
+# left behind after the timeout can't hang this function's own caller even
+# though it may (rarely, harmlessly) still be running somewhere in the
+# background. The trade-off is buffering - a caller streaming this in real
+# time would now see nothing until <cmd...> finishes or is killed - but no
+# call site here needs that; every existing caller already fully captures
+# this kind of output via `$(...)` first anyway.
 lt_run_with_timeout() {
   local secs="$1"
   shift
-  local cmd_pid watchdog_pid status timeout_marker
+  local cmd_pid watchdog_pid status timeout_marker stdout_file stderr_file
   timeout_marker="$(mktemp -u)"
+  stdout_file="$(mktemp)"
+  stderr_file="$(mktemp)"
 
-  "$@" &
+  "$@" >"$stdout_file" 2>"$stderr_file" &
   cmd_pid=$!
 
   # `kill -0` sends no signal, it only tests whether cmd_pid is still a
@@ -359,6 +382,10 @@ lt_run_with_timeout() {
   # exit status.
   kill "$watchdog_pid" 2>/dev/null || true
   wait "$watchdog_pid" 2>/dev/null || true
+
+  cat "$stdout_file"
+  cat "$stderr_file" >&2
+  rm -f "$stdout_file" "$stderr_file"
 
   if [ -f "$timeout_marker" ]; then
     rm -f "$timeout_marker"
@@ -858,7 +885,17 @@ lt_upstream_latest_version() {
       # (vX.Y.Z) with pre-releases (vX.Y.ZaN/bN/rcN); filter down to final
       # releases only, then sort each dotted field numerically (macOS's BSD
       # sort has no -V/version-sort, unlike GNU sort) and take the highest.
-      body="$(git -c http.lowSpeedLimit=1000 -c http.lowSpeedTime="$LT_VERSION_FETCH_TIMEOUT" ls-remote --tags --refs https://github.com/python/cpython.git 2>/dev/null)" || return 1
+      #
+      # http.lowSpeedLimit/http.lowSpeedTime only catch a transfer that
+      # already started and then stalled - they never engage if the
+      # connection blackholes during DNS/TCP/TLS handshake, before any byte
+      # has moved (TASK-131.2/decision-10). lt_run_with_timeout (TASK-138.1)
+      # wraps the whole call in a hard wall-clock kill so that case can't
+      # hang past LT_VERSION_FETCH_TIMEOUT either - the two guards are kept
+      # together rather than one replacing the other, since the lowSpeed*
+      # flags cost nothing extra and still cover the "slow, not stalled"
+      # case a bit more gracefully (git's own clean abort vs. a SIGTERM).
+      body="$(lt_run_with_timeout "$LT_VERSION_FETCH_TIMEOUT" git -c http.lowSpeedLimit=1000 -c http.lowSpeedTime="$LT_VERSION_FETCH_TIMEOUT" ls-remote --tags --refs https://github.com/python/cpython.git 2>/dev/null)" || return 1
       printf '%s\n' "$body" | awk '{print $2}' | sed -n 's#^refs/tags/v##p' | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' | sort -t. -k1,1n -k2,2n -k3,3n | tail -1
       ;;
     java)

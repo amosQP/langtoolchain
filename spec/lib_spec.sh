@@ -876,6 +876,26 @@ RUNNER_EOF
       The output should eq '3.14.10'
     End
 
+    It 'fails quickly instead of hanging forever when git ls-remote blackholes (TASK-138.2, decision-10)'
+      # Simulates the DNS/TCP/TLS handshake blackhole decision-10 describes:
+      # git never returns anything, ever. Without lt_run_with_timeout
+      # wrapping this call, this test would hang for real (no network used -
+      # the mock just sleeps) instead of failing fast.
+      Mock git
+        sleep 30
+      End
+      LT_VERSION_FETCH_TIMEOUT=1
+      start_ts=$(date +%s)
+      status=0
+      lt_upstream_latest_version python >/dev/null || status=$?
+      end_ts=$(date +%s)
+      elapsed=$((end_ts - start_ts))
+      failed_fast=false
+      [ "$status" -ne 0 ] && [ "$elapsed" -lt 10 ] && failed_fast=true
+      When call true
+      The variable failed_fast should eq 'true'
+    End
+
     It 'resolves the current LTS major then its latest GA build for java (two curl calls)'
       Mock curl
         case "$*" in

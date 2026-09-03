@@ -1,9 +1,10 @@
 ---
 id: TASK-138.2
 title: python 브랜치에 워치독 적용 + 테스트
-status: To Do
+status: In Progress
 assignee: []
 created_date: '2026-09-03 12:06'
+updated_date: '2026-09-03 12:16'
 labels: []
 dependencies:
   - TASK-138.1
