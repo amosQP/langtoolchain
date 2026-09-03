@@ -151,7 +151,9 @@ snapshot before removing anything asdf-related — both each individual plugin i
 and the whole `~/.asdf/` data directory it still tries to purge along with `asdf` itself: **if
 install-time evidence shows a given plugin, or `~/.asdf/` as a whole, already existed before langtoolchain
 ever ran (or that can't be confirmed), it skips deleting that and just warns instead** — unlike the old
-behavior, which wiped everything unconditionally along with any other asdf plugins you had.
+behavior, which wiped everything unconditionally along with any other asdf plugins you had. Once uninstall
+finishes every phase without error, it also clears that install-time snapshot itself — so the next install
+re-baselines from the machine's actual state at that point.
 
 > **⚠️ Behavior change (m-13)**: if you installed with a version of this tool from before this change and
 > have only updated since, there's no install-time snapshot for uninstall to check — so uninstall now
