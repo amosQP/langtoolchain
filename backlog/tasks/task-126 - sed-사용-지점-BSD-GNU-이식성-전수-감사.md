@@ -1,9 +1,10 @@
 ---
 id: TASK-126
 title: sed 사용 지점 BSD/GNU 이식성 전수 감사
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-09-03 01:15'
+updated_date: '2026-09-03 06:08'
 labels: []
 milestone: m-14
 dependencies: []
@@ -20,3 +21,9 @@ ordinal: 166000
 
 126.3에서 위험이 없다고 판단되면 억지로 코드를 고치지 않고 감사 결과만 final summary에 남기고 종료.
 <!-- SECTION:DESCRIPTION:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+3개 자식 태스크 전부 완료. 126.1: 저장소 전체(scripts/, spec/, .github/, install.sh, uninstall.sh) 전수 검색 결과 실제 sed 호출은 scripts/lib.sh:601(읽기전용 BRE)과 scripts/uninstall/03_clean_env_vars.sh:61(-E -i '.bak') 2곳뿐. 126.2: 이 macOS 개발 머신의 실제 /usr/bin/sed(BSD sed)로 두 호출을 직접 실행 검증 - 둘 다 안전. 참고로 -i 뒤 접미사 인자를 생략하면 BSD sed가 다음 토큰(-e 등)을 접미사로 삼켜버리는 실제 함정을 재현했고, 기존 코드는 이미 .bak를 명시해 이를 피하고 있음을 확인. 126.3: 위험 지점이 없어 코드 수정 없이 감사 결과만 scripts/lint/sed-portability-audit.md에 문서화하고 종료 - 없는 문제를 만들어 고치지 않음. 기존 shellspec 스위트 132 examples 0 failures로 회귀 없음 확인(애초에 코드 변경 없었음).
+<!-- SECTION:FINAL_SUMMARY:END -->
