@@ -1,9 +1,10 @@
 ---
 id: TASK-131
 title: 버전 조회 네트워크 타임아웃 일관성 확보
-status: To Do
+status: In Progress
 assignee: []
 created_date: '2026-09-03 11:07'
+updated_date: '2026-09-03 11:26'
 labels: []
 milestone: m-16
 dependencies: []
