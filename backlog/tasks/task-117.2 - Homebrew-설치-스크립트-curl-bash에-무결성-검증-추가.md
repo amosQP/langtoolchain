@@ -4,7 +4,7 @@ title: Homebrew 설치 스크립트 curl|bash에 무결성 검증 추가
 status: Done
 assignee: []
 created_date: '2026-08-30 11:33'
-updated_date: '2026-09-03 01:17'
+updated_date: '2026-09-03 01:18'
 labels: []
 dependencies: []
 parent_task_id: TASK-117
