@@ -146,17 +146,18 @@ The Homebrew packages Python needs to compile (`openssl`, `readline`, `sqlite3`,
 
 This tool only touches the languages above (+ companions) and the 6 Homebrew packages they need — it
 never touches other packages already on your Mac or installed later via `brew install`, or asdf plugins
-it didn't install itself, on either the install or the uninstall side. Uninstall does still try to purge
-`asdf` itself and all of `~/.asdf/` (the asdf data directory), but **if install-time evidence shows
-`~/.asdf/` already existed before langtoolchain ever ran (or that can't be confirmed), it skips deleting
-it entirely and just warns instead** — unlike the old behavior, which wiped it unconditionally along with
-any other asdf plugins you had.
+it didn't install itself, on either the install or the uninstall side. Uninstall checks the install-time
+snapshot before removing anything asdf-related — both each individual plugin it didn't install itself
+and the whole `~/.asdf/` data directory it still tries to purge along with `asdf` itself: **if
+install-time evidence shows a given plugin, or `~/.asdf/` as a whole, already existed before langtoolchain
+ever ran (or that can't be confirmed), it skips deleting that and just warns instead** — unlike the old
+behavior, which wiped everything unconditionally along with any other asdf plugins you had.
 
 > **⚠️ Behavior change (m-13)**: if you installed with a version of this tool from before this change and
 > have only updated since, there's no install-time snapshot for uninstall to check — so uninstall now
-> skips deleting `~/.asdf/` by default for safety (no evidence either way means "don't delete"). If you
-> want a full clean including every runtime langtoolchain installed, run uninstall and then remove it
-> yourself as it instructs: `rm -rf ~/.asdf`.
+> skips removing individual asdf plugins as well as deleting `~/.asdf/` entirely, both by default for
+> safety (no evidence either way means "don't delete"). If you want a full clean including every runtime
+> langtoolchain installed, run uninstall and then remove it yourself as it instructs: `rm -rf ~/.asdf`.
 
 ```zsh
 curl -fsSL https://raw.githubusercontent.com/amosQP/langtoolchain/main/uninstall.sh | sh
@@ -210,7 +211,7 @@ something a shell installer can solve, so it's deliberately kept outside this mi
 
 ### Testing limitations
 
-- **The local shellspec suite never touches a real Homebrew/asdf** — all 165 examples in `spec/` either mock `brew`/`asdf` or run under `DRY_RUN=true`, since a real compile/install is slow and would pollute a dev machine. So "does this actually install" isn't something the local suite proves — `.github/workflows/e2e-verify.yml` (GitHub-hosted macOS runners, arm64 + Intel) is the only real-hardware path, and it only auto-runs on push/PR to `main` when `scripts/**`/`install.sh`/`uninstall.sh`/`.tool-versions` change (everything else needs a manual `workflow_dispatch`).
+- **The local shellspec suite never touches a real Homebrew/asdf** — all 168 examples in `spec/` either mock `brew`/`asdf` or run under `DRY_RUN=true`, since a real compile/install is slow and would pollute a dev machine. So "does this actually install" isn't something the local suite proves — `.github/workflows/e2e-verify.yml` (GitHub-hosted macOS runners, arm64 + Intel) is the only real-hardware path, and it only auto-runs on push/PR to `main` when `scripts/**`/`install.sh`/`uninstall.sh`/`.tool-versions` change (everything else needs a manual `workflow_dispatch`).
 - **The arrow-key TUI has only been verified against standard terminals** — `lt_arrow_menu()` reads raw mode via `stty`/`dd`, and has been checked against a real pty driven by `expect` and ordinary terminal apps, but not against every terminal emulator, multiplexer (tmux/screen), or SSH-relayed session — anything sending non-standard key sequences outside the plain 3-byte ANSI escape (`ESC [ A/B`) this relies on could behave unexpectedly.
 - **The "default" `curl | sh` remote-clone path (the real GitHub target) is hard to reproduce locally** — the override path via `LANGTOOLCHAIN_REPO_URL`/`LANGTOOLCHAIN_BRANCH` (pointing at a fork or another branch) is covered locally as of TASK-117.6 by `spec/repo_override_spec.sh` against a throwaway local bare repo (`file://`), including the pinned-fetch mechanism's exact-ref behavior. What's still not covered locally is the no-override default path (the pinned commit SHA, against the real GitHub repo) — that's only exercised by a real `curl | sh` run against this actual repo and by `.github/workflows/e2e-verify.yml`'s `no-git-curl-pipe` job (which does pull the real `main` raw file from GitHub).
 
