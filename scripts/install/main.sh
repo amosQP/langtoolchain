@@ -62,6 +62,23 @@ fi
 # reads as named steps (see the call right below this function) instead of
 # this whole block sitting inline between the disk-space check and the
 # phase loop.
+#######################################
+# Run 00_select.sh, capture its selection file, and export it for later phases.
+# Globals:
+#   SCRIPT_DIR (read)
+#   SELECT_OPTS (read)
+#   SELECTION_FILE (written — not declared local, so it becomes a script
+#     global; read by the EXIT trap this function registers)
+#   TOOL_VERSIONS_FILE (written/exported)
+# Arguments:
+#   None
+# Outputs:
+#   None of its own — 00_select.sh's own /dev/tty prompts happen as a side
+#   effect; only its final selection-file path is captured, not printed.
+# Returns:
+#   Does not return on failure — exits with status 1 (00_select.sh already
+#   explained why on STDOUT/STDERR/tty).
+#######################################
 run_language_selection() {
   # IFS=newline turns $SELECT_OPTS back into separate positional parameters
   # (splitting only on the newlines added above, not on spaces inside a

@@ -51,6 +51,20 @@ ensure_brew_on_path
 # returning success. Fails (non-zero, <dest-file> left in whatever partial
 # state curl left it) if either the fetch or the checksum comparison fails,
 # so the caller never executes content that didn't match what was pinned.
+#######################################
+# Download the pinned Homebrew installer and verify its SHA-256.
+# Globals:
+#   HOMEBREW_INSTALL_URL
+#   HOMEBREW_INSTALL_SHA256
+#   LT_VERSION_FETCH_TIMEOUT
+# Arguments:
+#   $1: dest — file path to download the installer to
+# Outputs:
+#   On a checksum mismatch, writes a warning to STDOUT (via log()).
+# Returns:
+#   0 on success (fetched and checksum matches); non-zero if the fetch or
+#   the checksum comparison fails.
+#######################################
 fetch_verified_homebrew_installer() {
   local dest="$1" actual_sha256
   curl -fsSL --max-time "$LT_VERSION_FETCH_TIMEOUT" -o "$dest" "$HOMEBREW_INSTALL_URL" || return 1
@@ -70,6 +84,20 @@ fetch_verified_homebrew_installer() {
 # internally the first time (creates /opt/homebrew or /usr/local), which
 # prompts for the account password in the terminal as normal — that part
 # can't be automated away, and shouldn't be.
+#######################################
+# Fetch+verify the Homebrew installer, then run it.
+# Globals:
+#   None
+# Arguments:
+#   None
+# Outputs:
+#   The Homebrew installer's own STDOUT/STDERR pass through uncaptured. On
+#   fetch/verify failure, whatever fetch_verified_homebrew_installer()
+#   itself writes.
+# Returns:
+#   The Homebrew installer's own exit status, or 1 if fetch/checksum
+#   verification failed first.
+#######################################
 run_homebrew_installer() {
   local dest status
   dest="$(mktemp)"
@@ -86,6 +114,21 @@ run_homebrew_installer() {
 # install_homebrew_if_missing (m-8): extracted so this script's own
 # top-level flow reads as two named steps (see the two calls at the bottom
 # of this file) instead of two inline if/else blocks back to back.
+#######################################
+# Install Homebrew if it isn't already on PATH.
+# Globals:
+#   DRY_RUN
+#   HOMEBREW_INSTALL_URL
+#   HOMEBREW_INSTALL_SHA256
+# Arguments:
+#   None
+# Outputs:
+#   Writes status messages to STDOUT (via log()). On failure to find `brew`
+#   on PATH after a real install, writes an error to STDERR and exits (via
+#   die()).
+# Returns:
+#   Does not return on failure — exits (via die()) with status 1.
+#######################################
 install_homebrew_if_missing() {
   if command -v brew >/dev/null 2>&1; then
     log "Homebrew found: $(command -v brew)"
@@ -120,6 +163,17 @@ install_homebrew_if_missing() {
 }
 
 # install_asdf_if_missing (m-8): same reasoning as install_homebrew_if_missing above.
+#######################################
+# Install asdf (via Homebrew) if it isn't already installed.
+# Globals:
+#   None
+# Arguments:
+#   None
+# Outputs:
+#   Writes status messages to STDOUT (via log()).
+# Returns:
+#   None
+#######################################
 install_asdf_if_missing() {
   if command -v asdf >/dev/null 2>&1; then
     # Already installed (e.g. re-running the installer) — nothing to do.

@@ -38,6 +38,20 @@ each_tool "$CONFIG_FILE" > "$EACH_TOOL_TMP"
 # returns failure only for the FAIL case (not-found), so the loop below can
 # do `validate_one_tool ... || OK=false` instead of carrying the full
 # per-tool check inline.
+#######################################
+# Validate one tool's PATH resolution and reported version.
+# Globals:
+#   ASDF_DATA_DIR
+# Arguments:
+#   $1: plugin — asdf plugin name
+#   $2: version — the version requested in the config file
+# Outputs:
+#   Writes FAIL/OK/WARN and version lines to STDOUT (via log()).
+# Returns:
+#   1 if the command isn't found in PATH at all (FAIL); 0 otherwise,
+#   including the "resolves outside asdf shims" WARN case, which is a
+#   deliberate policy (decision-3) — a WARN never fails the check.
+#######################################
 validate_one_tool() {
   local plugin="$1" version="$2" cmd flag resolved_path version_line expected_core
   # e.g. "nodejs" -> "node", so we know which command to actually check.
