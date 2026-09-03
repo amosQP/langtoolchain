@@ -44,3 +44,17 @@ TASK-125.2 감지 방식 결정의 핵심 판단 근거다. 패턴 4는 순수 �
 - `ensure_asdf_on_path()` — `ASDF_DATA_DIR` export, `${ASDF_DATA_DIR:-$LT_ASDF_DATA_DIR_DEFAULT}` 패턴의 정답 구현
 - `lt_homebrew_prefix()` — arch 분기 포함 Homebrew prefix 계산의 정답 구현
 - `ensure_brew_on_path()` — TASK-78 클래스(환경 준비 헬퍼 호출 누락)의 정답 헬퍼
+
+## TASK-125.4 전수 스캔 결과 (2026-09-03)
+
+`scripts/lint/check-hardcoded-paths.sh`(TASK-125.3에서 구현)를 인자 없이
+실행해 install.sh, uninstall.sh, scripts/lib.sh, scripts/install/*.sh,
+scripts/uninstall/*.sh 전체(17개 파일)를 스캔한 결과: **위반 0건**.
+
+검증을 위해 세 패턴 각각에 대해 allowlist/comment-skip 없이 원시
+`grep -rn`도 별도로 돌려 교차 확인했다 — 원시 grep이 잡은 매치는 전부
+(a) lib.sh의 정답 정의부 자체이거나 (b) 코드가 아닌 주석 줄이었고, 실제
+코드 경로에 하드코딩된 리터럴은 하나도 없었다. TASK-57/61/65/70에서 이미
+전부 고쳐졌고 그 이후 재발이 없었다는 뜻이다.
+
+이 결과에 따라 TASK-125.4는 새 버그 태스크를 만들지 않고 종료한다.
