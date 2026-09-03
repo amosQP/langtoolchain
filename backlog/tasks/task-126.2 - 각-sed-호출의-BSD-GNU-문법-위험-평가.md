@@ -1,7 +1,7 @@
 ---
 id: TASK-126.2
 title: 각 sed 호출의 BSD/GNU 문법 위험 평가
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-09-03 01:15'
 updated_date: '2026-09-03 06:06'
