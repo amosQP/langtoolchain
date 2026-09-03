@@ -174,11 +174,40 @@ curl -fsSL https://raw.githubusercontent.com/amosQP/langtoolchain/main/uninstall
 - **핵심 목적("컴파일러 설치")보다 넓은 기능이 있음** — 전역/로컬 버전 고정, 대화형 선택기는 사실 asdf 버전 관리를 감싼 부가 기능. 한 번 검토를 거쳐 "유지"로 결정했고, 걷어낼 계획은 없음.
 - **Homebrew/asdf 외 도구체인은 지원 대상 아님** — MacPorts(`/opt/local`)는 경로 자체가 겹치지 않아 파일 충돌은 없지만, 같은 이름의 바이너리를 깔았다면 rc 파일에서 나중에 소싱되는 쪽이 이긴다. `mise`처럼 `.tool-versions`를 직접 읽고 자체 PATH 훅으로 셸을 활성화하는 도구는 더 실질적인 위험 — rc 파일에서 langtoolchain보다 나중에 로드되면 asdf shim을 조용히 가릴 수 있음. 둘 다 감지/경고 로직은 없음.
 
+### 다운로드/설치 체인 신뢰 경계 (m-11)
+
+이 저장소가 실제로 무결성을 검증하는 지점과, Homebrew/asdf 같은 상위 도구에 신뢰를
+위임했거나 저장소가 직접 손댈 수 없는 지점을 구분해 명시합니다. 지점별 상세(파일:라인,
+현재 검증 수준)는 [docs/download-points-inventory.md](docs/download-points-inventory.md),
+검증 기법 자체의 조사는 [docs/download-integrity-techniques.md](docs/download-integrity-techniques.md)를
+참고하세요.
+
+**이 저장소가 직접 검증하는 지점**
+
+| 지점 | 방식 |
+|---|---|
+| `install.sh`/`uninstall.sh`의 self-clone | 플로팅 브랜치 대신 고정 커밋 SHA로 pin — 브랜치가 강제 push돼도 이미 pin된 커밋만 받음 |
+| Homebrew 공식 설치 스크립트(`curl \| bash`) | 고정 커밋으로 pin + 이 프로젝트가 직접 계산한 SHA-256 체크섬을 fetch 직후 대조, 불일치 시 실행 거부 |
+
+**위임/통제 밖 지점 (이 저장소가 직접 검증하지 않음)**
+
+| 지점 | 위임 대상 / 통제 밖인 이유 |
+|---|---|
+| `brew install asdf`, `brew install <시스템 의존성 6개>` | Homebrew 자체의 bottle 서명/체크섬 체계에 위임 |
+| `asdf plugin add`(asdf-nodejs/asdf-python 등 플러그인 소스) | asdf CLI(0.20.0)가 커밋 고정을 지원하지 않음 — 검토 후 미고정 결정, 매 install 실행마다 각 플러그인 저장소의 최신 HEAD로 갱신됨 |
+| `asdf install`(실제 언어 런타임 다운로드) | 각 asdf 플러그인 내부 로직 — 이 저장소가 직접 관여할 수 없음 |
+
+**명시적으로 범위 밖: GitHub 저장소/계정 자체의 탈취.** 공격자가 저장소나 메인테이너 계정을
+완전히 장악하면 install.sh에 박힌 고정 커밋 SHA 자체도 함께 바꿀 수 있어, 위 pin들로는
+막을 수 없습니다. 이건 GitHub 쪽 계정 레벨 통제(브랜치 보호 규칙, 서명된 커밋 요구, 2FA)의
+영역이며, 셸 설치 스크립트 하나가 풀 수 있는 문제가 아니라고 판단해 이 마일스톤의 범위 밖으로
+뒀습니다.
+
 ### 테스트 검증의 한계
 
-- **로컬 shellspec은 실제 Homebrew/asdf를 건드리지 않음** — `spec/`의 143개 예제는 전부 실제 `brew`/`asdf` 명령을 모킹하거나 `DRY_RUN=true`로 실행되도록 설계됨(진짜 컴파일/설치는 느리고 개발 머신을 오염시키므로). 그래서 "진짜로 설치가 되는가" 자체는 로컬 스위트가 보장하지 않고, `.github/workflows/e2e-verify.yml`(GitHub 호스팅 macOS 러너, arm64+Intel)이 유일한 실기기 검증 경로임 — `main` 브랜치에 `scripts/**`/`install.sh`/`uninstall.sh`/`.tool-versions`가 바뀔 때만 push/PR로 자동 실행(그 외 커밋은 `workflow_dispatch`로 수동 실행).
+- **로컬 shellspec은 실제 Homebrew/asdf를 건드리지 않음** — `spec/`의 예제는 전부 실제 `brew`/`asdf` 명령을 모킹하거나 `DRY_RUN=true`로 실행되도록 설계됨(진짜 컴파일/설치는 느리고 개발 머신을 오염시키므로). 그래서 "진짜로 설치가 되는가" 자체는 로컬 스위트가 보장하지 않고, `.github/workflows/e2e-verify.yml`(GitHub 호스팅 macOS 러너, arm64+Intel)이 유일한 실기기 검증 경로임 — `main` 브랜치에 `scripts/**`/`install.sh`/`uninstall.sh`/`.tool-versions`가 바뀔 때만 push/PR로 자동 실행(그 외 커밋은 `workflow_dispatch`로 수동 실행).
 - **화살표 키 TUI는 표준 터미널 기준으로만 검증** — `stty`/`dd`로 raw 모드를 읽는 `lt_arrow_menu()`는 `expect`로 구동한 실제 pty(및 일반 터미널 앱)에서는 확인했지만, 모든 터미널 에뮬레이터·멀티플렉서(tmux/screen 등)·SSH 경유 세션 조합까지 다 검증하지는 않음 — 표준 3바이트 ANSI 이스케이프(`ESC [ A/B`)를 벗어나는 비표준 키 전송 방식에서는 예상과 다르게 동작할 수 있음.
-- **`curl | sh`의 진짜 원격 clone 경로는 로컬에서 임의로 재현하기 어려움** — `install.sh`/`uninstall.sh`의 `REPO_URL`/`BRANCH`가 하드코딩돼 있어(의도적으로 curl 진입점을 단순하게 유지하려는 선택) 환경변수 등으로 다른 저장소/브랜치를 가리키게 해서 테스트할 방법이 없음. 이 경로 자체는 실제 `curl | sh`로 이 저장소를 직접 당겨 검증했지만, fork나 다른 브랜치를 대상으로 한 회귀 테스트는 만들 수 없는 구조.
+- **`curl | sh`의 "기본" 원격 clone 경로(진짜 GitHub 대상)는 로컬에서 재현하기 어려움** — `LANGTOOLCHAIN_REPO_URL`/`LANGTOOLCHAIN_BRANCH` 환경변수로 fork/다른 브랜치를 가리켜 override하는 경로 자체는 TASK-117.6 이후 로컬 bare 저장소(`file://`)를 대상으로 `spec/repo_override_spec.sh`가 커버함(pinned-fetch 메커니즘의 exact-ref 동작까지 포함). 다만 override 없이 기본값(고정 커밋 SHA, 실제 GitHub)을 타는 경로 자체는 여전히 로컬 스위트 대상이 아니며, 실제 `curl | sh`로 이 저장소를 직접 당겨 검증한 것과 `.github/workflows/e2e-verify.yml`의 `no-git-curl-pipe` 잡(실제 GitHub의 `main` raw 파일을 당김)이 유일한 검증 경로.
 
 ### 앞으로 살펴볼 만한 것
 

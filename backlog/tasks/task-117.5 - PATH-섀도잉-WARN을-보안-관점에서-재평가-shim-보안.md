@@ -1,11 +1,16 @@
 ---
 id: TASK-117.5
 title: PATH 섀도잉 WARN을 보안 관점에서 재평가 (shim 보안)
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-08-30 11:34'
+updated_date: '2026-09-03 01:25'
 labels: []
 dependencies: []
+references:
+  - decision-3
+documentation:
+  - docs/download-points-inventory.md
 parent_task_id: TASK-117
 type: task
 ordinal: 139000
@@ -23,6 +28,18 @@ scripts/install/07_validate.sh:46-57는 resolved 바이너리 경로가 $ASDF_DA
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 07_validate.sh의 PATH 섀도잉 체크에 대해 WARN 유지/FAIL 격상 여부가 결정되고 근거가 기록됨
-- [ ] #2 결정에 따라 코드 또는 경고 메시지가 갱신됨
+- [x] #1 07_validate.sh의 PATH 섀도잉 체크에 대해 WARN 유지/FAIL 격상 여부가 결정되고 근거가 기록됨
+- [x] #2 결정에 따라 코드 또는 경고 메시지가 갱신됨
 <!-- AC:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+decision-3으로 WARN 유지(FAIL 미격상) 결정: 동명 바이너리가 PATH 앞쪽에서 잡히는 상황은 흔하고 대체로 무해해 FAIL 격상 시 오탐이 실제 탐지보다 많아짐, 이미 타협된 시스템에서 install 단계 FAIL 하나로 막을 수 있는 위협도 아님, decision-1의 스코프 원칙과도 일관. 07_validate.sh의 WARN 메시지를 '이 설치기가 검증한 범위 밖'이라는 함의가 드러나도록 보강. shellcheck(기존 SC1091/SC3043 외 신규 없음)/dash -n/shellspec(132/132) 통과.
+<!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+PATH 섀도잉 WARN을 FAIL로 격상하지 않기로 결정(decision-3) — 흔하고 대체로 무해한 상황에 대한 오탐 위험이 실제 보안 이득보다 큼. 대신 경고 메시지를 '이 설치기가 검증/설정한 바이너리가 아니다'라는 함의가 드러나도록 보강. shellcheck/dash -n/shellspec(132/132) 통과.
+<!-- SECTION:FINAL_SUMMARY:END -->

@@ -1,12 +1,16 @@
 ---
 id: TASK-116
 title: 다운로드 무결성 검증 기법 조사 및 이 저장소 적용 지점 매핑
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-08-30 11:32'
+updated_date: '2026-09-03 01:07'
 labels: []
 milestone: m-11
 dependencies: []
+documentation:
+  - docs/download-integrity-techniques.md
+  - docs/download-points-inventory.md
 type: spike
 ordinal: 131000
 ---
@@ -20,3 +24,9 @@ ordinal: 131000
 
 산출물은 문서(예: docs/ 또는 backlog task의 --notes)로 남겨 다음 스토리(적용/하드닝)의 근거로 쓴다.
 <!-- SECTION:DESCRIPTION:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+TASK-116.1(기법 10개 조사)과 TASK-116.2(저장소 내 다운로드 지점 9곳 매핑) 완료. docs/download-integrity-techniques.md, docs/download-points-inventory.md 두 문서로 산출. TASK-117 하위 구현 태스크들이 이 매핑을 근거로 진행.
+<!-- SECTION:FINAL_SUMMARY:END -->

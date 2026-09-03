@@ -1,11 +1,14 @@
 ---
 id: TASK-116.1
 title: 범용 다운로드 무결성/진위 검증 기법 나열
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-08-30 11:33'
+updated_date: '2026-09-03 01:06'
 labels: []
 dependencies: []
+documentation:
+  - docs/download-integrity-techniques.md
 parent_task_id: TASK-116
 type: spike
 ordinal: 133000
@@ -33,6 +36,12 @@ ordinal: 133000
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 다운로드 무결성/진위 검증 기법이 최소 6개 이상 나열되고 각각의 보장 범위·한계가 기술됨
-- [ ] #2 각 기법이 curl/git/패키지매니저 등 이 저장소가 실제 쓰는 도구에서 어떻게 구현 가능한지 구체적 명시
+- [x] #1 다운로드 무결성/진위 검증 기법이 최소 6개 이상 나열되고 각각의 보장 범위·한계가 기술됨
+- [x] #2 각 기법이 curl/git/패키지매니저 등 이 저장소가 실제 쓰는 도구에서 어떻게 구현 가능한지 구체적 명시
 <!-- AC:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+10개 기법(체크섬, GPG/PGP, minisign/signify, Sigstore/cosign, TLS 고정, 코드서명, 패키지매니저 위임, git SHA/서명태그 고정, 재현가능빌드, SRI 유사 인라인해시)을 보장 범위/한계/이 저장소 적용 가능성 관점으로 정리해 docs/download-integrity-techniques.md에 남김. 요약표로 curl/git/Homebrew 기반 구현 가능성까지 명시.
+<!-- SECTION:FINAL_SUMMARY:END -->

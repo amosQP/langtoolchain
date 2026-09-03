@@ -54,7 +54,18 @@ validate_one_tool() {
     # Compared against $ASDF_DATA_DIR (set by ensure_asdf_on_path above),
     # not a hardcoded ".asdf", so a custom ASDF_DATA_DIR doesn't false-WARN.
     "$ASDF_DATA_DIR/shims/"*) log "  OK:   $cmd -> $resolved_path" ;;
-    *) log "  WARN: $cmd resolves outside asdf shims ($resolved_path)" ;;
+    # WARN, not FAIL, is a deliberate policy (TASK-117.5 reevaluation,
+    # decision-3) - not a bug being left unfixed. A same-named binary
+    # earlier on PATH is extremely common and usually benign (system
+    # tools, a Homebrew formula installed for reasons unrelated to this
+    # installer, etc.), so hard-failing an otherwise-successful install
+    # over it would produce far more false-positive failures than real
+    # catches. It's still worth surfacing clearly, though: this is the one
+    # "shim security" checkpoint this repo actually owns (see
+    # docs/download-points-inventory.md #9) - whatever this installer just
+    # verified/pinned (TASK-117.1/117.2) doesn't cover $cmd once something
+    # else is what actually runs when you type it.
+    *) log "  WARN: $cmd resolves outside asdf shims ($resolved_path) — something earlier on PATH is shadowing it; the binary that actually runs isn't the one this installer set up, and isn't covered by anything this installer verifies" ;;
   esac
 
   # Some tools (java) print their version to stderr, hence 2>&1. First line
