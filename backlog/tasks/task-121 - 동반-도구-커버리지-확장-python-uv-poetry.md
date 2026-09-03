@@ -24,7 +24,7 @@ m-12(TASK-118/119)에서 만들 "언어별 기본 버전 동적 조회" 인프�
 
 <!-- SECTION:FINAL_SUMMARY:BEGIN -->
 3개 하위 태스크(121.1/121.2/121.3) 모두 완료. python 동반 도구로 uv 채택
-(decision-2, poetry/둘다지원 기각 - asdf 플러그인 성숙도 동등하나 단일 바이너리
+(decision-5, poetry/둘다지원 기각 - asdf 플러그인 성숙도 동등하나 단일 바이너리
 설치 방식이 이 저장소의 asdf-플러그인-하나로-설치 모델과 더 맞고, 생태계 채택
 추세도 앞섬). lt_companion_for_plugin()에 python->uv 매핑 추가, .tool-versions에
 기본 버전 추가, lt_upstream_latest_version()에 uv 케이스(GitHub Releases API)

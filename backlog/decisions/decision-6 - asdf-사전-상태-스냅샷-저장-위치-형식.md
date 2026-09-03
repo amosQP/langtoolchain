@@ -1,5 +1,5 @@
 ---
-id: decision-1
+id: decision-6
 title: 'asdf 사전 상태 스냅샷: 저장 위치/형식'
 date: '2026-09-03 01:05'
 status: accepted

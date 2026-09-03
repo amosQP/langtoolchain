@@ -10,7 +10,7 @@ dependencies:
   - TASK-118.1
   - TASK-118.2
 references:
-  - decision-1
+  - decision-4
 parent_task_id: TASK-118
 type: spike
 ordinal: 144000
@@ -35,7 +35,7 @@ ordinal: 144000
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
-비교표 및 채택안 결정: decision-1 참고 ("언어 버전 기본값 조회: 저장소 공식
+비교표 및 채택안 결정: decision-4 참고 ("언어 버전 기본값 조회: 저장소 공식
 메타데이터/API 채택").
 
 요약: TASK-118.1(저장소 메타데이터) 채택, TASK-118.2(asdf 자체 명령) 기각.
@@ -52,5 +52,5 @@ free-threaded 빌드("3.14.7t")가 섞여 나오는 함정도 실측 확인.
 부담 없음(GitHub API 미사용), 응답속도 전부 1초 미만, 실패 시 폴백이
 `|| return 1` 패턴 하나로 단순.
 
-TASK-119(구현)에서 참조할 언어별 소스는 decision-1 표 참고.
+TASK-119(구현)에서 참조할 언어별 소스는 decision-4 표 참고.
 <!-- SECTION:NOTES:END -->

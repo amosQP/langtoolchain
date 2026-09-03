@@ -288,7 +288,7 @@ ask_yes_no() {
 # choice, not a live version browser.
 #
 # The <default-version> this function is handed is itself dynamic as of
-# m-12/TASK-119 (decision-1): lt_offer_language() below resolves it via
+# m-12/TASK-119 (decision-4): lt_offer_language() below resolves it via
 # lt_upstream_latest_version() (scripts/lib.sh) one level up, before ever
 # calling this function - a single upstream "latest" lookup per language
 # the user actually opts into, not the `asdf list all` full-catalog browse

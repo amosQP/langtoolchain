@@ -28,7 +28,7 @@ TASK-119(선택된 기본값 조회 방법 구현)에서 만든 버전 조회 �
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
-lib.sh: lt_upstream_latest_version()에 uv) 케이스 추가 - decision-2 Consequences에
+lib.sh: lt_upstream_latest_version()에 uv) 케이스 추가 - decision-5 Consequences에
 예정된 대로 GitHub Releases API(api.github.com/repos/astral-sh/uv/releases/latest)
 사용, tag_name 필드가 이미 asdf-uv 버전 문자열과 그대로 일치(v접두어 없음)해
 별도 변환 불필요.

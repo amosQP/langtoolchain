@@ -1,5 +1,5 @@
 ---
-id: decision-1
+id: decision-7
 title: '경로/환경변수 하드코딩 감지 방식: grep 기반 lint 스크립트 채택'
 date: '2026-09-03 01:17'
 status: accepted

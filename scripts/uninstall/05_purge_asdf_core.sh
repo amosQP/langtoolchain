@@ -3,7 +3,7 @@
 # *global* ~/.tool-versions — never this repo's own .tool-versions, which is
 # a tracked project file, not machine state.
 #
-# The data-dir deletion below (TASK-124/decision-1) is conditional on the
+# The data-dir deletion below (TASK-124/decision-6) is conditional on the
 # install-time snapshot from TASK-123: it never removes a data dir that
 # looks like it pre-dates this tool. The `brew uninstall asdf` and
 # ~/.tool-versions removal above/below it are NOT gated the same way —

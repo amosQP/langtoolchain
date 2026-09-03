@@ -8,7 +8,7 @@ updated_date: '2026-09-03 01:25'
 labels: []
 dependencies: []
 references:
-  - decision-2
+  - decision-5
 parent_task_id: TASK-121
 type: task
 ordinal: 158000
@@ -28,5 +28,5 @@ python 생태계의 대표 패키지 관리자 후보인 uv와 poetry 중 이 �
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
-결정 내용/근거는 decision-2 참고. uv 채택, poetry 및 둘다지원안 기각.
+결정 내용/근거는 decision-5 참고. uv 채택, poetry 및 둘다지원안 기각.
 <!-- SECTION:NOTES:END -->

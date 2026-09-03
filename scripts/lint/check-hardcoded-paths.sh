@@ -1,5 +1,5 @@
 #!/usr/bin/env sh
-# check-hardcoded-paths.sh (TASK-125.3, decision-1): grep-based detector for
+# check-hardcoded-paths.sh (TASK-125.3, decision-7): grep-based detector for
 # the "hardcoded path/env-var instead of the shared lib.sh helper" regression
 # class documented in scripts/lint/hardcoded-paths-patterns.md (TASK-125.1),
 # based on real bugs fixed by TASK-57, 61, 65, 70.

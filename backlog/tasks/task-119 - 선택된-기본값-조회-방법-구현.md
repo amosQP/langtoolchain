@@ -29,7 +29,7 @@ Story 1(조사)의 결론에 따라 채택된 방법을 실제 코드에 구현�
 ## Final Summary
 
 <!-- SECTION:FINAL_SUMMARY:BEGIN -->
-3개 하위 태스크(119.1/119.2/119.3) 모두 완료. decision-1(TASK-118)에서 채택한
+3개 하위 태스크(119.1/119.2/119.3) 모두 완료. decision-4(TASK-118)에서 채택한
 언어별 공식 메타데이터/API를 lib.sh의 lt_upstream_latest_version()으로 구현,
 00_select.sh의 lt_offer_language()에 지연(lazy) 조회로 연결(사용자가 실제
 선택한 언어만, --all/비대화형 경로는 무영향), 캐싱(24h TTL) + .tool-versions

@@ -205,7 +205,7 @@ curl -fsSL https://raw.githubusercontent.com/amosQP/langtoolchain/main/uninstall
 
 ### 테스트 검증의 한계
 
-- **로컬 shellspec은 실제 Homebrew/asdf를 건드리지 않음** — `spec/`의 예제는 전부 실제 `brew`/`asdf` 명령을 모킹하거나 `DRY_RUN=true`로 실행되도록 설계됨(진짜 컴파일/설치는 느리고 개발 머신을 오염시키므로). 그래서 "진짜로 설치가 되는가" 자체는 로컬 스위트가 보장하지 않고, `.github/workflows/e2e-verify.yml`(GitHub 호스팅 macOS 러너, arm64+Intel)이 유일한 실기기 검증 경로임 — `main` 브랜치에 `scripts/**`/`install.sh`/`uninstall.sh`/`.tool-versions`가 바뀔 때만 push/PR로 자동 실행(그 외 커밋은 `workflow_dispatch`로 수동 실행).
+- **로컬 shellspec은 실제 Homebrew/asdf를 건드리지 않음** — `spec/`의 165개 예제는 전부 실제 `brew`/`asdf` 명령을 모킹하거나 `DRY_RUN=true`로 실행되도록 설계됨(진짜 컴파일/설치는 느리고 개발 머신을 오염시키므로). 그래서 "진짜로 설치가 되는가" 자체는 로컬 스위트가 보장하지 않고, `.github/workflows/e2e-verify.yml`(GitHub 호스팅 macOS 러너, arm64+Intel)이 유일한 실기기 검증 경로임 — `main` 브랜치에 `scripts/**`/`install.sh`/`uninstall.sh`/`.tool-versions`가 바뀔 때만 push/PR로 자동 실행(그 외 커밋은 `workflow_dispatch`로 수동 실행).
 - **화살표 키 TUI는 표준 터미널 기준으로만 검증** — `stty`/`dd`로 raw 모드를 읽는 `lt_arrow_menu()`는 `expect`로 구동한 실제 pty(및 일반 터미널 앱)에서는 확인했지만, 모든 터미널 에뮬레이터·멀티플렉서(tmux/screen 등)·SSH 경유 세션 조합까지 다 검증하지는 않음 — 표준 3바이트 ANSI 이스케이프(`ESC [ A/B`)를 벗어나는 비표준 키 전송 방식에서는 예상과 다르게 동작할 수 있음.
 - **`curl | sh`의 "기본" 원격 clone 경로(진짜 GitHub 대상)는 로컬에서 재현하기 어려움** — `LANGTOOLCHAIN_REPO_URL`/`LANGTOOLCHAIN_BRANCH` 환경변수로 fork/다른 브랜치를 가리켜 override하는 경로 자체는 TASK-117.6 이후 로컬 bare 저장소(`file://`)를 대상으로 `spec/repo_override_spec.sh`가 커버함(pinned-fetch 메커니즘의 exact-ref 동작까지 포함). 다만 override 없이 기본값(고정 커밋 SHA, 실제 GitHub)을 타는 경로 자체는 여전히 로컬 스위트 대상이 아니며, 실제 `curl | sh`로 이 저장소를 직접 당겨 검증한 것과 `.github/workflows/e2e-verify.yml`의 `no-git-curl-pipe` 잡(실제 GitHub의 `main` raw 파일을 당김)이 유일한 검증 경로.
 

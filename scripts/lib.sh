@@ -128,7 +128,7 @@ lt_report() {
   printf '%s [%s] %s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$1" "$2" >> "$LT_REPORT_FILE"
 }
 
-# LT_PRIOR_STATE_FILE (m-13/TASK-123, decision-1): records whether asdf/its
+# LT_PRIOR_STATE_FILE (m-13/TASK-123, decision-6): records whether asdf/its
 # data dir/any plugins already existed on this machine BEFORE this tool
 # touched anything, so uninstall (TASK-124) can avoid deleting state it
 # didn't create. Deliberately a separate file from LT_REPORT_FILE, not
@@ -146,7 +146,7 @@ LT_PRIOR_STATE_FILE="${LT_PRIOR_STATE_FILE:-$HOME/.langtoolchain-prior-asdf-stat
 # (brew list asdf), its data directory (lt_asdf_data_dir), and any asdf
 # plugins already existed, as simple `key=value` lines - not the
 # lt_report()-style timestamped log format, since this file's only reader is
-# uninstall's own conditional logic (TASK-124.1), not a human. See decision-1
+# uninstall's own conditional logic (TASK-124.1), not a human. See decision-6
 # for the full format writeup.
 #
 # Must run before ANY phase that could itself install asdf or create its
@@ -194,7 +194,7 @@ lt_snapshot_prior_asdf_state() {
 # doesn't exist at all OR has no such key - callers (TASK-124.1) must treat
 # that failure as "unknown", never silently coerce it to "false", since an
 # absent snapshot is exactly the "installed before this feature existed"
-# case decision-1 calls out. Deliberately grep+cut, not `.`/`eval` on the
+# case decision-6 calls out. Deliberately grep+cut, not `.`/`eval` on the
 # file - a plain key=value read doesn't need a full shell eval, and this
 # avoids that risk entirely even though this file is only ever written by
 # this tool itself.
@@ -629,14 +629,14 @@ binary_for_plugin() {
 }
 
 # lt_companion_for_plugin <asdf-plugin-name> (m-7/TASK-99; python/uv added
-# m-12/TASK-121, decision-2): prints the space-separated companion
+# m-12/TASK-121, decision-5): prints the space-separated companion
 # plugin(s) this language commonly needs alongside it - a package/build
 # manager the base language plugin does NOT already bundle. nodejs's asdf
 # plugin installs a bare Node runtime with only npm, so pnpm is a genuinely
 # separate, commonly-wanted install; java's plugin installs only a JDK with
 # no build tool at all, so gradle is closer to required than optional for
 # real projects; python's plugin installs a bare interpreter with only pip,
-# so uv (decision-2: chosen over poetry - single-binary install fits this
+# so uv (decision-5: chosen over poetry - single-binary install fits this
 # repo's asdf-plugin-per-tool model, and leads poetry in both ecosystem
 # adoption and asdf plugin activity as of that decision) fills the same gap
 # pnpm/gradle fill for their languages. rust and golang have no entry here
@@ -704,10 +704,10 @@ lt_adoptium_arch() {
   esac
 }
 
-# lt_upstream_latest_version <plugin> (m-12/TASK-118 decision, decision-1):
+# lt_upstream_latest_version <plugin> (m-12/TASK-118 decision, decision-4):
 # fetches this plugin's latest stable version straight from that language's
 # own official distribution index/API - deliberately NOT via `asdf latest`/
-# `asdf list all` (see decision-1: those require the plugin to already be
+# `asdf list all` (see decision-4: those require the plugin to already be
 # added to asdf, which 00_select.sh can't guarantee at phase 0 - see
 # ask_version()'s own comment in scripts/install/00_select.sh). Every
 # branch below needs nothing but curl (or git, for python) and the network
@@ -787,10 +787,10 @@ lt_upstream_latest_version() {
       printf '%s\n' "$body" | grep -o '"semver"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | sed -E 's/.*"([^"]*)"$/temurin-\1/'
       ;;
     uv)
-      # uv (m-12/TASK-121, decision-2's companion pick for python) has no
+      # uv (m-12/TASK-121, decision-5's companion pick for python) has no
       # official JSON distribution index of its own (unlike the 7 languages
       # above, each with a dedicated official index/API) - GitHub's Releases
-      # API is the fallback decision-1 already set aside for exactly this
+      # API is the fallback decision-4 already set aside for exactly this
       # case. "tag_name" is already bare (e.g. "0.12.9", no leading "v"),
       # matching asdf-uv's own version strings directly - no reformatting.
       body="$(curl -fsS --max-time "$LT_VERSION_FETCH_TIMEOUT" 'https://api.github.com/repos/astral-sh/uv/releases/latest' 2>/dev/null)" || return 1
@@ -876,7 +876,7 @@ lt_cache_version() {
 }
 
 # lt_resolve_default_version <plugin> <static-default> (m-12/TASK-119.2/
-# TASK-119.3, decision-1): the actual call site scripts/install/
+# TASK-119.3, decision-4): the actual call site scripts/install/
 # 00_select.sh's ask_version() comment refers to. Order of preference:
 #
 #   1. a fresh (within LT_VERSION_CACHE_TTL) cached value - no network call

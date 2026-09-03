@@ -3,7 +3,7 @@
 # - TASK-70: must respect a live ASDF_DATA_DIR override, same as
 #   ensure_asdf_on_path() does, instead of always deleting the default
 #   $HOME/.asdf regardless of where asdf's data actually lives.
-# - m-13/TASK-124/decision-1: must NOT blindly rm -rf the asdf data dir if
+# - m-13/TASK-124/decision-6: must NOT blindly rm -rf the asdf data dir if
 #   the install-time snapshot (TASK-123) says it existed before
 #   langtoolchain ever ran, or if that snapshot is missing entirely (safe
 #   default: skip + warn, never "assume safe to delete").

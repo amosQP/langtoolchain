@@ -28,7 +28,7 @@ ordinal: 159000
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
-lib.sh: lt_companion_for_plugin()의 python) 케이스에 uv 추가(decision-2).
+lib.sh: lt_companion_for_plugin()의 python) 케이스에 uv 추가(decision-5).
 .tool-versions: python 다음 줄에 "uv 0.12.9" 추가(2026-09-03 기준 실측 최신값,
 GitHub Releases API로 확인).
 

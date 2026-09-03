@@ -29,7 +29,7 @@ Story 1(TASK-118.3) 채택안에 따라 scripts/lib.sh에 언어별 최신/기�
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
-scripts/lib.sh에 lt_upstream_latest_version <plugin> 추가 (decision-1의 언어별
+scripts/lib.sh에 lt_upstream_latest_version <plugin> 추가 (decision-4의 언어별
 소스 표 그대로 구현). binary_for_plugin()/lt_companion_for_plugin()과 동일한
 case-dispatch 스타일. 7개 언어 전부 처리:
 - nodejs: 네트워크 호출 없이 "lts" 그대로 통과 (asdf가 install 시점에 직접 해석)

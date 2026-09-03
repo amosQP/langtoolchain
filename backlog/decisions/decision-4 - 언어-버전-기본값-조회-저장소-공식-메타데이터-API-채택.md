@@ -1,5 +1,5 @@
 ---
-id: decision-1
+id: decision-4
 title: '언어 버전 기본값 조회: 저장소 공식 메타데이터/API 채택'
 date: '2026-09-03 01:11'
 status: accepted

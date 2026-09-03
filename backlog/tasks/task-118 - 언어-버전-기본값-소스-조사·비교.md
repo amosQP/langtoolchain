@@ -26,7 +26,7 @@ ordinal: 140000
 
 <!-- SECTION:FINAL_SUMMARY:BEGIN -->
 3개 하위 태스크(118.1/118.2/118.3) 모두 완료. 언어별 저장소 공식 메타데이터/API
-기반 조회를 채택(decision-1), asdf 자체 명령은 phase 0 제약(플러그인 미설치)을
+기반 조회를 채택(decision-4), asdf 자체 명령은 phase 0 제약(플러그인 미설치)을
 우회하지 못해 기각. 7개 언어(nodejs/pnpm/java/gradle/python/rust/golang) 전부에
 대한 구체적 소스/필드/파싱 방법을 실측 확인, TASK-119 구현의 입력으로 확정.
 <!-- SECTION:FINAL_SUMMARY:END -->

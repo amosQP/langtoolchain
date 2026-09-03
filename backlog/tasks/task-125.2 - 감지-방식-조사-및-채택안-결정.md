@@ -9,7 +9,7 @@ labels: []
 dependencies:
   - TASK-125.1
 references:
-  - decision-1
+  - decision-7
 parent_task_id: TASK-125
 type: task
 ordinal: 163000
@@ -36,5 +36,5 @@ TASK-125.1에서 정리한 하드코딩 패턴을 자동 감지할 방식을 조
 ## Final Summary
 
 <!-- SECTION:FINAL_SUMMARY:BEGIN -->
-3개 감지 방식(shellcheck 커스텀 룰 / grep 기반 lint 스크립트 / shellspec 테스트)을 비교(decision-1 참고). shellcheck 0.11.0은 custom rule/plugin 메커니즘이 전혀 없어 옵션1 배제. 이 저장소는 CI에 shellspec을 아직 전혀 연결하지 않은 상태(e2e-verify.yml은 실기기 설치/제거 검증 전용)라 옵션3은 CI 연결 비용이 옵션2보다 큼. grep 기반 독립 lint 스크립트(scripts/lint/check-hardcoded-paths.sh, ubuntu-latest 저비용 CI job)를 채택 — decision-1로 기록.
+3개 감지 방식(shellcheck 커스텀 룰 / grep 기반 lint 스크립트 / shellspec 테스트)을 비교(decision-7 참고). shellcheck 0.11.0은 custom rule/plugin 메커니즘이 전혀 없어 옵션1 배제. 이 저장소는 CI에 shellspec을 아직 전혀 연결하지 않은 상태(e2e-verify.yml은 실기기 설치/제거 검증 전용)라 옵션3은 CI 연결 비용이 옵션2보다 큼. grep 기반 독립 lint 스크립트(scripts/lint/check-hardcoded-paths.sh, ubuntu-latest 저비용 CI job)를 채택 — decision-7로 기록.
 <!-- SECTION:FINAL_SUMMARY:END -->

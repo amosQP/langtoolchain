@@ -84,7 +84,7 @@ Describe 'scripts/lib.sh'
       The output should eq 'gradle'
     End
 
-    It 'maps python -> uv (m-12/TASK-121, decision-2)'
+    It 'maps python -> uv (m-12/TASK-121, decision-5)'
       When call lt_companion_for_plugin python
       The output should eq 'uv'
     End
@@ -633,7 +633,7 @@ RUNNER_EOF
     End
   End
 
-  Describe 'lt_snapshot_prior_asdf_state() / lt_prior_state_get() (m-13/TASK-123, decision-1)'
+  Describe 'lt_snapshot_prior_asdf_state() / lt_prior_state_get() (m-13/TASK-123, decision-6)'
     # SAFETY: `brew`/`asdf` are always Mocked below, never left to resolve
     # for real - same reasoning as purge_asdf_core_spec.sh/
     # bootstrap_asdf_spec.sh's own header comments (this dev machine has a
@@ -753,7 +753,7 @@ RUNNER_EOF
     End
   End
 
-  Describe 'lt_upstream_latest_version() (m-12/TASK-119, decision-1)'
+  Describe 'lt_upstream_latest_version() (m-12/TASK-119, decision-4)'
     # Every case below mocks curl/git so these tests never touch the real
     # network (mandatory for this repo - see spec_helper/README safety
     # rules) - each Mock's canned response is a trimmed real-shape fixture
@@ -788,7 +788,7 @@ RUNNER_EOF
       The output should eq '9.7.1'
     End
 
-    It 'extracts the tag_name from GitHub Releases for uv (m-12/TASK-121, decision-2)'
+    It 'extracts the tag_name from GitHub Releases for uv (m-12/TASK-121, decision-5)'
       Mock curl
         echo '{"tag_name":"0.12.9","name":"0.12.9","draft":false,"prerelease":false}'
       End

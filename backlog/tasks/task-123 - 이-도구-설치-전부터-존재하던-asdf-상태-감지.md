@@ -23,5 +23,5 @@ uninstall이 삭제 범위를 축소하려면 install 시점에 "이 도구가 �
 ## Final Summary
 
 <!-- SECTION:FINAL_SUMMARY:BEGIN -->
-두 서브태스크(TASK-123.1 스냅샷 기록 구현, TASK-123.2 저장 위치/형식 결정=decision-1)로 완료. asdf 사전 설치 여부/데이터 디렉토리 존재 여부/기존 플러그인 목록이 install/main.sh의 phase 루프(01_bootstrap_asdf.sh 포함) 시작 전에 $HOME/.langtoolchain-prior-asdf-state에 기록됨.
+두 서브태스크(TASK-123.1 스냅샷 기록 구현, TASK-123.2 저장 위치/형식 결정=decision-6)로 완료. asdf 사전 설치 여부/데이터 디렉토리 존재 여부/기존 플러그인 목록이 install/main.sh의 phase 루프(01_bootstrap_asdf.sh 포함) 시작 전에 $HOME/.langtoolchain-prior-asdf-state에 기록됨.
 <!-- SECTION:FINAL_SUMMARY:END -->

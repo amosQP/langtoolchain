@@ -1,5 +1,5 @@
 ---
-id: decision-2
+id: decision-5
 title: 'python 동반 도구: uv 채택 (poetry 대신)'
 date: '2026-09-03 01:24'
 status: accepted
@@ -62,7 +62,7 @@ asdf 플러그인 체계로 모든 언어/동반도구를 설치하므로, "asdf
   `.tool-versions`에 `uv`의 기본 버전 항목을 추가한다.
 - TASK-121.3에서 `lt_upstream_latest_version()`(TASK-119.1)에 `uv)` 케이스를
   추가한다 - GitHub Releases API(`astral-sh/uv/releases/latest`)를 쓴다. uv는
-  공식 JSON 배포 인덱스가 따로 없어 decision-1의 "GitHub Releases API는 공식
+  공식 JSON 배포 인덱스가 따로 없어 decision-4의 "GitHub Releases API는 공식
   인덱스가 없는 도구에만 보조로 쓴다"는 원칙이 그대로 적용되는 첫 실제 사례다.
 - poetry를 나중에 원하는 사용자는 여전히 `ask_version()`의 "Enter a specific
   version" 경로로 직접 pin 하거나, 이 저장소 밖에서 별도 관리할 수 있다 - 이
