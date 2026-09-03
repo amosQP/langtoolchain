@@ -169,11 +169,41 @@ fully gone.
 - **Some features go beyond the core mission ("install compilers")** — global/local version pinning and the interactive picker are really a wrapper around asdf's own version management. This was reviewed once and deliberately kept as-is; no plan to trim it.
 - **No support for tooling outside Homebrew/asdf** — MacPorts (`/opt/local`) doesn't overlap paths, so no file conflicts, but a same-named binary it installs still wins if its rc entry loads later. `mise`, which reads `.tool-versions` directly and activates via its own PATH hook, is the more realistic risk — if it loads after langtoolchain in the rc file, it can silently shadow the asdf shim. Neither case is detected or warned about.
 
+### Download/install chain trust boundary (m-11)
+
+Draws a line between what this repo actually verifies and what it delegates to Homebrew/asdf
+or simply can't reach. See
+[docs/download-points-inventory.md](docs/download-points-inventory.md) for the full per-point
+breakdown (file:line, current verification level), and
+[docs/download-integrity-techniques.md](docs/download-integrity-techniques.md) for the survey
+of verification techniques this was chosen from.
+
+**Points this repo verifies directly**
+
+| Point | How |
+|---|---|
+| `install.sh`/`uninstall.sh`'s self-clone | Pinned to a fixed commit SHA instead of a floating branch — a force-pushed branch can't change what a pinned commit fetches |
+| Homebrew's official install script (`curl \| bash`) | Pinned to a fixed commit + this project's own precomputed SHA-256 checksum, checked right after fetch — a mismatch refuses to execute |
+
+**Delegated / out of this repo's control**
+
+| Point | Delegated to / why it's out of reach |
+|---|---|
+| `brew install asdf`, `brew install <the 6 system deps>` | Homebrew's own bottle signing/checksum chain |
+| `asdf plugin add` (asdf-nodejs/asdf-python/etc. plugin sources) | asdf's CLI (0.20.0) has no way to pin a commit — reviewed and deliberately left unpinned; every install run refreshes already-added plugins to each plugin repo's latest HEAD |
+| `asdf install` (the actual language runtime download) | Internal to each asdf plugin — this repo has no hook into it |
+
+**Explicitly out of scope: a full takeover of the GitHub repo/account itself.** If an attacker
+fully controls the repo or maintainer account, they can rewrite the pinned commit SHA baked
+into install.sh too — no amount of self-referential pinning defends against that. That's
+GitHub's own account-level controls (branch protection, signed-commit requirements, 2FA), not
+something a shell installer can solve, so it's deliberately kept outside this milestone's scope.
+
 ### Testing limitations
 
 - **The local shellspec suite never touches a real Homebrew/asdf** — all 132 examples in `spec/` either mock `brew`/`asdf` or run under `DRY_RUN=true`, since a real compile/install is slow and would pollute a dev machine. So "does this actually install" isn't something the local suite proves — `.github/workflows/e2e-verify.yml` (GitHub-hosted macOS runners, arm64 + Intel) is the only real-hardware path, and it only auto-runs on push/PR to `main` when `scripts/**`/`install.sh`/`uninstall.sh`/`.tool-versions` change (everything else needs a manual `workflow_dispatch`).
 - **The arrow-key TUI has only been verified against standard terminals** — `lt_arrow_menu()` reads raw mode via `stty`/`dd`, and has been checked against a real pty driven by `expect` and ordinary terminal apps, but not against every terminal emulator, multiplexer (tmux/screen), or SSH-relayed session — anything sending non-standard key sequences outside the plain 3-byte ANSI escape (`ESC [ A/B`) this relies on could behave unexpectedly.
-- **The real `curl | sh` remote-clone path is hard to reproduce locally on demand** — `install.sh`/`uninstall.sh` hardcode `REPO_URL`/`BRANCH` (a deliberate choice to keep the curl entry point simple), with no environment-variable override to point at a different repo/branch for testing. The path itself has been verified against this actual repo via a real `curl | sh` run, but there's no way to build a regression test against a fork or another branch.
+- **The real `curl | sh` remote-clone path is hard to reproduce locally on demand** — `install.sh`/`uninstall.sh` hardcode `REPO_URL`/`BRANCH` (`BRANCH` is a pinned commit SHA as of TASK-117.1, not a floating branch name like `main`), with no environment-variable override to point at a different repo/branch for testing. The path itself has been verified against this actual repo via a real `curl | sh` run, but there's no way to build a regression test against a fork or another branch.
 
 ### Worth revisiting
 
