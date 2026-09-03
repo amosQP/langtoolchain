@@ -52,7 +52,7 @@ ensure_brew_on_path
 # so the caller never executes content that didn't match what was pinned.
 fetch_verified_homebrew_installer() {
   local dest="$1" actual_sha256
-  curl -fsSL -o "$dest" "$HOMEBREW_INSTALL_URL" || return 1
+  curl -fsSL --max-time "$LT_VERSION_FETCH_TIMEOUT" -o "$dest" "$HOMEBREW_INSTALL_URL" || return 1
   actual_sha256="$(shasum -a 256 "$dest" | awk '{print $1}')"
   if [ "$actual_sha256" != "$HOMEBREW_INSTALL_SHA256" ]; then
     log "  Homebrew installer checksum mismatch: expected $HOMEBREW_INSTALL_SHA256, got $actual_sha256 — refusing to run it."
