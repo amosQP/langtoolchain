@@ -27,6 +27,18 @@ on:
     paths: *e2e-relevant-paths
 
 jobs:
+  lint-hardcoded-paths:
+    # TASK-125.3 (decision-1): fast, cheap static check for the
+    # "hardcoded path/env-var instead of the shared lib.sh helper"
+    # regression class (TASK-57/61/65/70). No real Homebrew/asdf install
+    # needed, so this runs on a plain ubuntu-latest runner and fails in
+    # seconds, well before the expensive real-macOS jobs below even start.
+    name: hardcoded path/env-var lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: sh scripts/lint/check-hardcoded-paths.sh
+
   full-cycle:
     name: full install -> uninstall cycle (${{ matrix.label }})
     strategy:
