@@ -43,10 +43,10 @@ set -eu
 
 # ---- allowlists (file:line pairs that are the ONE legitimate definition
 # site for a given literal, not a caller that should have used the helper) ----
-ASDF_LITERAL_ALLOWLIST='
+readonly ASDF_LITERAL_ALLOWLIST='
 scripts/lib.sh:LT_ASDF_DATA_DIR_NAME=
 '
-HOMEBREW_PREFIX_ALLOWLIST='
+readonly HOMEBREW_PREFIX_ALLOWLIST='
 scripts/lib.sh:arm64) echo "/opt/homebrew"
 '
 

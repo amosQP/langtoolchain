@@ -29,13 +29,15 @@ set -eu
 # — POSIX sh has no BASH_SOURCE) works here because every caller always
 # invokes this script by path (never a bare name looked up on PATH).
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+readonly SCRIPT_DIR
 # Pull in log/step/die/run/each_tool/binary_for_plugin/etc.
 . "$SCRIPT_DIR/../lib.sh"
 
 # Two directories up from scripts/install/ is the repo root.
 REPO_ROOT="$(repo_root_from "$0")"
+readonly REPO_ROOT
 # The shipped, default list of languages/versions this repo installs.
-DEFAULT_CONFIG="$REPO_ROOT/.tool-versions"
+readonly DEFAULT_CONFIG="$REPO_ROOT/.tool-versions"
 # Bail out early with a clear message if the repo is somehow missing it.
 [ -f "$DEFAULT_CONFIG" ] || die "Config file not found: $DEFAULT_CONFIG"
 
@@ -311,6 +313,7 @@ ask_version() {
 # predictable prefix under the system temp dir (e.g. /tmp on Linux,
 # $TMPDIR on macOS) with a random unique suffix.
 OUT_FILE="$(mktemp -t langtoolchain-selection)"
+readonly OUT_FILE
 # Clean up on every exit path except the one deliberate success below.
 # Emptiness alone isn't a reliable signal here: the interactive scope
 # prompt can `die` (e.g. on an invalid --local directory) *after*
@@ -355,6 +358,7 @@ tty_out "== Select languages to install (Enter = yes) =="
 # bash/ksh/zsh extension), so this writes each_tool's output to a temp
 # file first and reads that on fd 3 instead of the loop's own stdin (fd 0).
 EACH_TOOL_TMP="$(mktemp)"
+readonly EACH_TOOL_TMP
 each_tool "$DEFAULT_CONFIG" > "$EACH_TOOL_TMP"
 
 # Companion plugins (m-7/TASK-100, e.g. pnpm for nodejs, gradle for java —
@@ -453,6 +457,7 @@ fi
 
 # Prepend the scope line now that it's finally settled (flag or prompt).
 SCOPE_TMP="$(mktemp)"
+readonly SCOPE_TMP
 write_with_scope "$OUT_FILE" "$SCOPE_TMP"
 mv "$SCOPE_TMP" "$OUT_FILE"
 

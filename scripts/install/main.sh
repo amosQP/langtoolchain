@@ -11,6 +11,7 @@
 #                 of globally; also skips the interactive global/local prompt
 set -eu
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+readonly SCRIPT_DIR
 . "$SCRIPT_DIR/../lib.sh"
 
 # Exclusive lock (TASK-84): must be first, before anything else runs, so the

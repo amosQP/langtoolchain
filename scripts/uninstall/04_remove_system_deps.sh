@@ -4,6 +4,7 @@
 # 03_install_system_deps.sh.
 set -eu
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+readonly SCRIPT_DIR
 . "$SCRIPT_DIR/../lib.sh"
 # Same reasoning as every brew-touching install phase (see lib.sh): this
 # runs as its own process, so `brew` moments-old on PATH in some other

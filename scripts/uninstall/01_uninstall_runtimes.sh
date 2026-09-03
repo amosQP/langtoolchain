@@ -4,10 +4,12 @@
 # phase script — main.sh runs each phase as its own process.
 set -eu
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+readonly SCRIPT_DIR
 . "$SCRIPT_DIR/../lib.sh"
 ensure_asdf_on_path
 
 REPO_ROOT="$(repo_root_from "$0")"
+readonly REPO_ROOT
 # Same TOOL_VERSIONS_FILE convention as the install side, though the
 # uninstaller's main.sh doesn't currently set it — this just keeps the two
 # sides consistent and lets someone wire up a selective uninstall later.
@@ -20,11 +22,11 @@ REPO_ROOT="$(repo_root_from "$0")"
 # below — this phase would compare against the wrong version string and
 # report a still-installed runtime as "already absent".
 if [ -n "${TOOL_VERSIONS_FILE:-}" ]; then
-  CONFIG_FILE="$TOOL_VERSIONS_FILE"
+  readonly CONFIG_FILE="$TOOL_VERSIONS_FILE"
 elif [ -f "$HOME/.tool-versions" ]; then
-  CONFIG_FILE="$HOME/.tool-versions"
+  readonly CONFIG_FILE="$HOME/.tool-versions"
 else
-  CONFIG_FILE="$REPO_ROOT/.tool-versions"
+  readonly CONFIG_FILE="$REPO_ROOT/.tool-versions"
 fi
 
 step "Phase 1: Uninstalling language runtimes"
@@ -70,7 +72,7 @@ fi
 # never appears in $CONFIG_FILE above, so without this it would silently
 # survive uninstall. A directory that's since been deleted, or had its
 # .tool-versions removed by hand, is skipped rather than treated as an error.
-LOCAL_PINS_FILE="$ASDF_DATA_DIR/$LT_LOCAL_PINS_FILE_NAME"
+readonly LOCAL_PINS_FILE="$ASDF_DATA_DIR/$LT_LOCAL_PINS_FILE_NAME"
 if [ -f "$LOCAL_PINS_FILE" ]; then
   # fd 4 (not 3, not stdin): uninstall_from_config_file's own inner loop
   # already owns fd 3 for its each_tool read, and this loop calls that

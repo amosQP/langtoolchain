@@ -2,6 +2,7 @@
 # No `set -e` — a test runner should evaluate every assertion, not stop at
 # the first failure.
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+readonly SCRIPT_DIR
 . "$SCRIPT_DIR/../lib.sh"
 
 step "Phase 6: Validating teardown"
@@ -21,6 +22,7 @@ OK=true
 # TASK-57) fall back via lt_asdf_data_dir() here instead of a literal, to
 # avoid false-FAILing a custom ASDF_DATA_DIR.
 ASDF_DATA_DIR="$(lt_asdf_data_dir)"
+readonly ASDF_DATA_DIR
 
 if command -v asdf >/dev/null 2>&1; then
   log "  FAIL: 'asdf' is still resolvable in PATH."

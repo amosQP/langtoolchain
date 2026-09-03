@@ -10,6 +10,7 @@
 # be gone by the time phase 5 runs).
 set -eu
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+readonly SCRIPT_DIR
 . "$SCRIPT_DIR/../lib.sh"
 ensure_asdf_on_path
 
@@ -45,6 +46,7 @@ fi
 # fd 3, not stdin — see scripts/install/02_install_plugins.sh for why.
 # POSIX sh has no process substitution, so this goes to a temp file first.
 PLUGIN_LIST_TMP="$(mktemp)"
+readonly PLUGIN_LIST_TMP
 asdf plugin list 2>/dev/null > "$PLUGIN_LIST_TMP" || true
 # `|| [ -n "$plugin" ]`: unlike each_tool()/lt_env_var_defs() (our own
 # printf-based output, always newline-terminated), this file comes from an

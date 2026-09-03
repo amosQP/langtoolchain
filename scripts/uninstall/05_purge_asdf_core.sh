@@ -11,6 +11,7 @@
 # block", not a general "leave everything alone if asdf pre-existed" pass.
 set -eu
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+readonly SCRIPT_DIR
 . "$SCRIPT_DIR/../lib.sh"
 # Same reasoning as every brew-touching install phase (see lib.sh): this
 # runs as its own process, so `brew` moments-old on PATH in some other
@@ -31,6 +32,7 @@ fi
 # user who installed with a custom ASDF_DATA_DIR would otherwise have their
 # real data directory silently left behind (TASK-70).
 TARGET_ASDF_DATA_DIR="$(lt_asdf_data_dir)"
+readonly TARGET_ASDF_DATA_DIR
 
 if [ -d "$TARGET_ASDF_DATA_DIR" ]; then
   # This is where EVERYTHING asdf-managed actually lives: downloads,

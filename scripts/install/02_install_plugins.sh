@@ -4,16 +4,18 @@
 # this process, since main.sh runs every phase as its own child process.
 set -eu
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+readonly SCRIPT_DIR
 . "$SCRIPT_DIR/../lib.sh"
 # See lib.sh: exports ASDF_DATA_DIR and prepends its shims dir to PATH for
 # THIS process, since nothing upstream is guaranteed to have done it yet.
 ensure_asdf_on_path
 
 REPO_ROOT="$(repo_root_from "$0")"
+readonly REPO_ROOT
 # TOOL_VERSIONS_FILE is set by main.sh to whatever 00_select.sh produced
 # (the user's picks); fall back to the repo's own .tool-versions when this
 # script is run standalone, outside the normal orchestrated flow.
-CONFIG_FILE="${TOOL_VERSIONS_FILE:-$REPO_ROOT/.tool-versions}"
+readonly CONFIG_FILE="${TOOL_VERSIONS_FILE:-$REPO_ROOT/.tool-versions}"
 [ -f "$CONFIG_FILE" ] || die "Config file not found: $CONFIG_FILE"
 
 step "Phase 2: Installing asdf plugins"
@@ -44,6 +46,7 @@ existing_plugins="$(asdf plugin list 2>/dev/null || true)"
 # before this script decides whether to fail overall.
 FAILED=""
 EACH_TOOL_TMP="$(mktemp)"
+readonly EACH_TOOL_TMP
 each_tool "$CONFIG_FILE" > "$EACH_TOOL_TMP"
 while read -r plugin version <&3; do
   # -x: exact whole-line match, so "python" doesn't accidentally match a

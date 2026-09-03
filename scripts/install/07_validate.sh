@@ -3,11 +3,13 @@
 # evaluate every assertion and report all of them, not stop at the first
 # failure.
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+readonly SCRIPT_DIR
 . "$SCRIPT_DIR/../lib.sh"
 ensure_asdf_on_path
 
 REPO_ROOT="$(repo_root_from "$0")"
-CONFIG_FILE="${TOOL_VERSIONS_FILE:-$REPO_ROOT/.tool-versions}"
+readonly REPO_ROOT
+readonly CONFIG_FILE="${TOOL_VERSIONS_FILE:-$REPO_ROOT/.tool-versions}"
 [ -f "$CONFIG_FILE" ] || die "Config file not found: $CONFIG_FILE"
 
 step "Phase 7: Validating installation"
@@ -20,6 +22,7 @@ if [ "${DRY_RUN:-false}" = "true" ]; then
 fi
 
 RC_FILE="$(detect_rc_file)"
+readonly RC_FILE
 
 OK=true
 
@@ -28,6 +31,7 @@ OK=true
 # POSIX sh has no process substitution, so each_tool's output goes to a
 # temp file first.
 EACH_TOOL_TMP="$(mktemp)"
+readonly EACH_TOOL_TMP
 each_tool "$CONFIG_FILE" > "$EACH_TOOL_TMP"
 # validate_one_tool <plugin> <version> (m-8): checks one tool's PATH
 # resolution and reported version; logs FAIL/OK/WARN lines itself and

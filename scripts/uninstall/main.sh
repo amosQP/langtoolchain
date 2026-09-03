@@ -6,6 +6,7 @@
 #   --yes       skip the "are you sure?" confirmation
 set -eu
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+readonly SCRIPT_DIR
 . "$SCRIPT_DIR/../lib.sh"
 
 # Exclusive lock (TASK-84), shared with install/main.sh, so this can't race
@@ -100,7 +101,7 @@ printf '\n'
 # letting `set -e` abort mid-way.
 set +e
 sh "$SCRIPT_DIR/06_validate_teardown.sh"
-VALIDATION_EXIT_CODE=$?
+readonly VALIDATION_EXIT_CODE=$?
 set -e
 
 # DRY_RUN-aware (found during a UX pass, m-6/TASK-94.3): under --dry-run,

@@ -10,6 +10,7 @@ set -eu
 # the caller's shell happened to be `cd`'d. $0 works because every caller
 # always invokes this script by path (POSIX sh has no BASH_SOURCE).
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+readonly SCRIPT_DIR
 . "$SCRIPT_DIR/../lib.sh"
 
 # Pinned to a specific Homebrew/install commit rather than the floating
@@ -29,9 +30,9 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 # Bump both together when intentionally picking up a newer Homebrew
 # installer:
 #   curl -fsSL https://raw.githubusercontent.com/Homebrew/install/<new-sha>/install.sh | shasum -a 256
-HOMEBREW_INSTALL_COMMIT="c8188c1d48d77234a458b944d1d1b750f015a1c4"
-HOMEBREW_INSTALL_URL="https://raw.githubusercontent.com/Homebrew/install/$HOMEBREW_INSTALL_COMMIT/install.sh"
-HOMEBREW_INSTALL_SHA256="12479a24be3f5307eecac7cde670fad7118640f031229e964f544b1367b52a41"
+readonly HOMEBREW_INSTALL_COMMIT="c8188c1d48d77234a458b944d1d1b750f015a1c4"
+readonly HOMEBREW_INSTALL_URL="https://raw.githubusercontent.com/Homebrew/install/$HOMEBREW_INSTALL_COMMIT/install.sh"
+readonly HOMEBREW_INSTALL_SHA256="12479a24be3f5307eecac7cde670fad7118640f031229e964f544b1367b52a41"
 
 step "Phase 1: Ensuring Homebrew and asdf are installed"
 

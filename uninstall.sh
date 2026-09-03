@@ -19,15 +19,16 @@ set -eu
 #
 # LANGTOOLCHAIN_REPO_URL / LANGTOOLCHAIN_BRANCH (TASK-117.6): same opt-in
 # override as install.sh — see its copy of this comment for the reasoning.
-REPO_URL="${LANGTOOLCHAIN_REPO_URL:-https://github.com/amosQP/langtoolchain.git}"
-BRANCH="${LANGTOOLCHAIN_BRANCH:-896b4c5a7ecf82f43056d0cae7bb787f1ab3ee83}"
+readonly REPO_URL="${LANGTOOLCHAIN_REPO_URL:-https://github.com/amosQP/langtoolchain.git}"
+readonly BRANCH="${LANGTOOLCHAIN_BRANCH:-896b4c5a7ecf82f43056d0cae7bb787f1ab3ee83}"
 
 # $0, not ${BASH_SOURCE[0]:-} (POSIX sh has no BASH_SOURCE) — see
 # install.sh for why the -f check below is what actually does the real/
 # piped-stdin discrimination, verified empirically there.
-SELF_PATH="$0"
+readonly SELF_PATH="$0"
 if [ -n "$SELF_PATH" ] && [ -f "$SELF_PATH" ]; then
   SELF_DIR="$(cd "$(dirname "$SELF_PATH")" && pwd)"
+  readonly SELF_DIR
 fi
 
 if [ -n "${SELF_DIR:-}" ] && [ -d "$SELF_DIR/scripts/uninstall" ]; then
@@ -51,6 +52,7 @@ fi
 # this process image outright, which skips the trap on the successful
 # path entirely (only fires on an early failure before we get here).
 WORKDIR="$(mktemp -d)"
+readonly WORKDIR
 trap 'rm -rf "$WORKDIR"' EXIT
 
 # clone_pinned <ref>: see install.sh's copy of this function for the full

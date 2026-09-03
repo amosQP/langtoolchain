@@ -30,7 +30,7 @@ DRY_RUN="${DRY_RUN:-false}"
 # Single source of truth for scripts/install/03_install_system_deps.sh,
 # scripts/uninstall/04_remove_system_deps.sh, and ensure_build_flags() below
 # (which only needs the openssl/readline/sqlite3/zlib subset — see there).
-LT_BUILD_DEPS="openssl readline sqlite3 xz zlib tcl-tk"
+readonly LT_BUILD_DEPS="openssl readline sqlite3 xz zlib tcl-tk"
 
 # lt_homebrew_prefix (TASK-61): prints Homebrew's install prefix for the
 # CPU architecture this script is running on right now. Apple Silicon and
@@ -59,8 +59,8 @@ lt_homebrew_prefix() {
 # original code did — resolving $HOME at write time instead would bake in
 # whatever $HOME happened to be during install rather than at each future
 # shell's own startup.
-LT_ASDF_DATA_DIR_NAME=".asdf"
-LT_ASDF_DATA_DIR_DEFAULT="$HOME/$LT_ASDF_DATA_DIR_NAME"
+readonly LT_ASDF_DATA_DIR_NAME=".asdf"
+readonly LT_ASDF_DATA_DIR_DEFAULT="$HOME/$LT_ASDF_DATA_DIR_NAME"
 
 # lt_asdf_data_dir: prints the effective asdf data directory — a live
 # ASDF_DATA_DIR override if the caller's environment already has one, else
@@ -86,10 +86,10 @@ lt_asdf_data_dir() {
 # written to and has to check every rc file this tool has ever been able to
 # write. This install-picks-one vs. uninstall-sweeps-all asymmetry is
 # intentional, not an oversight.
-LT_RC_FILE_ZSH=".zshrc"
-LT_RC_FILE_BASH=".bash_profile"          # macOS Terminal runs login shells
-LT_RC_FILE_BASH_INTERACTIVE=".bashrc"    # never picked by detect_rc_file; swept by uninstall only
-LT_KNOWN_RC_FILES="$LT_RC_FILE_ZSH $LT_RC_FILE_BASH $LT_RC_FILE_BASH_INTERACTIVE"
+readonly LT_RC_FILE_ZSH=".zshrc"
+readonly LT_RC_FILE_BASH=".bash_profile"          # macOS Terminal runs login shells
+readonly LT_RC_FILE_BASH_INTERACTIVE=".bashrc"    # never picked by detect_rc_file; swept by uninstall only
+readonly LT_KNOWN_RC_FILES="$LT_RC_FILE_ZSH $LT_RC_FILE_BASH $LT_RC_FILE_BASH_INTERACTIVE"
 
 # LT_LOCAL_PINS_FILE_NAME (TASK-83): bare filename, under $ASDF_DATA_DIR, of
 # the registry 06_set_globals.sh appends a directory to every time it pins
@@ -98,7 +98,7 @@ LT_KNOWN_RC_FILES="$LT_RC_FILE_ZSH $LT_RC_FILE_BASH $LT_RC_FILE_BASH_INTERACTIVE
 # directory (never in the global ~/.tool-versions) still gets asdf-uninstalled.
 # Deliberately lives under $ASDF_DATA_DIR: 05_purge_asdf_core.sh's `rm -rf
 # $ASDF_DATA_DIR` deletes this file too, so there's nothing extra to clean up.
-LT_LOCAL_PINS_FILE_NAME="langtoolchain-local-pins"
+readonly LT_LOCAL_PINS_FILE_NAME="langtoolchain-local-pins"
 
 # LT_LOCK_DIR (TASK-84): a single lock shared by install/main.sh and
 # uninstall/main.sh, so an install can never run concurrently with another

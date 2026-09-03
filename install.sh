@@ -40,8 +40,8 @@ set -eu
 # takeover, so accepting an override here doesn't weaken anything the
 # default path actually promised. Only fires the warning below when one of
 # these is actually set, so the default (no env vars) path stays silent.
-REPO_URL="${LANGTOOLCHAIN_REPO_URL:-https://github.com/amosQP/langtoolchain.git}"
-BRANCH="${LANGTOOLCHAIN_BRANCH:-896b4c5a7ecf82f43056d0cae7bb787f1ab3ee83}"
+readonly REPO_URL="${LANGTOOLCHAIN_REPO_URL:-https://github.com/amosQP/langtoolchain.git}"
+readonly BRANCH="${LANGTOOLCHAIN_BRANCH:-896b4c5a7ecf82f43056d0cae7bb787f1ab3ee83}"
 
 # $0 is this file's own path when it was executed from an actual file on
 # disk — but POSIX sh has no BASH_SOURCE, and unlike bash, $0 is USUALLY
@@ -51,9 +51,10 @@ BRANCH="${LANGTOOLCHAIN_BRANCH:-896b4c5a7ecf82f43056d0cae7bb787f1ab3ee83}"
 # invocation gives a $0 that resolves to an existing file, while the
 # piped-stdin case gives a bare interpreter name with no such file in the
 # current directory. Verified empirically for both cases.
-SELF_PATH="$0"
+readonly SELF_PATH="$0"
 if [ -n "$SELF_PATH" ] && [ -f "$SELF_PATH" ]; then
   SELF_DIR="$(cd "$(dirname "$SELF_PATH")" && pwd)"
+  readonly SELF_DIR
 fi
 
 if [ -n "${SELF_DIR:-}" ] && [ -d "$SELF_DIR/scripts/install" ]; then
@@ -78,6 +79,7 @@ fi
 
 # A scratch directory for the throwaway clone.
 WORKDIR="$(mktemp -d)"
+readonly WORKDIR
 # Clean it up no matter how this script exits (success, error, Ctrl-C).
 #
 # Deliberately NOT `exec`d below: exec replaces this process image outright
