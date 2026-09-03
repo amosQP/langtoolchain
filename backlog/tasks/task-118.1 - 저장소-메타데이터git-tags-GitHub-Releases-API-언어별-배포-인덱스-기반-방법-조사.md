@@ -4,7 +4,7 @@ title: 저장소 메타데이터(git tags/GitHub Releases API/언어별 배포 �
 status: Done
 assignee: []
 created_date: '2026-08-30 11:40'
-updated_date: '2026-09-03 01:10'
+updated_date: '2026-09-03 11:27'
 labels: []
 dependencies: []
 parent_task_id: TASK-118
@@ -76,3 +76,9 @@ Releases API는 공식 JSON 인덱스가 없는 도구(m-12 companion 후보 uv/
 git ls-remote 실패로 감지 가능 - 특별한 파싱 없이 "$(cmd) || return 1" 패턴으로
 바로 폴백 트리거 가능 (TASK-118.3/119 참고).
 <!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+7개 언어(nodejs/pnpm/java/gradle/python/rust/golang) 전부에 대해 저장소 공식 메타데이터/API 기반 버전 조회 소스를 실측 조사 완료. nodejs=dist/index.json(lts 값 그대로 통과), pnpm=npm registry latest, java=adoptium API(최신 LTS major 확인 후 semver), gradle=services.gradle.org/versions/current, python=공식 JSON 인덱스 없어 git ls-remote --tags+정규식 필터+숫자정렬 사용, rust=channel-rust-stable.toml, golang=go.dev/dl/?mode=json. 전부 GitHub Releases API 미사용이라 rate limit 무관, 응답속도 전부 1초 미만, 실패 시 curl -fsS/git ls-remote가 그대로 폴백 트리거 가능함을 확인 — TASK-118.3/TASK-119 구현 입력으로 사용됨.
+<!-- SECTION:FINAL_SUMMARY:END -->
