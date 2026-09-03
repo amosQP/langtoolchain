@@ -1,13 +1,16 @@
 ---
 id: TASK-117
 title: shim/설치 체인 무결성 검증 하드닝
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-08-30 11:32'
+updated_date: '2026-09-03 01:32'
 labels: []
 milestone: m-11
 dependencies:
   - TASK-116
+documentation:
+  - docs/download-points-inventory.md
 type: task
 ordinal: 132000
 ---
@@ -27,3 +30,9 @@ Story 1(조사)의 결론을 바탕으로 이 저장소의 실제 무검증 다�
 
 범위 밖(명시적으로 저장소 통제 밖): scripts/install/05_install_runtimes.sh의 asdf install(런타임 소스/바이너리 다운로드)은 각 asdf 플러그인 내부에서 일어나며 이 저장소가 직접 검증할 수 없음 — 이 스토리는 대신 이 신뢰 경계를 문서화하는 것으로 커버한다.
 <!-- SECTION:DESCRIPTION:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+TASK-117.1~117.6 전부 완료: (1) install.sh/uninstall.sh self-clone을 고정 커밋으로 전환, (2) Homebrew 설치 스크립트에 SHA-256 체크섬 검증 추가, (3) asdf plugin add 커밋 고정은 CLI 제약으로 미채택(decision-2), (4) README에 신뢰 경계(검증 지점 vs 위임/통제 밖) 문서화, (5) PATH 섀도잉 WARN 유지 결정 및 메시지 보강(decision-3), (6) REPO_URL/BRANCH 환경변수 오버라이드 추가 + 그 덕분에 원격 clone 경로 자체를 처음 로컬 회귀 테스트화. decision-1/2/3 세 건, shellcheck/dash -n/shellspec(135/135, bash+dash) 전 구간 통과.
+<!-- SECTION:FINAL_SUMMARY:END -->
