@@ -1,10 +1,10 @@
 ---
 id: TASK-125.3
 title: 채택한 감지 장치 구현 및 CI 연결
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-09-03 01:14'
-updated_date: '2026-09-03 01:26'
+updated_date: '2026-09-03 01:27'
 labels: []
 dependencies:
   - TASK-125.2
