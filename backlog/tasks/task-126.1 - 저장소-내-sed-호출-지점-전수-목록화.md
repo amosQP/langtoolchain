@@ -1,10 +1,10 @@
 ---
 id: TASK-126.1
 title: 저장소 내 sed 호출 지점 전수 목록화
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-09-03 01:15'
-updated_date: '2026-09-03 01:29'
+updated_date: '2026-09-03 01:30'
 labels: []
 dependencies: []
 modified_files:
