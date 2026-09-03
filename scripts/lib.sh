@@ -40,6 +40,17 @@ readonly LT_BUILD_DEPS="openssl readline sqlite3 xz zlib tcl-tk"
 # instead of re-typing its own `uname -m` case — that duplication is what
 # let the sqlite PATH line go stale to an Apple-Silicon-only path on Intel
 # Macs.
+#######################################
+# Print Homebrew's install prefix for the current CPU architecture.
+# Globals:
+#   None
+# Arguments:
+#   None
+# Outputs:
+#   Writes the Homebrew prefix path to STDOUT.
+# Returns:
+#   None
+#######################################
 lt_homebrew_prefix() {
   case "$(uname -m)" in
     arm64) echo "/opt/homebrew" ;;  # Apple Silicon
@@ -68,6 +79,18 @@ readonly LT_ASDF_DATA_DIR_DEFAULT="$HOME/$LT_ASDF_DATA_DIR_NAME"
 # it and touches PATH) so callers that only need the *value* — teardown
 # checks that must NOT put asdf back on PATH — don't have to re-type the
 # same "${ASDF_DATA_DIR:-$LT_ASDF_DATA_DIR_DEFAULT}" fallback themselves.
+#######################################
+# Print the effective asdf data directory.
+# Globals:
+#   ASDF_DATA_DIR
+#   LT_ASDF_DATA_DIR_DEFAULT
+# Arguments:
+#   None
+# Outputs:
+#   Writes the effective asdf data directory path to STDOUT.
+# Returns:
+#   None
+#######################################
 lt_asdf_data_dir() {
   echo "${ASDF_DATA_DIR:-$LT_ASDF_DATA_DIR_DEFAULT}"
 }
@@ -123,6 +146,20 @@ LT_REPORT_FILE="${LT_REPORT_FILE:-$HOME/.langtoolchain-report.log}"
 # lt_report <action> <detail>: appends one line to LT_REPORT_FILE. Skipped
 # under DRY_RUN by design - a preview run didn't actually change anything,
 # so it has nothing real to add to the audit trail.
+#######################################
+# Append one timestamped audit-trail line to LT_REPORT_FILE.
+# Globals:
+#   DRY_RUN
+#   LT_REPORT_FILE
+# Arguments:
+#   $1: action label
+#   $2: detail text
+# Outputs:
+#   None to STDOUT/STDERR. Appends "<timestamp> [<action>] <detail>" to
+#   LT_REPORT_FILE (skipped entirely under DRY_RUN).
+# Returns:
+#   None
+#######################################
 lt_report() {
   [ "$DRY_RUN" = "true" ] && return
   printf '%s [%s] %s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$1" "$2" >> "$LT_REPORT_FILE"
@@ -160,6 +197,21 @@ LT_PRIOR_STATE_FILE="${LT_PRIOR_STATE_FILE:-$HOME/.langtoolchain-prior-asdf-stat
 # itself created in an earlier run - overwriting the file at that point
 # would corrupt the "before this tool touched anything" baseline uninstall
 # depends on.
+#######################################
+# Snapshot whether asdf/its data dir/plugins pre-existed before this tool.
+# Globals:
+#   DRY_RUN
+#   LT_PRIOR_STATE_FILE
+# Arguments:
+#   None
+# Outputs:
+#   None to STDOUT. Writes asdf_preexisting/asdf_data_dir/
+#   asdf_data_dir_preexisting/asdf_plugins_preexisting key=value lines to
+#   LT_PRIOR_STATE_FILE (skipped under DRY_RUN or if the file already
+#   exists).
+# Returns:
+#   None
+#######################################
 lt_snapshot_prior_asdf_state() {
   [ "$DRY_RUN" = "true" ] && return
   [ -f "$LT_PRIOR_STATE_FILE" ] && return
@@ -198,6 +250,17 @@ lt_snapshot_prior_asdf_state() {
 # file - a plain key=value read doesn't need a full shell eval, and this
 # avoids that risk entirely even though this file is only ever written by
 # this tool itself.
+#######################################
+# Print the value for <key> from LT_PRIOR_STATE_FILE.
+# Globals:
+#   LT_PRIOR_STATE_FILE
+# Arguments:
+#   $1: key to look up
+# Outputs:
+#   Writes the value to STDOUT on success; nothing on a miss.
+# Returns:
+#   None
+#######################################
 lt_prior_state_get() {
   local key="$1" line
   [ -f "$LT_PRIOR_STATE_FILE" ] || return 1
@@ -238,6 +301,18 @@ lt_prior_state_get() {
 # "brew shellenv" is the only "prepend" entry — it must land ahead of the
 # asdf shim PATH line, or a same-named Homebrew formula could shadow the
 # asdf shim (see prepend_env_var's own comment). Everything else appends.
+#######################################
+# Print the rc-file entries this tool's installer manages, as data lines.
+# Globals:
+#   LT_ASDF_DATA_DIR_NAME
+# Arguments:
+#   $1: (optional) java hook filename to embed in the java-hook rc line
+# Outputs:
+#   Writes one "<search-pattern>|||<placement>|||<line-to-write>" line per
+#   rc-file entry to STDOUT.
+# Returns:
+#   None
+#######################################
 lt_env_var_defs() {
   local java_hook_file="${1:-}"
   local homebrew_prefix
@@ -254,16 +329,61 @@ lt_env_var_defs() {
 }
 
 # log <msg>: plain status line to stdout.
+#######################################
+# Print a plain status line.
+# Globals:
+#   None
+# Arguments:
+#   $*: message to print
+# Outputs:
+#   Writes <msg> to STDOUT.
+# Returns:
+#   None
+#######################################
 log()  { printf '%s\n' "$*"; }
 # step <msg>: a section header, e.g. "== Phase 3: ... ==", to visually
 # separate phases in the console output.
+#######################################
+# Print a visually separated section header.
+# Globals:
+#   None
+# Arguments:
+#   $*: section header text
+# Outputs:
+#   Writes a blank line then "== <msg> ==" to STDOUT.
+# Returns:
+#   None
+#######################################
 step() { printf '\n== %s ==\n' "$*"; }
 # die <msg>: print to stderr and exit the whole script immediately.
+#######################################
+# Print an error message and terminate the script.
+# Globals:
+#   None
+# Arguments:
+#   $*: error message
+# Outputs:
+#   Writes "ERROR: <msg>" to STDERR.
+# Returns:
+#   Does not return — exits the calling script with status 1.
+#######################################
 die()  { printf 'ERROR: %s\n' "$*" >&2; exit 1; }
 
 # run <cmd...>: the dry-run gate. Every command that actually mutates the
 # system (brew install, asdf install, rm -rf, ...) goes through this
 # instead of being called directly.
+#######################################
+# Run <cmd...>, or describe it instead when DRY_RUN is set.
+# Globals:
+#   DRY_RUN
+# Arguments:
+#   $@: command and arguments to execute
+# Outputs:
+#   Under DRY_RUN, writes the command line (prefixed "  + ") to STDOUT.
+#   Otherwise none of its own — whatever "$@" itself writes passes through.
+# Returns:
+#   Exit status of "$@" when not under DRY_RUN; 0 under DRY_RUN.
+#######################################
 run() {
   # Under --dry-run, print what *would* run (prefixed with "+", like `set -x`)
   # instead of running it.
@@ -287,6 +407,20 @@ run() {
 # Compose with run(): `retry 3 5 run asdf install "$plugin" "$version"`.
 # Under DRY_RUN, run() prints and returns success on the first call, so
 # retry's own loop exits immediately too — no repeated dry-run output.
+#######################################
+# Run <cmd...>, retrying with exponential backoff on failure.
+# Globals:
+#   None
+# Arguments:
+#   $1: max_attempts
+#   $2: delay_seconds (doubles after each failed attempt)
+#   $3..: cmd and its arguments
+# Outputs:
+#   Writes "(attempt N/max failed, retrying in ...)" progress lines to
+#   STDOUT (via log()) between attempts.
+# Returns:
+#   0 as soon as <cmd...> succeeds; 1 once <max_attempts> is exhausted.
+#######################################
 retry() {
   local max_attempts="$1" delay="$2" attempt=1
   shift 2
@@ -349,6 +483,20 @@ retry() {
 # time would now see nothing until <cmd...> finishes or is killed - but no
 # call site here needs that; every existing caller already fully captures
 # this kind of output via `$(...)` first anyway.
+#######################################
+# Run <cmd...> under a hard wall-clock timeout, killing it if it overruns.
+# Globals:
+#   None
+# Arguments:
+#   $1: seconds — wall-clock timeout
+#   $2..: cmd and its arguments
+# Outputs:
+#   Writes <cmd...>'s captured STDOUT to this function's STDOUT, and its
+#   captured STDERR to this function's STDERR.
+# Returns:
+#   124 if <cmd...> was killed for exceeding the timeout; otherwise
+#   <cmd...>'s own exit status.
+#######################################
 lt_run_with_timeout() {
   local secs="$1"
   shift
@@ -401,6 +549,18 @@ lt_run_with_timeout() {
 # `df -Pk`: POSIX output format (portable across BSD and GNU df) in 1024-byte
 # blocks, so dividing by 1024 twice gets whole GB without needing `-g` (a
 # GNU-only flag BSD/macOS df doesn't have).
+#######################################
+# Die with a clear message if $HOME's filesystem has too little free space.
+# Globals:
+#   HOME
+# Arguments:
+#   $1: min_gb — minimum free GB required
+# Outputs:
+#   None on success. On failure, writes an error message to STDERR (via
+#   die()).
+# Returns:
+#   Does not return on failure — exits (via die()) with status 1.
+#######################################
 ensure_disk_space() {
   local min_gb="$1" available_kb available_gb
   available_kb="$(df -Pk "$HOME" | awk 'NR==2 {print $4}')"
@@ -436,6 +596,18 @@ LT_CHILD_PID=""
 # `LT_CHILD_PID=""` assignment would return, which is always 0) so a
 # failing phase under the caller's `set -eu` actually stops the run instead
 # of being silently treated as success.
+#######################################
+# Run a phase script as a backgrounded, waited-on child so signals interrupt it promptly.
+# Globals:
+#   LT_CHILD_PID (written)
+# Arguments:
+#   $1: path to the phase script to run
+# Outputs:
+#   None of its own — whatever the phase script itself writes passes
+#   through.
+# Returns:
+#   The phase script's own exit status.
+#######################################
 run_phase() {
   # Between backgrounding the child and capturing its PID there's a brief
   # window where handle_interrupt has nothing to kill yet: a signal landing
@@ -468,6 +640,17 @@ run_phase() {
 # still triggers the separately-registered EXIT trap afterward — INT/TERM
 # and EXIT are independent trap slots, so this doesn't clobber the
 # lock-release/cleanup trap the way two traps on the SAME signal would.
+#######################################
+# Handle an INT/TERM signal: kill the running phase child, then exit.
+# Globals:
+#   LT_CHILD_PID
+# Arguments:
+#   None
+# Outputs:
+#   Writes an interrupt notice to STDOUT (via log()).
+# Returns:
+#   Does not return — exits with status 130.
+#######################################
 handle_interrupt() {
   if [ -n "$LT_CHILD_PID" ]; then
     kill "$LT_CHILD_PID" 2>/dev/null || true
@@ -481,6 +664,18 @@ handle_interrupt() {
 # instance is running" message if that PID is still alive. Shared by
 # acquire_lock()'s two check points below (the initial mkdir failure and the
 # stale-lock reclaim race) so the message/logic can't drift between them.
+#######################################
+# Die if the PID recorded in the lock directory is still a live process.
+# Globals:
+#   LT_LOCK_DIR
+# Arguments:
+#   None
+# Outputs:
+#   None on success. On failure, writes an error message to STDERR (via
+#   die()).
+# Returns:
+#   Does not return on failure — exits (via die()) with status 1.
+#######################################
 lt_die_if_lock_held() {
   local holder_pid=""
   [ -f "$LT_LOCK_DIR/pid" ] && holder_pid="$(cat "$LT_LOCK_DIR/pid" 2>/dev/null)"
@@ -500,6 +695,18 @@ lt_die_if_lock_held() {
 # `release_lock` trap could fire, so the stale lock is reclaimed instead of
 # permanently blocking every future run. Caller must `trap 'release_lock'
 # EXIT` (or fold it into an existing combined trap) right after calling this.
+#######################################
+# Take the exclusive install/uninstall lock at LT_LOCK_DIR.
+# Globals:
+#   LT_LOCK_DIR
+# Arguments:
+#   None
+# Outputs:
+#   None on success (writes $$ into $LT_LOCK_DIR/pid). On failure, writes
+#   an error message to STDERR (via die()).
+# Returns:
+#   Does not return on failure — exits (via die()) with status 1.
+#######################################
 acquire_lock() {
   if ! mkdir "$LT_LOCK_DIR" 2>/dev/null; then
     lt_die_if_lock_held
@@ -523,6 +730,17 @@ acquire_lock() {
 # release_lock: removes the lock directory. Safe to call even when no lock
 # was ever acquired (e.g. acquire_lock itself just died) — rm -rf on a path
 # that doesn't exist is a no-op, not an error.
+#######################################
+# Remove the lock directory taken by acquire_lock().
+# Globals:
+#   LT_LOCK_DIR
+# Arguments:
+#   None
+# Outputs:
+#   None
+# Returns:
+#   None
+#######################################
 release_lock() {
   rm -rf "$LT_LOCK_DIR"
 }
@@ -532,6 +750,18 @@ release_lock() {
 # scripts/uninstall/). Each phase script calls this with its own $0 so it
 # can find .tool-versions regardless of the caller's current working
 # directory.
+#######################################
+# Print the repository root, given a path to a file inside scripts/install
+# or scripts/uninstall.
+# Globals:
+#   None
+# Arguments:
+#   $1: path to a file inside scripts/install or scripts/uninstall
+# Outputs:
+#   Writes the repository root absolute path to STDOUT.
+# Returns:
+#   None
+#######################################
 repo_root_from() {
   # Run in a subshell so the `cd` here doesn't change the calling script's
   # own working directory; `pwd` then prints the absolute, resolved path.
@@ -541,6 +771,17 @@ repo_root_from() {
 # each_tool <config-file>: reads a .tool-versions-style file and prints
 # "plugin version" pairs, one per line — skipping comment lines (starting
 # with #) and blank/whitespace-only lines.
+#######################################
+# Print "plugin version" pairs from a .tool-versions-style file.
+# Globals:
+#   None
+# Arguments:
+#   $1: path to the .tool-versions-style config file
+# Outputs:
+#   Writes one "<plugin> <version>" line per entry to STDOUT.
+# Returns:
+#   None
+#######################################
 each_tool() {
   # /^[^# \t]/ matches lines whose first character is neither '#' nor a
   # space/tab, i.e. real plugin lines; $1/$2 are the plugin name and version
@@ -552,6 +793,20 @@ each_tool() {
 # based on the user's login shell ($SHELL), not the shell currently running
 # this script (curl | bash always runs under bash regardless of what the
 # user actually uses day to day).
+#######################################
+# Print the shell rc file the installer should edit.
+# Globals:
+#   SHELL
+#   HOME
+#   LT_RC_FILE_ZSH
+#   LT_RC_FILE_BASH
+# Arguments:
+#   None
+# Outputs:
+#   Writes the chosen rc file's absolute path to STDOUT.
+# Returns:
+#   None
+#######################################
 detect_rc_file() {
   case "$(basename "${SHELL:-}")" in
     zsh)  echo "$HOME/$LT_RC_FILE_ZSH" ;;
@@ -563,6 +818,21 @@ detect_rc_file() {
 # append_env_var <rc_file> <search> <line>: appends <line> to <rc_file>,
 # unless <rc_file> already contains something matching the grep pattern
 # <search> — so re-running the installer never duplicates a line.
+#######################################
+# Append <line> to <rc_file>, unless <search> already matches something in it.
+# Globals:
+#   DRY_RUN
+# Arguments:
+#   $1: rc_file — path to the rc file to edit
+#   $2: search — grep pattern that marks the line as already present
+#   $3: line — the line to append
+# Outputs:
+#   Under DRY_RUN, writes a description of the pending write to STDOUT.
+#   Otherwise none to STDOUT (appends <line> to <rc_file> on disk when not
+#   already present).
+# Returns:
+#   None
+#######################################
 append_env_var() {
   local rc_file="$1" search="$2" line="$3"
   if [ "$DRY_RUN" = "true" ]; then
@@ -588,6 +858,21 @@ append_env_var() {
 # on a machine with a pre-existing rc file, since it only ever adds to the
 # bottom; this guarantees first-in-file, and therefore correct priority,
 # regardless of what else already lives in the rc file.
+#######################################
+# Prepend <line> to <rc_file>, unless <search> already matches something in it.
+# Globals:
+#   DRY_RUN
+# Arguments:
+#   $1: rc_file — path to the rc file to edit
+#   $2: search — grep pattern that marks the line as already present
+#   $3: line — the line to prepend
+# Outputs:
+#   Under DRY_RUN, writes a description of the pending write to STDOUT.
+#   Otherwise none to STDOUT (rewrites <rc_file> on disk with <line> at the
+#   top, when not already present).
+# Returns:
+#   None
+#######################################
 prepend_env_var() {
   local rc_file="$1" search="$2" line="$3"
   if [ "$DRY_RUN" = "true" ]; then
@@ -610,6 +895,17 @@ prepend_env_var() {
 # .tool-versions, which nothing ever adds this line to) defaults to
 # "global" — keeps every phase working unmodified when TOOL_VERSIONS_FILE
 # isn't set.
+#######################################
+# Print the scope ("global" or "local:<dir>") recorded in a config file.
+# Globals:
+#   None
+# Arguments:
+#   $1: config_file to read the scope line from
+# Outputs:
+#   Writes "global" or "local:<dir>" to STDOUT.
+# Returns:
+#   None
+#######################################
 read_scope() {
   local config_file="$1" first_line
   first_line="$(head -n 1 "$config_file" 2>/dev/null)"
@@ -626,6 +922,18 @@ read_scope() {
 # exported anything into this process already (main.sh runs each phase as
 # its own separate `bash` child process, so nothing carries over
 # automatically).
+#######################################
+# Export ASDF_DATA_DIR and put its shims directory on PATH for this process.
+# Globals:
+#   ASDF_DATA_DIR (written)
+#   PATH (read, written)
+# Arguments:
+#   None
+# Outputs:
+#   None
+# Returns:
+#   None
+#######################################
 ensure_asdf_on_path() {
   # Default to asdf's own default data directory if the caller's
   # environment hasn't already set ASDF_DATA_DIR.
@@ -650,6 +958,17 @@ ensure_asdf_on_path() {
 # write for that line (see 04_configure_shell_env.sh) doesn't help THIS
 # still-running install either, this falls back to Homebrew's two
 # fixed, architecture-specific install locations directly.
+#######################################
+# Make `brew` callable from this process, even if just installed.
+# Globals:
+#   PATH (read, written)
+# Arguments:
+#   None
+# Outputs:
+#   None
+# Returns:
+#   None
+#######################################
 ensure_brew_on_path() {
   if command -v brew >/dev/null 2>&1; then
     return
@@ -672,6 +991,20 @@ ensure_brew_on_path() {
 # Of the full LT_BUILD_DEPS list, only these four (openssl, readline,
 # sqlite3, zlib) actually need compiler/linker flags — xz and tcl-tk don't,
 # so they're intentionally left out below.
+#######################################
+# Re-export the Homebrew build flags needed to compile against keg-only deps.
+# Globals:
+#   PATH (written)
+#   LDFLAGS (written)
+#   CPPFLAGS (written)
+#   PKG_CONFIG_PATH (written)
+# Arguments:
+#   None
+# Outputs:
+#   None
+# Returns:
+#   None
+#######################################
 ensure_build_flags() {
   # `brew --prefix` below needs `brew` itself resolvable first.
   ensure_brew_on_path
@@ -707,6 +1040,17 @@ ensure_build_flags() {
 # instead of an associative array (`declare -A`) because bash 3.2 — the
 # actual /bin/bash macOS ships — predates associative arrays entirely, and
 # `curl | bash` may run under whatever `bash` is first on the user's PATH.
+#######################################
+# Print the primary CLI binary an asdf plugin installs.
+# Globals:
+#   None
+# Arguments:
+#   $1: asdf plugin name
+# Outputs:
+#   Writes the binary name to STDOUT.
+# Returns:
+#   None
+#######################################
 binary_for_plugin() {
   case "$1" in
     nodejs) echo node ;;
@@ -736,6 +1080,18 @@ binary_for_plugin() {
 # `case` pattern as binary_for_plugin() above, for the same bash-3.2-has-
 # no-associative-arrays reason. Empty output means "no companion for this
 # plugin" - callers must treat that as a valid, common case, not an error.
+#######################################
+# Print the companion plugin(s) commonly needed alongside a base plugin.
+# Globals:
+#   None
+# Arguments:
+#   $1: asdf plugin name
+# Outputs:
+#   Writes the companion plugin name to STDOUT, or nothing if this plugin
+#   has no companion.
+# Returns:
+#   None
+#######################################
 lt_companion_for_plugin() {
   case "$1" in
     nodejs) echo pnpm ;;
@@ -748,6 +1104,17 @@ lt_companion_for_plugin() {
 # flag_for_binary <binary-name>: prints the flag that binary uses to print
 # its own version (they're not all the same — `go version` has no dashes,
 # `node -v` is a short flag, `java -version` is a single dash, etc).
+#######################################
+# Print the flag a binary uses to print its own version.
+# Globals:
+#   None
+# Arguments:
+#   $1: binary name
+# Outputs:
+#   Writes the version flag to STDOUT.
+# Returns:
+#   None
+#######################################
 flag_for_binary() {
   case "$1" in
     node)   echo -v ;;
@@ -770,6 +1137,18 @@ flag_for_binary() {
 # gives leftmost-match behavior, same as the old regex), then capture an
 # X.Y or X.Y.Z run and discard everything after it. Plain BRE (no -E), so
 # this is portable to both BSD and GNU sed without needing -E.
+#######################################
+# Extract the first X.Y[.Z] numeric version substring from a string.
+# Globals:
+#   None
+# Arguments:
+#   $1: version string to extract from
+# Outputs:
+#   Writes the extracted X.Y[.Z] substring to STDOUT on success; nothing on
+#   no match.
+# Returns:
+#   None
+#######################################
 version_core() {
   local result
   result="$(printf '%s\n' "$1" | sed -n 's/[^0-9]*\([0-9][0-9]*\.[0-9][0-9]*\(\.[0-9][0-9]*\)*\).*/\1/p')"
@@ -787,6 +1166,17 @@ LT_VERSION_FETCH_TIMEOUT="${LT_VERSION_FETCH_TIMEOUT:-5}"
 # (used by lt_upstream_latest_version's java case below) - different from
 # lt_homebrew_prefix's own uname -m mapping only in spelling ("aarch64" vs
 # "arm64"), so this can't just reuse that function.
+#######################################
+# Print the CPU architecture name Adoptium's API expects.
+# Globals:
+#   None
+# Arguments:
+#   None
+# Outputs:
+#   Writes the Adoptium architecture name ("aarch64" or "x64") to STDOUT.
+# Returns:
+#   None
+#######################################
 lt_adoptium_arch() {
   case "$(uname -m)" in
     arm64) echo aarch64 ;;  # Apple Silicon
@@ -814,6 +1204,20 @@ lt_adoptium_arch() {
 # 0 with empty output (sed processes zero lines cleanly), matching how
 # every existing call site/test already treats a missing field as "nothing
 # printed", not a hard failure.
+#######################################
+# Print the string value of the first "<key>":"<value>" pair in a JSON body.
+# Globals:
+#   None
+# Arguments:
+#   $1: key — JSON key name to search for
+#   $2: (optional) value_prefix the matched value must start with (also
+#       stripped from the printed result)
+# Outputs:
+#   Reads a JSON body from STDIN. Writes the matched field's value to
+#   STDOUT, or nothing if no match.
+# Returns:
+#   None
+#######################################
 lt_json_field() {
   local key="$1" prefix="${2:-}"
   grep -o "\"$key\"[[:space:]]*:[[:space:]]*\"${prefix}[^\"]*\"" | head -1 | sed -E "s/.*\"${prefix}([^\"]*)\"\$/\1/"
@@ -835,6 +1239,18 @@ lt_json_field() {
 #
 # Same case-dispatch style as binary_for_plugin()/lt_companion_for_plugin()
 # above, for the same bash-3.2-has-no-associative-arrays reason.
+#######################################
+# Fetch a plugin's latest stable version from its official upstream index.
+# Globals:
+#   LT_VERSION_FETCH_TIMEOUT
+# Arguments:
+#   $1: asdf plugin name
+# Outputs:
+#   Writes the fetched version string to STDOUT on success; nothing on
+#   failure.
+# Returns:
+#   None
+#######################################
 lt_upstream_latest_version() {
   # No up-front `command -v curl` guard here on purpose: every branch below
   # that needs curl (or git, for python) already chains `|| return 1` onto
@@ -962,6 +1378,19 @@ LT_VERSION_CACHE_TTL="${LT_VERSION_CACHE_TTL:-86400}"
 # Cache line format: "<plugin>|||<unix-epoch>|||<version>", one per plugin,
 # same triple-pipe-delimited shape lt_env_var_defs() above already uses for
 # its own multi-field lines (none of these fields can contain "|||").
+#######################################
+# Print a plugin's cached version if it's still fresh.
+# Globals:
+#   LT_VERSION_CACHE_FILE
+#   LT_VERSION_CACHE_TTL
+# Arguments:
+#   $1: plugin name
+# Outputs:
+#   Writes the cached version to STDOUT on a fresh cache hit; nothing on a
+#   miss.
+# Returns:
+#   None
+#######################################
 lt_cached_version_lookup() {
   local plugin="$1" line ts version now
   [ -f "$LT_VERSION_CACHE_FILE" ] || return 1
@@ -988,6 +1417,19 @@ lt_cached_version_lookup() {
 # LT_VERSION_CACHE_FILE with <version> and the current time, replacing any
 # previous line for the same plugin (never appending a stale duplicate).
 # Internal to this file, same as lt_cached_version_lookup above.
+#######################################
+# (Over)write a plugin's cached version line in LT_VERSION_CACHE_FILE.
+# Globals:
+#   LT_VERSION_CACHE_FILE
+# Arguments:
+#   $1: plugin name
+#   $2: version string to cache
+# Outputs:
+#   None to STDOUT (rewrites LT_VERSION_CACHE_FILE with the new/updated
+#   line).
+# Returns:
+#   None
+#######################################
 lt_cache_version() {
   local plugin="$1" version="$2" tmp
   tmp="$(mktemp)"
@@ -1022,6 +1464,19 @@ lt_cache_version() {
 # Callers never see an empty default, and a completely offline machine
 # behaves exactly as it did before m-12: the static .tool-versions value,
 # install proceeds unblocked.
+#######################################
+# Resolve a plugin's default version: fresh cache, else live fetch, else
+# the caller's static default.
+# Globals:
+#   None
+# Arguments:
+#   $1: plugin name
+#   $2: static_default — fallback version if no cached/live value is found
+# Outputs:
+#   Writes the resolved version string to STDOUT.
+# Returns:
+#   None
+#######################################
 lt_resolve_default_version() {
   local plugin="$1" static_default="$2" cached fetched
   cached="$(lt_cached_version_lookup "$plugin" 2>/dev/null)" || cached=""
