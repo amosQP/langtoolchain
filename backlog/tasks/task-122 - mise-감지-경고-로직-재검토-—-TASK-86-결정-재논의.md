@@ -1,9 +1,10 @@
 ---
 id: TASK-122
 title: mise 감지/경고 로직 재검토 — TASK-86 결정 재논의
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-08-30 12:00'
+updated_date: '2026-09-03 00:54'
 labels: []
 dependencies: []
 references:
@@ -22,5 +23,11 @@ TASK-86(Done, m-2)이 이미 "MacPorts/mise 상호운용 검토 완료 — MacPo
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 사용자가 재검토 후 TASK-86 결정(문서화까지만)을 유지할지, 감지/경고 로직을 추가하는 쪽으로 확장할지 결정한다
+- [x] #1 사용자가 재검토 후 TASK-86 결정(문서화까지만)을 유지할지, 감지/경고 로직을 추가하는 쪽으로 확장할지 결정한다
 <!-- AC:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+사용자 결정(2026-09-03): mise를 쓰지 않음 — TASK-86의 기존 결정(문서화까지만, 감지/경고 로직 추가는 스코프 밖)을 그대로 유지한다. 코드 변경 없음.
+<!-- SECTION:FINAL_SUMMARY:END -->
