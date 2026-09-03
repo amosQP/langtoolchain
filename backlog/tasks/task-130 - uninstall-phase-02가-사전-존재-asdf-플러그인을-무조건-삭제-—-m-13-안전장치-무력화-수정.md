@@ -1,9 +1,10 @@
 ---
 id: TASK-130
 title: uninstall phase 02가 사전 존재 asdf 플러그인을 무조건 삭제 — m-13 안전장치 무력화 수정
-status: To Do
+status: In Progress
 assignee: []
 created_date: '2026-09-03 11:07'
+updated_date: '2026-09-03 11:15'
 labels: []
 milestone: m-16
 dependencies: []
