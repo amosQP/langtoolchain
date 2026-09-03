@@ -1,9 +1,10 @@
 ---
 id: TASK-140
 title: 전체 코드베이스 셸 스타일 가이드 준수 감사
-status: To Do
+status: In Progress
 assignee: []
 created_date: '2026-09-03 12:07'
+updated_date: '2026-09-03 22:21'
 labels: []
 milestone: m-16
 dependencies: []
