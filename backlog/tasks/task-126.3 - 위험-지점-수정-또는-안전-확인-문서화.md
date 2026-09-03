@@ -1,7 +1,7 @@
 ---
 id: TASK-126.3
 title: 위험 지점 수정 또는 안전 확인 문서화
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-09-03 01:15'
 updated_date: '2026-09-03 06:08'
