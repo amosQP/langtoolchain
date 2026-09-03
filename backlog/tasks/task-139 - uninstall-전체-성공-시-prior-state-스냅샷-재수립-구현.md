@@ -1,9 +1,10 @@
 ---
 id: TASK-139
 title: uninstall 전체 성공 시 prior-state 스냅샷 재수립 구현
-status: To Do
+status: In Progress
 assignee: []
 created_date: '2026-09-03 12:06'
+updated_date: '2026-09-03 12:09'
 labels: []
 milestone: m-16
 dependencies: []

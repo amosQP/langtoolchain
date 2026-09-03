@@ -65,3 +65,19 @@ if [ -f "$HOME/.tool-versions" ]; then
   run rm -f "$HOME/.tool-versions"
   lt_report removed "$HOME/.tool-versions"
 fi
+
+# m-16/TASK-139/decision-8: this is the last phase (main.sh's phase list ends
+# here), and the only reader of LT_PRIOR_STATE_FILE is the "true"-vs-"false"
+# check above (TASK-124.1) — nothing later in this run reads it again. So
+# once every command above this line has succeeded (set -eu killed the
+# script already if any of them failed), the snapshot has done its job for
+# THIS uninstall and can be cleared, letting the next install re-baseline
+# from the machine's actual post-uninstall state instead of staying pinned
+# to whatever this machine looked like the very first time langtoolchain
+# ever snapshotted it. Guarded the same way
+# lt_snapshot_prior_asdf_state() (scripts/lib.sh) guards its own write:
+# DRY_RUN never touched real state, so it must not delete the snapshot
+# either. A failed/interrupted uninstall (this phase or an earlier one)
+# never reaches this line, so decision-6's original concern — a retry
+# needing the snapshot still there — is unaffected.
+[ "$DRY_RUN" = "true" ] || rm -f "$LT_PRIOR_STATE_FILE"
