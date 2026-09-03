@@ -704,6 +704,31 @@ lt_adoptium_arch() {
   esac
 }
 
+# lt_json_field <key> [value_prefix] (m-16/TASK-133): reads a JSON body
+# from stdin and prints the string value of the first "<key>": "<value>"
+# pair, quotes stripped. Factored out of lt_upstream_latest_version below,
+# whose pnpm/gradle/golang/java/uv branches each inlined this same
+# grep+head+sed sequence (pnpm/gradle were byte-for-byte identical; golang/
+# java were prefix variants) - one place to fix the extraction now instead
+# of five.
+#
+# value_prefix, if given, requires the matched value to literally start
+# with it and strips it from the printed result - e.g. go.dev's
+# "version":"go1.27.1" needs prefix "go" to yield "1.27.1". Omit it for a
+# plain string field (pnpm/gradle/java/uv all pass no prefix here; java's
+# own "temurin-" decoration is added by its caller afterward, since that
+# prefix goes on the *output* rather than stripping one from the *input* -
+# a different operation this helper doesn't need to know about).
+#
+# Same head -1/sed shape as the original inline code: no match still exits
+# 0 with empty output (sed processes zero lines cleanly), matching how
+# every existing call site/test already treats a missing field as "nothing
+# printed", not a hard failure.
+lt_json_field() {
+  local key="$1" prefix="${2:-}"
+  grep -o "\"$key\"[[:space:]]*:[[:space:]]*\"${prefix}[^\"]*\"" | head -1 | sed -E "s/.*\"${prefix}([^\"]*)\"\$/\1/"
+}
+
 # lt_upstream_latest_version <plugin> (m-12/TASK-118 decision, decision-4):
 # fetches this plugin's latest stable version straight from that language's
 # own official distribution index/API - deliberately NOT via `asdf latest`/
@@ -726,7 +751,7 @@ lt_upstream_latest_version() {
   # its own call, which catches a missing binary (exit 127) exactly like
   # any other failure - a shared guard would also incorrectly gate the
   # nodejs branch (which shells out to nothing at all).
-  local plugin="$1" body lts_major
+  local plugin="$1" body lts_major semver
   case "$plugin" in
     nodejs)
       # asdf-nodejs resolves the "lts" alias itself, fresh, at actual
@@ -741,19 +766,19 @@ lt_upstream_latest_version() {
       # npm registry - the same place asdf-pnpm's own installer downloads
       # pnpm from.
       body="$(curl -fsS --max-time "$LT_VERSION_FETCH_TIMEOUT" 'https://registry.npmjs.org/pnpm/latest' 2>/dev/null)" || return 1
-      printf '%s\n' "$body" | grep -o '"version"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | sed -E 's/.*"([^"]*)"$/\1/'
+      printf '%s\n' "$body" | lt_json_field version
       ;;
     gradle)
       # Gradle's own official "current version" API - a single value, no
       # rc/milestone noise to filter (unlike asdf-gradle's list-all).
       body="$(curl -fsS --max-time "$LT_VERSION_FETCH_TIMEOUT" 'https://services.gradle.org/versions/current' 2>/dev/null)" || return 1
-      printf '%s\n' "$body" | grep -o '"version"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | sed -E 's/.*"([^"]*)"$/\1/'
+      printf '%s\n' "$body" | lt_json_field version
       ;;
     golang)
       # go.dev's official download index - first array entry is the
       # current stable release.
       body="$(curl -fsS --max-time "$LT_VERSION_FETCH_TIMEOUT" 'https://go.dev/dl/?mode=json' 2>/dev/null)" || return 1
-      printf '%s\n' "$body" | grep -o '"version"[[:space:]]*:[[:space:]]*"go[^"]*"' | head -1 | sed -E 's/.*"go([^"]*)"$/\1/'
+      printf '%s\n' "$body" | lt_json_field version go
       ;;
     rust)
       # Rust's official release channel manifest (TOML) - the [pkg.rust]
@@ -784,7 +809,10 @@ lt_upstream_latest_version() {
       lts_major="$(printf '%s\n' "$body" | grep -o '"most_recent_lts"[[:space:]]*:[[:space:]]*[0-9]*' | grep -o '[0-9]*$')"
       [ -n "$lts_major" ] || return 1
       body="$(curl -fsS --max-time "$LT_VERSION_FETCH_TIMEOUT" "https://api.adoptium.net/v3/assets/latest/$lts_major/hotspot?vendor=eclipse&os=mac&image_type=jdk&architecture=$(lt_adoptium_arch)" 2>/dev/null)" || return 1
-      printf '%s\n' "$body" | grep -o '"semver"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | sed -E 's/.*"([^"]*)"$/temurin-\1/'
+      semver="$(printf '%s\n' "$body" | lt_json_field semver)"
+      if [ -n "$semver" ]; then
+        printf 'temurin-%s\n' "$semver"
+      fi
       ;;
     uv)
       # uv (m-12/TASK-121, decision-5's companion pick for python) has no
@@ -794,7 +822,7 @@ lt_upstream_latest_version() {
       # case. "tag_name" is already bare (e.g. "0.12.9", no leading "v"),
       # matching asdf-uv's own version strings directly - no reformatting.
       body="$(curl -fsS --max-time "$LT_VERSION_FETCH_TIMEOUT" 'https://api.github.com/repos/astral-sh/uv/releases/latest' 2>/dev/null)" || return 1
-      printf '%s\n' "$body" | grep -o '"tag_name"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | sed -E 's/.*"([^"]*)"$/\1/'
+      printf '%s\n' "$body" | lt_json_field tag_name
       ;;
     *)
       # Unknown plugin (e.g. this repo's own custom TOOL_VERSIONS_FILE users
