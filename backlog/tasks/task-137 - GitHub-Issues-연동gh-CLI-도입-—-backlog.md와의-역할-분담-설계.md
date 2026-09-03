@@ -1,9 +1,10 @@
 ---
 id: TASK-137
 title: GitHub Issues 연동(gh CLI) 도입 — backlog.md와의 역할 분담 설계
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-09-03 11:39'
+updated_date: '2026-09-03 11:43'
 labels: []
 milestone: m-16
 dependencies: []
@@ -29,3 +30,9 @@ Issues를 `gh` CLI로 관리하고, 그 흐름에 Claude Code(이 세션 같은)
 역할을 중복해서 맡으면 나중에 정합성 문제(이번 세션에서 겪은 decision ID 충돌과 비슷한
 종류)가 생길 수 있으므로, 역할 경계를 먼저 명확히 하는 게 우선이다.
 <!-- SECTION:DESCRIPTION:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+사용자가 직접 'gh cli 도입은 하지않는걸로' 결정(2026-09-03). backlog.md와의 역할 분담 조사를 진행하지 않고 decision-9('GitHub Issues/gh CLI 이슈 관리 도입 안 함')로 마무리 — 태스크 관리는 계속 backlog.md 단일 도구로 유지.
+<!-- SECTION:FINAL_SUMMARY:END -->

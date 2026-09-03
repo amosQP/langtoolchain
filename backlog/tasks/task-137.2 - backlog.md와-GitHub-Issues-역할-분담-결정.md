@@ -1,9 +1,10 @@
 ---
 id: TASK-137.2
 title: backlog.md와 GitHub Issues 역할 분담 결정
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-09-03 11:40'
+updated_date: '2026-09-03 11:43'
 labels: []
 dependencies:
   - TASK-137.1
@@ -24,3 +25,9 @@ Edit/Write가 아니라 Bash 호출이므로). 결론은 backlog decision으로 
 CLAUDE.md에 새 워크플로 규칙으로 반영하는 걸 후속 태스크로 분리한다(이 태스크 자체는
 결정까지만).
 <!-- SECTION:DESCRIPTION:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+137.1과 동일 사유로 조사 없이 결정만 기록. backlog.md를 유일한 태스크 관리 도구로 유지, GitHub Issues/gh CLI 도입 안 함 (decision-9).
+<!-- SECTION:FINAL_SUMMARY:END -->
