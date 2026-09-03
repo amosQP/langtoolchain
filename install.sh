@@ -15,9 +15,9 @@ set -eu
 # NOTE: kept in sync by hand with uninstall.sh's copy of these same two
 # lines. This file runs via `curl | bash` before any repo is on disk, so it
 # can't `source` lib.sh for a shared constant (chicken-and-egg: lib.sh lives
-# inside the very repo this script's job is to fetch). If you change
-# REPO_URL/BRANCH here, change uninstall.sh too.
-REPO_URL="https://github.com/amosQP/langtoolchain.git"
+# inside the very repo this script's job is to fetch). If you change the
+# defaults here, change uninstall.sh too.
+#
 # Pinned to a specific commit, not a floating branch name (TASK-117.1,
 # decision-1). Before this, `--branch main` trusted whatever `main`
 # happened to point to at the exact instant curl|sh ran - a force-pushed
@@ -29,10 +29,19 @@ REPO_URL="https://github.com/amosQP/langtoolchain.git"
 # rewrite this very constant too, which decision-1 explicitly puts outside
 # this script's threat model).
 #
-# Bump this by hand whenever you want curl|sh to pick up work merged to
-# main since the last pin: `git rev-parse origin/main` on a fresh checkout,
-# paste the result here (and into uninstall.sh's copy).
-BRANCH="896b4c5a7ecf82f43056d0cae7bb787f1ab3ee83"
+# Bump the BRANCH default by hand whenever you want curl|sh to pick up work
+# merged to main since the last pin: `git rev-parse origin/main` on a fresh
+# checkout, paste the result here (and into uninstall.sh's copy).
+#
+# LANGTOOLCHAIN_REPO_URL / LANGTOOLCHAIN_BRANCH (TASK-117.6): explicit
+# opt-in overrides for testing against a fork or a different ref, without
+# touching the trusted default path above - decision-1's scope already
+# rules out a self-referential pin defending against a full account
+# takeover, so accepting an override here doesn't weaken anything the
+# default path actually promised. Only fires the warning below when one of
+# these is actually set, so the default (no env vars) path stays silent.
+REPO_URL="${LANGTOOLCHAIN_REPO_URL:-https://github.com/amosQP/langtoolchain.git}"
+BRANCH="${LANGTOOLCHAIN_BRANCH:-896b4c5a7ecf82f43056d0cae7bb787f1ab3ee83}"
 
 # $0 is this file's own path when it was executed from an actual file on
 # disk — but POSIX sh has no BASH_SOURCE, and unlike bash, $0 is USUALLY
@@ -59,6 +68,13 @@ command -v git >/dev/null 2>&1 || {
   printf '%s\n' "ERROR: git is required for the one-line installer (macOS ships it with Xcode Command Line Tools)." >&2
   exit 1
 }
+
+# Only reachable once we're actually about to fetch over the network, so
+# this never fires on the local-clone shortcut above (which doesn't use
+# REPO_URL/BRANCH at all).
+if [ -n "${LANGTOOLCHAIN_REPO_URL:-}" ] || [ -n "${LANGTOOLCHAIN_BRANCH:-}" ]; then
+  printf '%s\n' "WARNING: LANGTOOLCHAIN_REPO_URL/LANGTOOLCHAIN_BRANCH override detected (REPO_URL=$REPO_URL, BRANCH=$BRANCH) — this source has not been reviewed or pinned by this tool. Only use this to test your own fork/branch." >&2
+fi
 
 # A scratch directory for the throwaway clone.
 WORKDIR="$(mktemp -d)"

@@ -11,12 +11,16 @@ set -eu
 
 # NOTE: kept in sync by hand with install.sh's copy of these same two
 # lines — see install.sh for why this can't source lib.sh instead. If you
-# change REPO_URL/BRANCH here, change install.sh too.
-REPO_URL="https://github.com/amosQP/langtoolchain.git"
+# change the defaults here, change install.sh too.
+#
 # Pinned to a specific commit, not a floating branch name (TASK-117.1,
 # decision-1) — see install.sh's copy of this comment for the full
-# reasoning. Keep this in sync with install.sh's BRANCH value by hand.
-BRANCH="896b4c5a7ecf82f43056d0cae7bb787f1ab3ee83"
+# reasoning. Keep this in sync with install.sh's BRANCH default by hand.
+#
+# LANGTOOLCHAIN_REPO_URL / LANGTOOLCHAIN_BRANCH (TASK-117.6): same opt-in
+# override as install.sh — see its copy of this comment for the reasoning.
+REPO_URL="${LANGTOOLCHAIN_REPO_URL:-https://github.com/amosQP/langtoolchain.git}"
+BRANCH="${LANGTOOLCHAIN_BRANCH:-896b4c5a7ecf82f43056d0cae7bb787f1ab3ee83}"
 
 # $0, not ${BASH_SOURCE[0]:-} (POSIX sh has no BASH_SOURCE) — see
 # install.sh for why the -f check below is what actually does the real/
@@ -36,6 +40,12 @@ command -v git >/dev/null 2>&1 || {
   printf '%s\n' "ERROR: git is required for the one-line uninstaller (macOS ships it with Xcode Command Line Tools)." >&2
   exit 1
 }
+
+# See install.sh's copy of this check for the reasoning — only fires once
+# we're actually about to fetch over the network.
+if [ -n "${LANGTOOLCHAIN_REPO_URL:-}" ] || [ -n "${LANGTOOLCHAIN_BRANCH:-}" ]; then
+  printf '%s\n' "WARNING: LANGTOOLCHAIN_REPO_URL/LANGTOOLCHAIN_BRANCH override detected (REPO_URL=$REPO_URL, BRANCH=$BRANCH) — this source has not been reviewed or pinned by this tool. Only use this to test your own fork/branch." >&2
+fi
 
 # Deliberately NOT `exec`d below — see install.sh for why: exec replaces
 # this process image outright, which skips the trap on the successful
