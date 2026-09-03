@@ -1,9 +1,10 @@
 ---
 id: TASK-124.1
 title: 05_purge_asdf_core.sh 삭제 로직을 사전 상태 기반으로 변경
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-08-30 12:01'
+updated_date: '2026-09-03 01:16'
 labels: []
 dependencies: []
 parent_task_id: TASK-124
@@ -21,6 +22,12 @@ scripts/uninstall/05_purge_asdf_core.sh:29-34의 rm -rf "$TARGET_ASDF_DATA_DIR" 
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 스냅샷상 기존 상태였던 asdf 데이터 디렉토리는 rm -rf되지 않고 스킵되거나 확인을 받음
-- [ ] #2 스냅샷이 없는 경우 안전한 기본 동작(삭제 스킵 + 경고)이 적용됨
+- [x] #1 스냅샷상 기존 상태였던 asdf 데이터 디렉토리는 rm -rf되지 않고 스킵되거나 확인을 받음
+- [x] #2 스냅샷이 없는 경우 안전한 기본 동작(삭제 스킵 + 경고)이 적용됨
 <!-- AC:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+scripts/uninstall/05_purge_asdf_core.sh의 rm -rf $TARGET_ASDF_DATA_DIR 블록만 조건부로 변경: lt_prior_state_get asdf_data_dir_preexisting 값이 명시적으로 'false'일 때만 삭제하고, 'true'거나 스냅샷/키가 아예 없으면(예: 이 기능 이전 설치, --dry-run 설치) 스킵 + 수동 삭제 안내 로그 + lt_report skipped 기록. brew uninstall asdf / $HOME/.tool-versions 삭제는 AC 범위 밖이라 그대로 둠. spec/purge_asdf_core_spec.sh를 LT_PRIOR_STATE_FILE 기반으로 재작성(기존 3개 + 신규 4개=7 예제: 미존재 삭제, 커스텀 dir 삭제, dry-run, 사전존재 스킵, 스냅샷 없음 스킵, 키 없음 스킵, brew uninstall은 스킵과 무관하게 실행됨). 전체 shellspec(bash+dash) 143 examples 0 failures, shellcheck/dash -n 신규 경고 없음.
+<!-- SECTION:FINAL_SUMMARY:END -->

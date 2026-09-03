@@ -2,6 +2,13 @@
 # Removes asdf itself and its data directory. Only ever touches the user's
 # *global* ~/.tool-versions — never this repo's own .tool-versions, which is
 # a tracked project file, not machine state.
+#
+# The data-dir deletion below (TASK-124/decision-1) is conditional on the
+# install-time snapshot from TASK-123: it never removes a data dir that
+# looks like it pre-dates this tool. The `brew uninstall asdf` and
+# ~/.tool-versions removal above/below it are NOT gated the same way —
+# TASK-124.1's own scope is specifically "the rm -rf $TARGET_ASDF_DATA_DIR
+# block", not a general "leave everything alone if asdf pre-existed" pass.
 set -eu
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 . "$SCRIPT_DIR/../lib.sh"
@@ -28,10 +35,26 @@ TARGET_ASDF_DATA_DIR="$(lt_asdf_data_dir)"
 if [ -d "$TARGET_ASDF_DATA_DIR" ]; then
   # This is where EVERYTHING asdf-managed actually lives: downloads,
   # installs, plugins, and shims all sit under here. Removing it deletes
-  # every compiled runtime this tool ever installed.
-  log "Removing $TARGET_ASDF_DATA_DIR ..."
-  run rm -rf "$TARGET_ASDF_DATA_DIR"
-  lt_report removed "$TARGET_ASDF_DATA_DIR (entire asdf data dir: installs, plugins, shims)"
+  # every compiled runtime this tool ever installed — but ALSO anything
+  # that was already sitting there before this tool ever ran, if this
+  # machine had asdf set up beforehand (m-13/TASK-124). lt_prior_state_get
+  # reads the snapshot install wrote before touching anything (TASK-123);
+  # only an explicit "false" (this dir did NOT exist pre-install) clears
+  # this for deletion.
+  #
+  # Safe-by-default for every other case (TASK-124.1 AC #2): a MISSING
+  # snapshot — installed before this feature existed, or installed via
+  # --dry-run, which never writes one — is indistinguishable here from
+  # "don't know", so it's treated the same as "true" (pre-existing) rather
+  # than assumed safe to wipe.
+  if [ "$(lt_prior_state_get asdf_data_dir_preexisting || true)" = "false" ]; then
+    log "Removing $TARGET_ASDF_DATA_DIR ..."
+    run rm -rf "$TARGET_ASDF_DATA_DIR"
+    lt_report removed "$TARGET_ASDF_DATA_DIR (entire asdf data dir: installs, plugins, shims)"
+  else
+    log "Skipping $TARGET_ASDF_DATA_DIR — it looks like it existed before langtoolchain was installed (or that can't be confirmed from a missing snapshot), so it's being left in place rather than risk deleting asdf state this tool didn't create. If you're sure it's safe, remove it yourself: rm -rf \"$TARGET_ASDF_DATA_DIR\""
+    lt_report skipped "$TARGET_ASDF_DATA_DIR (looked pre-existing, or unconfirmed — not removed; see README)"
+  fi
 fi
 
 if [ -f "$HOME/.tool-versions" ]; then
