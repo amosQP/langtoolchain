@@ -1,7 +1,7 @@
 ---
 id: TASK-126
 title: sed 사용 지점 BSD/GNU 이식성 전수 감사
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-09-03 01:15'
 updated_date: '2026-09-03 06:08'
