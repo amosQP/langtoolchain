@@ -128,6 +128,84 @@ lt_report() {
   printf '%s [%s] %s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$1" "$2" >> "$LT_REPORT_FILE"
 }
 
+# LT_PRIOR_STATE_FILE (m-13/TASK-123, decision-1): records whether asdf/its
+# data dir/any plugins already existed on this machine BEFORE this tool
+# touched anything, so uninstall (TASK-124) can avoid deleting state it
+# didn't create. Deliberately a separate file from LT_REPORT_FILE, not
+# just another line in it: that one is a human-readable audit log
+# (lt_report's timestamped lines); this one is parsed by uninstall to make
+# an actual delete/skip decision, so it needs a stable, parse-only format
+# (see lt_snapshot_prior_asdf_state/lt_prior_state_get below) instead of a
+# log line's free-text "detail" field. Same $HOME-not-$ASDF_DATA_DIR
+# placement as LT_REPORT_FILE and for the identical reason: a `rm -rf
+# $ASDF_DATA_DIR` during uninstall must never delete the very file
+# uninstall is about to consult to decide whether to run that rm -rf.
+LT_PRIOR_STATE_FILE="${LT_PRIOR_STATE_FILE:-$HOME/.langtoolchain-prior-asdf-state}"
+
+# lt_snapshot_prior_asdf_state: writes LT_PRIOR_STATE_FILE with whether asdf
+# (brew list asdf), its data directory (lt_asdf_data_dir), and any asdf
+# plugins already existed, as simple `key=value` lines - not the
+# lt_report()-style timestamped log format, since this file's only reader is
+# uninstall's own conditional logic (TASK-124.1), not a human. See decision-1
+# for the full format writeup.
+#
+# Must run before ANY phase that could itself install asdf or create its
+# data dir (01_bootstrap_asdf.sh) - callers are responsible for that
+# ordering (install/main.sh calls this right after language selection,
+# before the phase loop starts).
+#
+# Only ever writes once: if LT_PRIOR_STATE_FILE already exists, a later
+# call is necessarily a re-run of install (Ctrl-C recovery, adding more
+# languages, etc.) where asdf/its data dir may now contain state THIS tool
+# itself created in an earlier run - overwriting the file at that point
+# would corrupt the "before this tool touched anything" baseline uninstall
+# depends on.
+lt_snapshot_prior_asdf_state() {
+  [ "$DRY_RUN" = "true" ] && return
+  [ -f "$LT_PRIOR_STATE_FILE" ] && return
+
+  # `brew list asdf` below needs `brew` resolvable in THIS process - see
+  # ensure_brew_on_path's own comment for why that isn't automatic.
+  ensure_brew_on_path
+
+  local asdf_preexisting=false data_dir_preexisting=false plugins="" data_dir
+  data_dir="$(lt_asdf_data_dir)"
+
+  brew list asdf >/dev/null 2>&1 && asdf_preexisting=true
+  [ -d "$data_dir" ] && data_dir_preexisting=true
+
+  # Only attempt to list plugins when the asdf binary is actually
+  # resolvable - matches the task's "asdf 자체가 없으면 생략" requirement
+  # instead of letting a missing-command error leak into the snapshot.
+  if command -v asdf >/dev/null 2>&1; then
+    plugins="$(asdf plugin list 2>/dev/null | tr '\n' ' ' | sed 's/ *$//')"
+  fi
+
+  {
+    printf 'asdf_preexisting=%s\n' "$asdf_preexisting"
+    printf 'asdf_data_dir=%s\n' "$data_dir"
+    printf 'asdf_data_dir_preexisting=%s\n' "$data_dir_preexisting"
+    printf 'asdf_plugins_preexisting=%s\n' "$plugins"
+  } > "$LT_PRIOR_STATE_FILE"
+}
+
+# lt_prior_state_get <key>: prints the value for <key> from
+# LT_PRIOR_STATE_FILE. Fails (nothing printed, exit 1) when the file
+# doesn't exist at all OR has no such key - callers (TASK-124.1) must treat
+# that failure as "unknown", never silently coerce it to "false", since an
+# absent snapshot is exactly the "installed before this feature existed"
+# case decision-1 calls out. Deliberately grep+cut, not `.`/`eval` on the
+# file - a plain key=value read doesn't need a full shell eval, and this
+# avoids that risk entirely even though this file is only ever written by
+# this tool itself.
+lt_prior_state_get() {
+  local key="$1" line
+  [ -f "$LT_PRIOR_STATE_FILE" ] || return 1
+  line="$(grep "^${key}=" "$LT_PRIOR_STATE_FILE" 2>/dev/null | head -n 1)"
+  [ -n "$line" ] || return 1
+  printf '%s\n' "${line#*=}"
+}
+
 # lt_env_var_defs [java_hook_file] (TASK-64): prints one line per rc-file
 # entry this tool's installer manages, formatted
 # "<search-pattern>|||<placement>|||<line-to-write>" (triple-pipe

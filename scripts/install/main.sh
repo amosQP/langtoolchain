@@ -101,6 +101,14 @@ run_language_selection() {
 
 run_language_selection
 
+# lt_snapshot_prior_asdf_state (m-13/TASK-123): must run before the phase
+# loop below ever starts - specifically before 01_bootstrap_asdf.sh, the
+# first phase able to install asdf or create its data dir. Any later point
+# would risk recording state THIS run itself already created as if it had
+# pre-existed, which is exactly what uninstall (TASK-124) relies on this
+# NOT doing.
+lt_snapshot_prior_asdf_state
+
 # Each phase runs as its OWN `sh` process (not sourced) — this is what
 # makes them independent: none of them can accidentally rely on a variable
 # or exported PATH change that only happened in a sibling phase's process.

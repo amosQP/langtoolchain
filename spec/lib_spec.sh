@@ -632,4 +632,124 @@ RUNNER_EOF
       The variable count should eq 2
     End
   End
+
+  Describe 'lt_snapshot_prior_asdf_state() / lt_prior_state_get() (m-13/TASK-123, decision-1)'
+    # SAFETY: `brew`/`asdf` are always Mocked below, never left to resolve
+    # for real - same reasoning as purge_asdf_core_spec.sh/
+    # bootstrap_asdf_spec.sh's own header comments (this dev machine has a
+    # real Homebrew-installed asdf; a Mock is what actually shadows it
+    # regardless of PATH, since it wins the lookup first). Genuine "asdf is
+    # not resolvable at all" isn't exercised here for the same reason those
+    # two files don't either - Mock necessarily creates A resolvable
+    # command, so `command -v asdf` can't be made to fail this way; that
+    # gap is covered by e2e-verify.yml on real, disposable CI hardware.
+    # `ASDF_DATA_DIR` is set explicitly to a scratch dir in every test below
+    # (a live override), never left to fall back to lt_asdf_data_dir()'s
+    # $HOME-derived default - LT_ASDF_DATA_DIR_DEFAULT is computed once,
+    # from the REAL $HOME, at the point `Include scripts/lib.sh` sources
+    # this file, so overriding $HOME inside a single example afterward
+    # wouldn't actually change it (unlike ASDF_DATA_DIR, which
+    # lt_asdf_data_dir() re-reads live on every call).
+    setup() {
+      fake_home="$(mktemp -d)"
+      LT_PRIOR_STATE_FILE="$fake_home/.langtoolchain-prior-asdf-state"
+      export DRY_RUN=false
+      export ASDF_DATA_DIR="$fake_home/.asdf"
+    }
+    cleanup() { rm -rf "$fake_home"; }
+    BeforeEach 'setup'
+    AfterEach 'cleanup'
+
+    It 'records everything as pre-existing when asdf/its data dir/plugins already exist'
+      Mock brew
+        case "$1 $2" in
+          "list asdf") exit 0 ;;
+        esac
+      End
+      Mock asdf
+        case "$1 $2" in
+          "plugin list") printf '%s\n' nodejs java ;;
+        esac
+      End
+      mkdir -p "$ASDF_DATA_DIR/shims"
+      When call lt_snapshot_prior_asdf_state
+      The status should be success
+      The contents of file "$LT_PRIOR_STATE_FILE" should include 'asdf_preexisting=true'
+      The contents of file "$LT_PRIOR_STATE_FILE" should include "asdf_data_dir=$ASDF_DATA_DIR"
+      The contents of file "$LT_PRIOR_STATE_FILE" should include 'asdf_data_dir_preexisting=true'
+      The contents of file "$LT_PRIOR_STATE_FILE" should include 'asdf_plugins_preexisting=nodejs java'
+    End
+
+    It 'records asdf/its data dir as NOT pre-existing on what looks like a fresh machine'
+      Mock brew
+        case "$1 $2" in
+          "list asdf") exit 1 ;;
+        esac
+      End
+      Mock asdf
+        case "$1 $2" in
+          "plugin list") exit 1 ;;
+        esac
+      End
+      When call lt_snapshot_prior_asdf_state
+      The status should be success
+      The contents of file "$LT_PRIOR_STATE_FILE" should include 'asdf_preexisting=false'
+      The contents of file "$LT_PRIOR_STATE_FILE" should include 'asdf_data_dir_preexisting=false'
+      The contents of file "$LT_PRIOR_STATE_FILE" should include 'asdf_plugins_preexisting='
+    End
+
+    It 'does not overwrite an existing snapshot on a second call (re-run safety)'
+      Mock brew
+        case "$1 $2" in
+          "list asdf") exit 0 ;;
+        esac
+      End
+      Mock asdf
+        case "$1 $2" in
+          "plugin list") printf '%s\n' nodejs ;;
+        esac
+      End
+      printf 'asdf_preexisting=false\nasdf_data_dir=/original\nasdf_data_dir_preexisting=false\nasdf_plugins_preexisting=\n' > "$LT_PRIOR_STATE_FILE"
+      When call lt_snapshot_prior_asdf_state
+      The status should be success
+      The contents of file "$LT_PRIOR_STATE_FILE" should include 'asdf_data_dir=/original'
+      The contents of file "$LT_PRIOR_STATE_FILE" should not include 'nodejs'
+    End
+
+    It 'writes nothing under DRY_RUN=true - a preview must not create a fake baseline'
+      DRY_RUN=true
+      Mock brew
+        case "$1 $2" in
+          "list asdf") exit 0 ;;
+        esac
+      End
+      Mock asdf
+        case "$1 $2" in
+          "plugin list") printf '%s\n' nodejs ;;
+        esac
+      End
+      When call lt_snapshot_prior_asdf_state
+      The status should be success
+      The path "$LT_PRIOR_STATE_FILE" should not be exist
+    End
+
+    It 'lt_prior_state_get reads back a key written by the snapshot'
+      printf 'asdf_preexisting=true\nasdf_data_dir=/x/.asdf\nasdf_data_dir_preexisting=true\nasdf_plugins_preexisting=nodejs java\n' > "$LT_PRIOR_STATE_FILE"
+      When call lt_prior_state_get asdf_data_dir_preexisting
+      The output should eq 'true'
+    End
+
+    It 'lt_prior_state_get fails for a key not present in an existing file'
+      printf 'asdf_preexisting=true\n' > "$LT_PRIOR_STATE_FILE"
+      When call lt_prior_state_get asdf_data_dir_preexisting
+      The status should be failure
+      The output should eq ''
+    End
+
+    It 'lt_prior_state_get fails when the snapshot file does not exist at all'
+      When call lt_prior_state_get asdf_data_dir_preexisting
+      The status should be failure
+      The output should eq ''
+    End
+  End
 End

@@ -4,9 +4,12 @@ title: 스냅샷 저장 위치/형식 정의
 status: To Do
 assignee: []
 created_date: '2026-08-30 12:00'
+updated_date: '2026-09-03 01:06'
 labels: []
 dependencies:
   - TASK-123.1
+references:
+  - decision-1
 parent_task_id: TASK-123
 type: task
 ordinal: 155000
