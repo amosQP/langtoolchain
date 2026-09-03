@@ -1,9 +1,10 @@
 ---
 id: TASK-118
 title: 언어 버전 기본값 소스 조사·비교
-status: To Do
+status: In Progress
 assignee: []
 created_date: '2026-08-30 11:40'
+updated_date: '2026-09-03 01:09'
 labels: []
 milestone: m-12
 dependencies: []
