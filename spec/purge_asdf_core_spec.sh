@@ -117,4 +117,28 @@ Describe 'scripts/uninstall/05_purge_asdf_core.sh'
     When run "$SCRIPT"
     The output should include 'MOCK: brew uninstall asdf'
   End
+
+  # m-16/TASK-139/decision-8: this phase is the last one in the phase list
+  # and the only reader of LT_PRIOR_STATE_FILE, so once it finishes without
+  # error the snapshot has done its job for this run and should be cleared
+  # so the next install re-baselines from the machine's actual state.
+  It 'removes LT_PRIOR_STATE_FILE once the whole phase succeeds (decision-8)'
+    mkdir -p "$fake_home/.asdf/shims"
+    printf 'asdf_data_dir_preexisting=false\n' > "$LT_PRIOR_STATE_FILE"
+    export HOME="$fake_home" DRY_RUN=false
+    unset -v ASDF_DATA_DIR
+    When run "$SCRIPT"
+    The output should include 'Removing'
+    The path "$LT_PRIOR_STATE_FILE" should not be exist
+  End
+
+  It 'leaves LT_PRIOR_STATE_FILE in place under DRY_RUN (decision-8, same guard as lt_snapshot_prior_asdf_state())'
+    mkdir -p "$fake_home/.asdf/shims"
+    printf 'asdf_data_dir_preexisting=false\n' > "$LT_PRIOR_STATE_FILE"
+    export HOME="$fake_home" DRY_RUN=true
+    unset -v ASDF_DATA_DIR
+    When run "$SCRIPT"
+    The output should include '+ rm -rf'
+    The path "$LT_PRIOR_STATE_FILE" should be exist
+  End
 End
