@@ -1,10 +1,10 @@
 ---
 id: TASK-125.4
 title: 기존 스크립트 전수 스캔 및 잔여 위반 사례 문서화
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-09-03 01:14'
-updated_date: '2026-09-03 01:27'
+updated_date: '2026-09-03 01:28'
 labels: []
 dependencies:
   - TASK-125.3
