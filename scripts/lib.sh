@@ -550,23 +550,29 @@ binary_for_plugin() {
   esac
 }
 
-# lt_companion_for_plugin <asdf-plugin-name> (m-7/TASK-99): prints the
-# space-separated companion plugin(s) this language commonly needs alongside
-# it - a package/build manager the base language plugin does NOT already
-# bundle. nodejs's asdf plugin installs a bare Node runtime with only npm,
-# so pnpm is a genuinely separate, commonly-wanted install; java's plugin
-# installs only a JDK with no build tool at all, so gradle is closer to
-# required than optional for real projects. rust and golang have no entry
-# here on purpose, not by omission: asdf-rust bundles cargo and the golang
-# plugin's `go` binary already includes modules/build tooling, so there's no
-# equivalent "separate package manager" gap to fill for them. Same `case`
-# pattern as binary_for_plugin() above, for the same bash-3.2-has-no-
-# associative-arrays reason. Empty output means "no companion for this
+# lt_companion_for_plugin <asdf-plugin-name> (m-7/TASK-99; python/uv added
+# m-12/TASK-121, decision-2): prints the space-separated companion
+# plugin(s) this language commonly needs alongside it - a package/build
+# manager the base language plugin does NOT already bundle. nodejs's asdf
+# plugin installs a bare Node runtime with only npm, so pnpm is a genuinely
+# separate, commonly-wanted install; java's plugin installs only a JDK with
+# no build tool at all, so gradle is closer to required than optional for
+# real projects; python's plugin installs a bare interpreter with only pip,
+# so uv (decision-2: chosen over poetry - single-binary install fits this
+# repo's asdf-plugin-per-tool model, and leads poetry in both ecosystem
+# adoption and asdf plugin activity as of that decision) fills the same gap
+# pnpm/gradle fill for their languages. rust and golang have no entry here
+# on purpose, not by omission: asdf-rust bundles cargo and the golang
+# plugin's `go` binary already includes modules/build tooling, so there's
+# no equivalent "separate package manager" gap to fill for them. Same
+# `case` pattern as binary_for_plugin() above, for the same bash-3.2-has-
+# no-associative-arrays reason. Empty output means "no companion for this
 # plugin" - callers must treat that as a valid, common case, not an error.
 lt_companion_for_plugin() {
   case "$1" in
     nodejs) echo pnpm ;;
     java)   echo gradle ;;
+    python) echo uv ;;
     *)      echo "" ;;
   esac
 }

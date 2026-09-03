@@ -84,9 +84,9 @@ Describe 'scripts/lib.sh'
       The output should eq 'gradle'
     End
 
-    It 'has no companion for python'
+    It 'maps python -> uv (m-12/TASK-121, decision-2)'
       When call lt_companion_for_plugin python
-      The output should eq ''
+      The output should eq 'uv'
     End
 
     It 'has no companion for rust (cargo already bundled)'
