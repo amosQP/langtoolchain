@@ -4,7 +4,7 @@ title: 방법별 비교표 작성 및 채택안 결정
 status: Done
 assignee: []
 created_date: '2026-08-30 11:41'
-updated_date: '2026-09-03 01:12'
+updated_date: '2026-09-03 11:27'
 labels: []
 dependencies:
   - TASK-118.1
@@ -54,3 +54,9 @@ free-threaded 빌드("3.14.7t")가 섞여 나오는 함정도 실측 확인.
 
 TASK-119(구현)에서 참조할 언어별 소스는 decision-4 표 참고.
 <!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+118.1(저장소 메타데이터)과 118.2(asdf 자체 명령) 조사 결과를 비교표로 정리해 저장소 메타데이터 방식 채택(decision-4). asdf 자체 명령은 00_select.sh phase 0 시점에 플러그인이 하나도 설치돼 있지 않아 즉시 실패하고(java/gradle 기본 쿼리 매치 실패, python은 free-threaded 빌드 혼입 등 실측 확인), 이를 우회할 방법을 찾지 못해 기각. 채택안은 asdf/플러그인 상태와 무관하게 동작해 phase 0 제약이 적용되지 않고, 7개 언어 전체 커버리지 확인, 인증/rate limit 부담 없음, 실패 시 폴백이 || return 1 패턴 하나로 단순 — TASK-119 구현 범위 확정 입력이 됨.
+<!-- SECTION:FINAL_SUMMARY:END -->

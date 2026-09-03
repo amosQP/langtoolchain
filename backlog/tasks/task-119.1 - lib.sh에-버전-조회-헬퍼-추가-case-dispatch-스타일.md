@@ -4,7 +4,7 @@ title: lib.sh에 버전 조회 헬퍼 추가 (case-dispatch 스타일)
 status: Done
 assignee: []
 created_date: '2026-08-30 11:41'
-updated_date: '2026-09-03 01:16'
+updated_date: '2026-09-03 11:27'
 labels: []
 dependencies: []
 parent_task_id: TASK-119
@@ -54,3 +54,9 @@ shellspec spec/lib_spec.sh: 78 examples, 0 failures.
 shellcheck -s sh scripts/lib.sh: 기존에도 있던 SC3043(POSIX sh에 local 없음 -
 이 저장소가 의도적으로 허용하는 예외, 파일 헤더 코멘트 참고) 외 신규 경고 없음.
 <!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+scripts/lib.sh에 lt_upstream_latest_version() 추가 — decision-4에서 채택한 언어별 소스를 binary_for_plugin()/lt_companion_for_plugin()과 동일한 case-dispatch 스타일로 구현. 7개 언어(nodejs/pnpm/java/gradle/python/rust/golang) 전부 처리하며, nodejs는 네트워크 호출 없이 lts를 그대로 통과, pnpm/gradle/golang/rust는 curl --max-time+grep/sed/awk, python은 git ls-remote --tags+정규식 필터+숫자정렬, java는 adoptium API 2단계 호출로 구현. 실패 시 항상 return 1(무출력)로 통일해 호출자(TASK-119.3)의 폴백을 전제로 함. spec/lib_spec.sh에 curl/git을 전부 shellspec mock으로 대체한 10개 케이스 추가, 전체 스위트 78 examples 0 failures, shellcheck -s sh 신규 경고 없음(기존 허용 SC3043 제외).
+<!-- SECTION:FINAL_SUMMARY:END -->

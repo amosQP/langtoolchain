@@ -4,7 +4,7 @@ title: 캐싱 및 네트워크 실패 시 .tool-versions 폴백 처리
 status: Done
 assignee: []
 created_date: '2026-08-30 11:41'
-updated_date: '2026-09-03 01:23'
+updated_date: '2026-09-03 11:27'
 labels: []
 dependencies:
   - TASK-119.2
@@ -58,3 +58,9 @@ LT_VERSION_CACHE_FILE을 mktemp 스크래치 파일로 돌려 실제 $HOME을 �
 전체 스위트: shellspec (spec/ 전체) 149 examples, 0 failures.
 shellcheck -s sh scripts/lib.sh: 기존 허용된 SC3043 외 신규 경고 없음.
 <!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+lt_resolve_default_version()에 캐싱+오프라인 폴백 계층 추가. LT_VERSION_CACHE_FILE(기본 $HOME/.langtoolchain-version-cache)/LT_VERSION_CACHE_TTL(기본 24h, 둘 다 override 가능) 도입, 캐시 우선 조회(네트워크 호출 없음) -> 만료/미스 시 lt_upstream_latest_version 실조회 -> 성공 시 캐시 기록 -> 실패(오프라인/rate limit/타임아웃/미매핑 플러그인 전부 포함) 시 .tool-versions 정적값으로 폴백해 절대 빈 값을 반환하지 않고 설치 흐름이 중단되지 않게 함. 기존 retry()(lib.sh:212)는 목적이 달라(같은 호출 내 재시도 vs 세션간 캐싱으로 재호출 자체 회피) 재사용하지 않기로 결정. spec/lib_spec.sh를 7케이스로 확장(캐시 히트/TTL 만료/plugin별 캐시 보존 신규 3개), 실제 $HOME 미오염 확인. 전체 스위트(spec/ 전체) 149 examples 0 failures, shellcheck 신규 경고 없음.
+<!-- SECTION:FINAL_SUMMARY:END -->

@@ -4,7 +4,7 @@ title: lib.sh에 python 동반 도구 매핑 추가
 status: Done
 assignee: []
 created_date: '2026-08-30 12:01'
-updated_date: '2026-09-03 01:27'
+updated_date: '2026-09-03 11:27'
 labels: []
 dependencies:
   - TASK-121.1
@@ -45,3 +45,9 @@ binary_for_plugin()/flag_for_binary()는 변경 불필요 - 둘 다 unknown-plug
 전체 스위트: shellspec (spec/ 전체) 149 examples, 0 failures.
 shellcheck -s sh scripts/lib.sh: 신규 경고 없음.
 <!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+TASK-121.1 결정(decision-5)에 따라 lib.sh의 lt_companion_for_plugin() python) 케이스에 uv를 추가(nodejs->pnpm, java->gradle과 동일한 패턴), .tool-versions에 uv 기본 버전(0.12.9, 실측 최신값) 항목을 추가해 00_select.sh의 lt_offer_language()가 인식하게 함. binary_for_plugin()/flag_for_binary()는 unknown-plugin 기본 케이스(*)가 이미 uv의 실제 바이너리명/버전플래그(uv/--version)와 일치해 변경 불필요(07_validate.sh의 validate_one_tool() 검증 경로로 확인). 기존 spec/lib_spec.sh의 'has no companion for python' 케이스를 'maps python -> uv'로 수정(요구사항 변경 반영). 전체 스위트(spec/ 전체) 149 examples 0 failures, shellcheck 신규 경고 없음.
+<!-- SECTION:FINAL_SUMMARY:END -->
