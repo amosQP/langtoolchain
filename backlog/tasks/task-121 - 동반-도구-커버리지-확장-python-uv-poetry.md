@@ -1,9 +1,10 @@
 ---
 id: TASK-121
 title: '동반 도구 커버리지 확장 (python: uv/poetry)'
-status: To Do
+status: In Progress
 assignee: []
 created_date: '2026-08-30 12:00'
+updated_date: '2026-09-03 01:24'
 labels: []
 milestone: m-12
 dependencies: []
