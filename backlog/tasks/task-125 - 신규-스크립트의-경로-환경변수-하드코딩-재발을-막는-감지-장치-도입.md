@@ -1,7 +1,7 @@
 ---
 id: TASK-125
 title: 신규 스크립트의 경로/환경변수 하드코딩 재발을 막는 감지 장치 도입
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-09-03 01:14'
 updated_date: '2026-09-03 01:28'
