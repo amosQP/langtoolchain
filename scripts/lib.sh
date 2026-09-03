@@ -304,6 +304,69 @@ retry() {
   done
 }
 
+# lt_run_with_timeout <seconds> <cmd> [args...] (TASK-138.1, decision-10):
+# runs <cmd...> under a hard wall-clock timeout, killing it if it hasn't
+# finished after <seconds>. This exists because a "started transfer that's
+# now slow" guard (curl --max-time, git's http.lowSpeedLimit/lowSpeedTime -
+# see lt_upstream_latest_version's python branch below) never even engages
+# when the connection blackholes BEFORE any bytes move (DNS/TCP/TLS
+# handshake hang) - decision-10 confirms no POSIX-safe fix for that exists
+# inside curl/git themselves. `timeout(1)`/`gtimeout(1)` were considered and
+# rejected too (decision-10): neither ships on a fresh Mac before Homebrew
+# installs GNU coreutils, and this needs to run at phase 0, before Homebrew
+# is guaranteed to exist. So this is built from POSIX sh primitives already
+# used elsewhere in this file - background job + `wait`, same shape as
+# run_phase() above: run <cmd...> in the background, race it against a
+# watchdog subshell that sleeps <seconds> and kills it if it's still alive.
+#
+# A killed-or-not marker file (not a variable) carries the "did we have to
+# kill it" fact back out of the watchdog subshell - a background job is a
+# separate process, so any variable it set would vanish with it; a file is
+# the one thing both sides can see.
+#
+# Prints whatever <cmd...> itself writes to stdout/stderr, unmodified.
+# Returns <cmd...>'s own exit status if it finished before the timeout;
+# 124 (same convention as GNU coreutils' timeout(1)) if it had to be
+# killed for running too long.
+lt_run_with_timeout() {
+  local secs="$1"
+  shift
+  local cmd_pid watchdog_pid status timeout_marker
+  timeout_marker="$(mktemp -u)"
+
+  "$@" &
+  cmd_pid=$!
+
+  # `kill -0` sends no signal, it only tests whether cmd_pid is still a
+  # live process - so a command that finishes before <seconds> is up never
+  # gets the marker written for it, and never gets signaled at all.
+  (
+    sleep "$secs"
+    if kill -0 "$cmd_pid" 2>/dev/null; then
+      : > "$timeout_marker"
+      kill -TERM "$cmd_pid" 2>/dev/null
+    fi
+  ) &
+  watchdog_pid=$!
+
+  status=0
+  wait "$cmd_pid" 2>/dev/null || status=$?
+
+  # By the time the wait above returns, the watchdog has either already
+  # fired or is now pointless - kill+wait it here so it never outlives this
+  # function as an orphaned background job. `|| true` on both: a caller
+  # under `set -eu` must not abort on the watchdog's own (expected, ignored)
+  # exit status.
+  kill "$watchdog_pid" 2>/dev/null || true
+  wait "$watchdog_pid" 2>/dev/null || true
+
+  if [ -f "$timeout_marker" ]; then
+    rm -f "$timeout_marker"
+    return 124
+  fi
+  return "$status"
+}
+
 # ensure_disk_space <min_gb> (TASK-91): dies with a clear message if the
 # filesystem containing $HOME has less than <min_gb> GB free. A best-effort
 # up-front check, not a guarantee — a specific runtime's download+compile

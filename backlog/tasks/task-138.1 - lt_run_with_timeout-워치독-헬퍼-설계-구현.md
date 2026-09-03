@@ -1,9 +1,10 @@
 ---
 id: TASK-138.1
 title: lt_run_with_timeout() 워치독 헬퍼 설계/구현
-status: To Do
+status: In Progress
 assignee: []
 created_date: '2026-09-03 12:06'
+updated_date: '2026-09-03 12:12'
 labels: []
 dependencies: []
 parent_task_id: TASK-138

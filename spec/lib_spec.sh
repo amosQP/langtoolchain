@@ -458,6 +458,49 @@ EOF
     End
   End
 
+  Describe 'lt_run_with_timeout() (TASK-138.1, decision-10)'
+    It 'returns the command exit status when it finishes before the timeout'
+      When call lt_run_with_timeout 5 true
+      The status should be success
+    End
+
+    It 'propagates a failing command status when it finishes in time'
+      When call lt_run_with_timeout 5 false
+      The status should be failure
+    End
+
+    It 'still prints the command output when it finishes in time'
+      When call lt_run_with_timeout 5 echo 'inside the timeout'
+      The output should eq 'inside the timeout'
+    End
+
+    It 'returns promptly once the command finishes, not after the full timeout'
+      start_ts=$(date +%s)
+      lt_run_with_timeout 30 true
+      end_ts=$(date +%s)
+      elapsed=$((end_ts - start_ts))
+      fast_enough=false
+      [ "$elapsed" -lt 10 ] && fast_enough=true
+      When call true
+      The variable fast_enough should eq 'true'
+    End
+
+    It 'kills a command that never finishes on its own and returns 124'
+      # Simulates decision-10's DNS/TCP/TLS handshake blackhole - a command
+      # that would otherwise hang forever - without touching a real network.
+      never_ending() { sleep 30; }
+      start_ts=$(date +%s)
+      status=0
+      lt_run_with_timeout 1 never_ending || status=$?
+      end_ts=$(date +%s)
+      elapsed=$((end_ts - start_ts))
+      killed_in_time=false
+      [ "$status" -eq 124 ] && [ "$elapsed" -lt 10 ] && killed_in_time=true
+      When call true
+      The variable killed_in_time should eq 'true'
+    End
+  End
+
   Describe 'ensure_disk_space() (TASK-91)'
     It 'passes when there is enough free space'
       Mock df

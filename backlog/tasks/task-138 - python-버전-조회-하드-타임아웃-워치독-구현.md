@@ -1,9 +1,10 @@
 ---
 id: TASK-138
 title: python 버전 조회 하드 타임아웃 워치독 구현
-status: To Do
+status: In Progress
 assignee: []
 created_date: '2026-09-03 12:06'
+updated_date: '2026-09-03 12:12'
 labels: []
 milestone: m-16
 dependencies: []
