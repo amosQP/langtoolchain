@@ -1,9 +1,10 @@
 ---
 id: TASK-119
 title: 선택된 기본값 조회 방법 구현
-status: To Do
+status: In Progress
 assignee: []
 created_date: '2026-08-30 11:40'
+updated_date: '2026-09-03 01:12'
 labels: []
 milestone: m-12
 dependencies:

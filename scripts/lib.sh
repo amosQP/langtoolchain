@@ -602,3 +602,112 @@ version_core() {
   [ -n "$result" ] || return 1
   printf '%s\n' "$result"
 }
+
+# LT_VERSION_FETCH_TIMEOUT (m-12/TASK-119): per-network-call timeout, in
+# seconds, for lt_upstream_latest_version()'s curl/git calls below.
+# Override-able like LT_LOCK_DIR/LT_REPORT_FILE elsewhere in this file, so
+# a test can shrink it instead of waiting out a real timeout.
+LT_VERSION_FETCH_TIMEOUT="${LT_VERSION_FETCH_TIMEOUT:-5}"
+
+# lt_adoptium_arch: prints the CPU architecture name Adoptium's API expects
+# (used by lt_upstream_latest_version's java case below) - different from
+# lt_homebrew_prefix's own uname -m mapping only in spelling ("aarch64" vs
+# "arm64"), so this can't just reuse that function.
+lt_adoptium_arch() {
+  case "$(uname -m)" in
+    arm64) echo aarch64 ;;  # Apple Silicon
+    *)     echo x64 ;;      # Intel
+  esac
+}
+
+# lt_upstream_latest_version <plugin> (m-12/TASK-118 decision, decision-1):
+# fetches this plugin's latest stable version straight from that language's
+# own official distribution index/API - deliberately NOT via `asdf latest`/
+# `asdf list all` (see decision-1: those require the plugin to already be
+# added to asdf, which 00_select.sh can't guarantee at phase 0 - see
+# ask_version()'s own comment in scripts/install/00_select.sh). Every
+# branch below needs nothing but curl (or git, for python) and the network
+# - no asdf, no plugin - so it's safe to call directly from phase 0.
+#
+# Prints the version string on success. Returns 1 (nothing printed) on any
+# failure - missing curl, network/DNS failure, non-2xx response, empty or
+# unparseable body - so callers must always have a static fallback ready
+# (see lt_default_version below, the function every real call site uses).
+#
+# Same case-dispatch style as binary_for_plugin()/lt_companion_for_plugin()
+# above, for the same bash-3.2-has-no-associative-arrays reason.
+lt_upstream_latest_version() {
+  # No up-front `command -v curl` guard here on purpose: every branch below
+  # that needs curl (or git, for python) already chains `|| return 1` onto
+  # its own call, which catches a missing binary (exit 127) exactly like
+  # any other failure - a shared guard would also incorrectly gate the
+  # nodejs branch (which shells out to nothing at all).
+  local plugin="$1" body lts_major
+  case "$plugin" in
+    nodejs)
+      # asdf-nodejs resolves the "lts" alias itself, fresh, at actual
+      # `asdf install nodejs lts` time - a network call here would only
+      # ever produce a snapshot that's already stale by the time asdf uses
+      # it, so this passes the alias straight through instead of
+      # pre-resolving it. (This is also why .tool-versions already carries
+      # "lts", not a pinned number, for nodejs.)
+      echo lts
+      ;;
+    pnpm)
+      # npm registry - the same place asdf-pnpm's own installer downloads
+      # pnpm from.
+      body="$(curl -fsS --max-time "$LT_VERSION_FETCH_TIMEOUT" 'https://registry.npmjs.org/pnpm/latest' 2>/dev/null)" || return 1
+      printf '%s\n' "$body" | grep -o '"version"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | sed -E 's/.*"([^"]*)"$/\1/'
+      ;;
+    gradle)
+      # Gradle's own official "current version" API - a single value, no
+      # rc/milestone noise to filter (unlike asdf-gradle's list-all).
+      body="$(curl -fsS --max-time "$LT_VERSION_FETCH_TIMEOUT" 'https://services.gradle.org/versions/current' 2>/dev/null)" || return 1
+      printf '%s\n' "$body" | grep -o '"version"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | sed -E 's/.*"([^"]*)"$/\1/'
+      ;;
+    golang)
+      # go.dev's official download index - first array entry is the
+      # current stable release.
+      body="$(curl -fsS --max-time "$LT_VERSION_FETCH_TIMEOUT" 'https://go.dev/dl/?mode=json' 2>/dev/null)" || return 1
+      printf '%s\n' "$body" | grep -o '"version"[[:space:]]*:[[:space:]]*"go[^"]*"' | head -1 | sed -E 's/.*"go([^"]*)"$/\1/'
+      ;;
+    rust)
+      # Rust's official release channel manifest (TOML) - the [pkg.rust]
+      # section's version field specifically, since the file also lists
+      # cargo/rustfmt/etc.'s own versions under the same "version" key.
+      body="$(curl -fsS --max-time "$LT_VERSION_FETCH_TIMEOUT" 'https://static.rust-lang.org/dist/channel-rust-stable.toml' 2>/dev/null)" || return 1
+      printf '%s\n' "$body" | awk '/^\[pkg\.rust\]/{f=1; next} f && /^version/{print; exit}' | sed -E 's/version = "([0-9.]+).*/\1/'
+      ;;
+    python)
+      # No official JSON index with a working "just the latest" server-side
+      # filter (python.org's release API doesn't order/filter the way its
+      # own docs suggest - checked directly, see TASK-118.1 notes) - cpython's
+      # own tags are the next best official source. Tags mix final releases
+      # (vX.Y.Z) with pre-releases (vX.Y.ZaN/bN/rcN); filter down to final
+      # releases only, then sort each dotted field numerically (macOS's BSD
+      # sort has no -V/version-sort, unlike GNU sort) and take the highest.
+      body="$(git -c http.lowSpeedLimit=1000 -c http.lowSpeedTime="$LT_VERSION_FETCH_TIMEOUT" ls-remote --tags --refs https://github.com/python/cpython.git 2>/dev/null)" || return 1
+      printf '%s\n' "$body" | awk '{print $2}' | sed -n 's#^refs/tags/v##p' | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' | sort -t. -k1,1n -k2,2n -k3,3n | tail -1
+      ;;
+    java)
+      # Two-step Eclipse Adoptium (Temurin) lookup: which major version is
+      # the current LTS, then that major's latest GA JDK build for this
+      # Mac's own architecture. The "semver" field comes back pre-formatted
+      # exactly like asdf-java's own version strings (e.g.
+      # "25.0.4+101.0.LTS"), so no reformatting is needed beyond prepending
+      # "temurin-". os=mac is hardcoded - this repo is macOS-only.
+      body="$(curl -fsS --max-time "$LT_VERSION_FETCH_TIMEOUT" 'https://api.adoptium.net/v3/info/available_releases' 2>/dev/null)" || return 1
+      lts_major="$(printf '%s\n' "$body" | grep -o '"most_recent_lts"[[:space:]]*:[[:space:]]*[0-9]*' | grep -o '[0-9]*$')"
+      [ -n "$lts_major" ] || return 1
+      body="$(curl -fsS --max-time "$LT_VERSION_FETCH_TIMEOUT" "https://api.adoptium.net/v3/assets/latest/$lts_major/hotspot?vendor=eclipse&os=mac&image_type=jdk&architecture=$(lt_adoptium_arch)" 2>/dev/null)" || return 1
+      printf '%s\n' "$body" | grep -o '"semver"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | sed -E 's/.*"([^"]*)"$/temurin-\1/'
+      ;;
+    *)
+      # Unknown plugin (e.g. this repo's own custom TOOL_VERSIONS_FILE users
+      # could pass one this function has no case for): no source to fetch
+      # from, so fail like any other lookup miss - callers fall back to the
+      # static default.
+      return 1
+      ;;
+  esac
+}
