@@ -1,9 +1,10 @@
 ---
 id: TASK-125
 title: 신규 스크립트의 경로/환경변수 하드코딩 재발을 막는 감지 장치 도입
-status: To Do
+status: In Progress
 assignee: []
 created_date: '2026-09-03 01:14'
+updated_date: '2026-09-03 01:28'
 labels: []
 milestone: m-14
 dependencies: []
@@ -20,3 +21,9 @@ ordinal: 161000
 
 모든 자식 태스크가 끝나면 Done 처리.
 <!-- SECTION:DESCRIPTION:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+4개 자식 태스크 전부 완료. 125.1: TASK-57/61/65/70/78 diff 근거로 하드코딩 패턴 4종 목록화(scripts/lint/hardcoded-paths-patterns.md). 125.2: 감지 방식 3안 비교 후 grep 기반 독립 lint 스크립트 채택(decision-1) - shellcheck은 커스텀 룰 메커니즘이 없고, 이 저장소는 CI에 shellspec을 아직 연결하지 않은 상태라 옵션3보다 비용이 낮음. 125.3: scripts/lint/check-hardcoded-paths.sh 구현(shellcheck/dash -n 통과, 합성 위반 100% 탐지) 및 .github/workflows/e2e-verify.yml에 ubuntu-latest 기반 lint-hardcoded-paths job으로 CI 연결. 125.4: 기존 scripts/ 전체(17개 파일) 전수 스캔 - 위반 0건, 신규 버그 태스크 없음. 기존 shellspec 스위트 132 examples 0 failures로 회귀 없음.
+<!-- SECTION:FINAL_SUMMARY:END -->
