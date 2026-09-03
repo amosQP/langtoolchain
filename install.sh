@@ -98,6 +98,20 @@ trap 'rm -rf "$WORKDIR"' EXIT
 # works uniformly for all three ref kinds against GitHub (which enables
 # fetch-by-SHA for public repos) - verified by hand against a local bare
 # repo for all three cases before adopting this (TASK-117.1).
+#######################################
+# Clone exactly <ref> (SHA/tag/branch) into $WORKDIR/langtoolchain.
+# Globals:
+#   WORKDIR
+#   REPO_URL
+# Arguments:
+#   $1: ref — commit SHA, tag, or branch name to fetch and check out
+# Outputs:
+#   None of its own — git's own (-q-quieted) output passes through unless
+#   the caller redirects it (the retry loop below sends it to /dev/null).
+# Returns:
+#   0 if every git step succeeds; non-zero (the subshell's status) if any
+#   step in the init/remote/fetch/checkout chain fails.
+#######################################
 clone_pinned() {
   rm -rf "$WORKDIR/langtoolchain"
   mkdir -p "$WORKDIR/langtoolchain"

@@ -59,6 +59,20 @@ trap 'rm -rf "$WORKDIR"' EXIT
 # reasoning (fetches exactly <ref> — SHA, tag, or branch name — instead of
 # trusting whatever a branch currently points to; `git clone --branch`
 # can't reliably target an arbitrary commit SHA the way `fetch <ref>` can).
+#######################################
+# Clone exactly <ref> (SHA/tag/branch) into $WORKDIR/langtoolchain.
+# Globals:
+#   WORKDIR
+#   REPO_URL
+# Arguments:
+#   $1: ref — commit SHA, tag, or branch name to fetch and check out
+# Outputs:
+#   None of its own — git's own (-q-quieted) output passes through unless
+#   the caller redirects it (the retry loop below sends it to /dev/null).
+# Returns:
+#   0 if every git step succeeds; non-zero (the subshell's status) if any
+#   step in the init/remote/fetch/checkout chain fails.
+#######################################
 clone_pinned() {
   rm -rf "$WORKDIR/langtoolchain"
   mkdir -p "$WORKDIR/langtoolchain"

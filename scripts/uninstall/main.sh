@@ -38,6 +38,18 @@ printf '%s\n' "This will remove asdf, every asdf-managed runtime, the related Ho
 # confirm_uninstall (m-8): extracted so main.sh's own top-level flow reads
 # as a named step (see the call right below this function) instead of this
 # whole block sitting inline between the intro message and the phase loop.
+#######################################
+# Ask the user to confirm the uninstall, unless --yes or no tty.
+# Globals:
+#   AUTO_YES
+# Arguments:
+#   None
+# Outputs:
+#   Writes the "Continue? [y/N] > " prompt to STDOUT; on decline, writes
+#   "Cancelled." to STDOUT.
+# Returns:
+#   Does not return on decline — exits with status 1.
+#######################################
 confirm_uninstall() {
   local interactive=true reply
   # Probe for a controlling terminal first - same technique as

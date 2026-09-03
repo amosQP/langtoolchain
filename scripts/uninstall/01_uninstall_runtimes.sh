@@ -35,6 +35,18 @@ step "Phase 1: Uninstalling language runtimes"
 # pair listed in <file>. Shared by the global config below and, per
 # directory, by the LOCAL-scope pins loop further down (TASK-83) — same
 # logic either way, just a different .tool-versions-style file to read.
+#######################################
+# asdf-uninstall every plugin/version pair listed in a config file.
+# Globals:
+#   None
+# Arguments:
+#   $1: path to a .tool-versions-style config file
+# Outputs:
+#   Writes progress lines ("Uninstalling ...", "Already absent: ...") to
+#   STDOUT (via log()).
+# Returns:
+#   None
+#######################################
 uninstall_from_config_file() {
   # fd 3, not stdin — see scripts/install/02_install_plugins.sh for why.
   # POSIX sh has no process substitution, so each_tool's output goes to a
