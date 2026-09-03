@@ -24,13 +24,14 @@ Describe 'scripts/uninstall/05_purge_asdf_core.sh'
   BeforeEach 'setup'
   AfterEach 'cleanup'
 
+  Mock brew
+    case "$1 $2" in
+      "list asdf") exit 0 ;;
+      "uninstall asdf") echo "MOCK: brew uninstall asdf" ;;
+    esac
+  End
+
   It 'removes the default $HOME/.asdf when ASDF_DATA_DIR is unset'
-    Mock brew
-      case "$1 $2" in
-        "list asdf") exit 0 ;;
-        "uninstall asdf") echo "MOCK: brew uninstall asdf" ;;
-      esac
-    End
     mkdir -p "$fake_home/.asdf/shims"
     export HOME="$fake_home" DRY_RUN=false
     unset -v ASDF_DATA_DIR
@@ -41,12 +42,6 @@ Describe 'scripts/uninstall/05_purge_asdf_core.sh'
   End
 
   It 'removes the custom ASDF_DATA_DIR instead of the default (TASK-70)'
-    Mock brew
-      case "$1 $2" in
-        "list asdf") exit 0 ;;
-        "uninstall asdf") echo "MOCK: brew uninstall asdf" ;;
-      esac
-    End
     custom_dir="$(mktemp -d)/custom-asdf-data"
     mkdir -p "$custom_dir/shims"
     mkdir -p "$fake_home/.asdf/shims"   # decoy default dir - must survive
@@ -59,12 +54,6 @@ Describe 'scripts/uninstall/05_purge_asdf_core.sh'
   End
 
   It 'does DRY_RUN without deleting anything'
-    Mock brew
-      case "$1 $2" in
-        "list asdf") exit 0 ;;
-        "uninstall asdf") echo "MOCK: brew uninstall asdf" ;;
-      esac
-    End
     mkdir -p "$fake_home/.asdf/shims"
     export HOME="$fake_home" DRY_RUN=true
     unset -v ASDF_DATA_DIR
