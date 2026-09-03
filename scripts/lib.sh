@@ -711,3 +711,26 @@ lt_upstream_latest_version() {
       ;;
   esac
 }
+
+# lt_resolve_default_version <plugin> <static-default> (m-12/TASK-119.2,
+# decision-1): the actual call site scripts/install/00_select.sh's
+# ask_version() comment refers to - a single lt_upstream_latest_version()
+# lookup, falling back to <static-default> (the .tool-versions value
+# 00_select.sh already has on hand) whenever that lookup fails or comes
+# back empty (offline, rate-limited, timeout, or an unmapped plugin - see
+# lt_upstream_latest_version's own unknown-plugin case above). Callers
+# never see an empty default this way.
+#
+# Lives here rather than in 00_select.sh itself so it's unit-testable via
+# `Include scripts/lib.sh` (00_select.sh has top-level side effects the
+# moment it's sourced - mktemp, an EXIT trap, the whole interactive flow -
+# so shellspec can only exercise it via `When run`, not `Include`).
+lt_resolve_default_version() {
+  local plugin="$1" static_default="$2" dynamic
+  dynamic="$(lt_upstream_latest_version "$plugin" 2>/dev/null)" || dynamic=""
+  if [ -n "$dynamic" ]; then
+    printf '%s\n' "$dynamic"
+  else
+    printf '%s\n' "$static_default"
+  fi
+}

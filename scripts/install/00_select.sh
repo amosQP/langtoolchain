@@ -286,6 +286,16 @@ ask_yes_no() {
 # guaranteed to exist yet (phases 1-2), and `list all` can be slow (network
 # fetch) even when they do — so this stays a plain default-vs-custom
 # choice, not a live version browser.
+#
+# The <default-version> this function is handed is itself dynamic as of
+# m-12/TASK-119 (decision-1): lt_offer_language() below resolves it via
+# lt_upstream_latest_version() (scripts/lib.sh) one level up, before ever
+# calling this function - a single upstream "latest" lookup per language
+# the user actually opts into, not the `asdf list all` full-catalog browse
+# the comment above rules out. That single lookup needs no asdf/plugin
+# state at all (it hits each language's own upstream API/index directly),
+# so it doesn't reintroduce the phase-0 problem this comment originally
+# described.
 ask_version() {
   local default="$1" custom
   if [ "$(lt_arrow_menu "Version:" 1 "$default (default)" "Enter a specific version")" = "2" ]; then
@@ -371,7 +381,12 @@ lt_offer_language() {
   cmd="$(binary_for_plugin "$plugin")"
   tty_out ""
   if ask_yes_no "Install $plugin ($cmd)?"; then
-    version="$(ask_version "$default_version")"
+    # Fetched here, lazily - only for a language the user just said yes to,
+    # never eagerly for all of them up front (m-12/TASK-119.2's fetch-timing
+    # decision: waiting on this alongside a prompt the user is already
+    # answering is imperceptible; fetching for languages they end up
+    # declining would just be wasted network calls).
+    version="$(ask_version "$(lt_resolve_default_version "$plugin" "$default_version")")"
 
     # Record this language/version as one line of the selection file.
     printf '%s %s\n' "$plugin" "$version" >> "$OUT_FILE"
@@ -385,7 +400,7 @@ lt_offer_language() {
       companion_default="$(awk -v p="$companion" '$1 == p { print $2; exit }' "$EACH_TOOL_TMP")"
       [ -n "$companion_default" ] || continue
       if ask_yes_no "  Also install $companion (companion to $plugin)?"; then
-        companion_version="$(ask_version "$companion_default")"
+        companion_version="$(ask_version "$(lt_resolve_default_version "$companion" "$companion_default")")"
         printf '%s %s\n' "$companion" "$companion_version" >> "$OUT_FILE"
       fi
     done

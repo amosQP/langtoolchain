@@ -750,4 +750,42 @@ RUNNER_EOF
       The output should eq ''
     End
   End
+
+  Describe 'lt_resolve_default_version() (m-12/TASK-119.2)'
+    It 'prefers the dynamic lookup when it succeeds'
+      Mock curl
+        echo '{"version":"12.3.1"}'
+      End
+      When call lt_resolve_default_version pnpm '10.33.0'
+      The status should be success
+      The output should eq '12.3.1'
+    End
+
+    It 'falls back to the static default when the dynamic lookup fails'
+      Mock curl
+        exit 1
+      End
+      When call lt_resolve_default_version pnpm '10.33.0'
+      The status should be success
+      The output should eq '10.33.0'
+    End
+
+    It 'falls back to the static default for a plugin lt_upstream_latest_version does not map'
+      When call lt_resolve_default_version some-unmapped-plugin '1.2.3'
+      The status should be success
+      The output should eq '1.2.3'
+    End
+
+    It 'never fails itself even when the network is completely unreachable (install must not stop)'
+      Mock curl
+        exit 7
+      End
+      Mock git
+        exit 1
+      End
+      When call lt_resolve_default_version python '3.12.13'
+      The status should be success
+      The output should eq '3.12.13'
+    End
+  End
 End
