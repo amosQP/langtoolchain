@@ -224,6 +224,7 @@ curl -fsSL https://raw.githubusercontent.com/amosQP/langtoolchain/main/uninstall
 - 언어/버전을 바꾸려면 `.tool-versions` 한 줄만 수정하면 됩니다.
 - 각 설치/제거 단계는 `scripts/install/`, `scripts/uninstall/` 아래 역할별로 분리돼 있고, 개별 실행도 가능합니다: `DRY_RUN=true sh scripts/install/05_install_runtimes.sh`
 - 코드를 고쳤으면: `shellcheck -s sh` → `dash -n`(macOS 기본 `/bin/sh`는 posix 모드 bash라 진짜 POSIX 위반을 놓침) → `shellspec`/`shellspec --shell dash`로 `spec/` 스위트 실행.
+- 스타일 규칙(들여쓰기/네이밍/따옴표 등)은 [docs/shell-style-guide.md](docs/shell-style-guide.md) 참고 — Google Shell Style Guide를 기반으로 이 저장소의 POSIX sh 제약에 맞게 조정한 버전입니다.
 - 전체 흐름만 확인: `./install.sh --dry-run --all --yes`, `./uninstall.sh --dry-run --yes`
 - 실기기 검증(Homebrew 부트스트랩, Intel Mac 등)은 `.github/workflows/e2e-verify.yml` — `scripts/**`/`install.sh`/`uninstall.sh`/`.tool-versions`가 바뀐 채로 `main`에 push/PR되면 자동 실행되고, 그 외에는 `workflow_dispatch`로 수동 실행. GitHub 호스팅 macOS 러너(arm64+Intel)에서 검증, 공개 저장소라 무료.
 

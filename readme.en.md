@@ -228,6 +228,7 @@ something a shell installer can solve, so it's deliberately kept outside this mi
 - To change languages/versions, edit `.tool-versions` — just one line.
 - Each install/uninstall step lives under `scripts/install/`, `scripts/uninstall/`, one responsibility per file, and every phase runs standalone too: `DRY_RUN=true sh scripts/install/05_install_runtimes.sh`
 - After changing code: `shellcheck -s sh` → `dash -n` (macOS's default `/bin/sh` is bash in posix mode, lenient enough to miss real POSIX violations) → `shellspec`/`shellspec --shell dash` for the `spec/` suite.
+- Style rules (indentation, naming, quoting, etc.) live in [docs/shell-style-guide.md](docs/shell-style-guide.md) — a Google Shell Style Guide baseline adapted for this repo's POSIX sh constraint.
 - To confirm the whole flow changes nothing: `./install.sh --dry-run --all --yes`, `./uninstall.sh --dry-run --yes`
 - Real-hardware scenarios (Homebrew bootstrap, Intel Mac, etc.) run via `.github/workflows/e2e-verify.yml` — it auto-runs on push/PR to `main` when `scripts/**`/`install.sh`/`uninstall.sh`/`.tool-versions` change, and can otherwise be triggered manually with `workflow_dispatch`. Runs on GitHub-hosted macOS runners (arm64 + Intel) — free on this public repo.
 
