@@ -708,6 +708,16 @@ lt_upstream_latest_version() {
       body="$(curl -fsS --max-time "$LT_VERSION_FETCH_TIMEOUT" "https://api.adoptium.net/v3/assets/latest/$lts_major/hotspot?vendor=eclipse&os=mac&image_type=jdk&architecture=$(lt_adoptium_arch)" 2>/dev/null)" || return 1
       printf '%s\n' "$body" | grep -o '"semver"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | sed -E 's/.*"([^"]*)"$/temurin-\1/'
       ;;
+    uv)
+      # uv (m-12/TASK-121, decision-2's companion pick for python) has no
+      # official JSON distribution index of its own (unlike the 7 languages
+      # above, each with a dedicated official index/API) - GitHub's Releases
+      # API is the fallback decision-1 already set aside for exactly this
+      # case. "tag_name" is already bare (e.g. "0.12.9", no leading "v"),
+      # matching asdf-uv's own version strings directly - no reformatting.
+      body="$(curl -fsS --max-time "$LT_VERSION_FETCH_TIMEOUT" 'https://api.github.com/repos/astral-sh/uv/releases/latest' 2>/dev/null)" || return 1
+      printf '%s\n' "$body" | grep -o '"tag_name"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | sed -E 's/.*"([^"]*)"$/\1/'
+      ;;
     *)
       # Unknown plugin (e.g. this repo's own custom TOOL_VERSIONS_FILE users
       # could pass one this function has no case for): no source to fetch

@@ -668,6 +668,15 @@ RUNNER_EOF
       The output should eq '9.7.1'
     End
 
+    It 'extracts the tag_name from GitHub Releases for uv (m-12/TASK-121, decision-2)'
+      Mock curl
+        echo '{"tag_name":"0.12.9","name":"0.12.9","draft":false,"prerelease":false}'
+      End
+      When call lt_upstream_latest_version uv
+      The status should be success
+      The output should eq '0.12.9'
+    End
+
     It 'extracts and strips the "go" prefix from go.dev/dl for golang'
       Mock curl
         echo '[{"version":"go1.27.1","stable":true},{"version":"go1.26.1","stable":true}]'
@@ -834,6 +843,16 @@ RUNNER_EOF
       The contents of file "$LT_VERSION_CACHE_FILE" should include 'pnpm|||'
       The contents of file "$LT_VERSION_CACHE_FILE" should include '|||9.9.9'
       The contents of file "$LT_VERSION_CACHE_FILE" should include 'gradle|||'
+    End
+
+    It 'resolves the companion tool uv through the same dynamic+cache path as the 7 languages (m-12/TASK-121.3)'
+      Mock curl
+        echo '{"tag_name":"0.12.9"}'
+      End
+      When call lt_resolve_default_version uv '0.12.9'
+      The status should be success
+      The output should eq '0.12.9'
+      The contents of file "$LT_VERSION_CACHE_FILE" should include 'uv|||'
     End
   End
 End
