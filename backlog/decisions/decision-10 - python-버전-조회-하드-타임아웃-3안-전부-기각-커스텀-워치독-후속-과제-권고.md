@@ -1,5 +1,5 @@
 ---
-id: decision-8
+id: decision-10
 title: 'python 버전 조회 하드 타임아웃: 조사한 3안 전부 기각, 커스텀 워치독은 후속 과제로 권고'
 date: '2026-09-03 11:36'
 status: proposed
