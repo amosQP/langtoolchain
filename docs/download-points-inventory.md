@@ -23,7 +23,7 @@ Explore agent 조사를 2026-09-03 재검증하여 확정.
 | 6 | `scripts/install/03_install_system_deps.sh:18` | `brew install $LT_BUILD_DEPS` (openssl/readline/sqlite3/xz/zlib/tcl-tk) | 위임 — Homebrew bottle 서명 | 통제 밖(문서화만) | TASK-117.4 |
 | 7 | `scripts/install/05_install_runtimes.sh:39` | `asdf install "$plugin" "$version"` (실제 언어 런타임 소스/바이너리) | 위임 — 각 asdf 플러그인 내부 로직(플러그인마다 다르며 이 저장소가 관여 불가) | 통제 밖(문서화만) | TASK-117.4 |
 | 8 | `scripts/install/06_set_globals.sh:70-73` | `asdf reshim` | 해당 없음 — 원격 다운로드가 아니라 이미 로컬에 설치된 바이너리에 대한 shim 재생성(asdf 내부 로직에 위임) | 통제 밖(문서화만, 다운로드 지점 아님) | — |
-| 9 | `scripts/install/07_validate.sh:46-57` | 해당 없음 — 다운로드가 아니라 이미 설치된 바이너리의 PATH 해석 결과를 점검(다른 shim에 가려지는지) | 이 저장소가 직접 통제하는 유일한 "shim 보안" 검증 지점, 현재는 WARN만(FAIL 아님) | 하드닝 대상 (검증 로직이 아니라 정책 재평가) | TASK-117.5 |
+| 9 | `scripts/install/07_validate.sh:46-57` | 해당 없음 — 다운로드가 아니라 이미 설치된 바이너리의 PATH 해석 결과를 점검(다른 shim에 가려지는지) | 이 저장소가 직접 통제하는 유일한 "shim 보안" 검증 지점. 검토 결과 WARN 유지(FAIL 격상 안 함, decision-3) — 메시지만 "이 설치기의 검증 범위 밖"임을 명시하도록 보강 | 정책 재평가 완료 (WARN 유지) | TASK-117.5 |
 
 ## 관찰: 이 저장소가 "직접" 검증할 수 있는 지점은 제한적
 
