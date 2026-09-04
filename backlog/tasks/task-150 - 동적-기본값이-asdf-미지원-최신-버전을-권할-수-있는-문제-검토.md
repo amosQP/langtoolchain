@@ -1,7 +1,7 @@
 ---
 id: TASK-150
 title: 동적 기본값이 asdf 미지원 최신 버전을 권할 수 있는 문제 검토
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-09-04 08:57'
 updated_date: '2026-09-04 13:55'
@@ -31,3 +31,9 @@ not installable" 로 실패하는 새로운 실패 유형이 생긴다(예전엔
 이해하고 재시도하게 할지(TASK-88의 retry로는 근본 해결 안 됨 - 버전 자체가 문제이므로),
 (c) 그냥 알려진 한계로 문서화만 하고 넘어갈지. 결론은 backlog decision으로 기록.
 <!-- SECTION:DESCRIPTION:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+결정: (b) 05_install_runtimes.sh 실패 시 에러 메시지 명확화 + (c) README 알려진 한계 문서화 채택. (a) 사전 asdf list-all 체크는 채택하지 않음 — TASK-128/129(m-15)가 선택 UI를 실 설치가능목록 기반으로 교체하는 작업을 이미 계획 중이라 더 근본적으로 이 문제를 해소하며, 지금 phase 5에 별도 사전 체크를 추가하면 그때 중복/폐기됨. 근거는 decision-12에 기록, TASK-150에 참조 연결(decision-12, TASK-128). 코드 변경 자체는 이 스파이크 범위 밖 — 후속 필요: (1) scripts/install/05_install_runtimes.sh die() 문구에 '버전이 asdf 플러그인 미지원일 수 있음' 안내 추가, (2) README 알려진 한계 섹션에 한 항목 추가. 둘 다 별도 태스크로 백로깅 필요(이번 태스크에서 미생성).
+<!-- SECTION:FINAL_SUMMARY:END -->
