@@ -69,7 +69,8 @@ while read -r plugin <&3 || [ -n "$plugin" ]; do
 
   if [ "$is_preexisting" = "true" ]; then
     log "Skipping plugin (existed before langtoolchain): $plugin"
-    lt_report skipped "asdf plugin: $plugin (looked pre-existing, or unconfirmed — not removed; see README)"
+    lt_report skipped 'asdf plugin: '"$plugin"' (looked pre-existing, or'\
+' unconfirmed — not removed; see README)'
     continue
   fi
 

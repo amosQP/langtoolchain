@@ -49,13 +49,20 @@ if [ -d "$TARGET_ASDF_DATA_DIR" ]; then
   # --dry-run, which never writes one — is indistinguishable here from
   # "don't know", so it's treated the same as "true" (pre-existing) rather
   # than assumed safe to wipe.
-  if [ "$(lt_prior_state_get asdf_data_dir_preexisting || true)" = "false" ]; then
+  if [ "$(lt_prior_state_get asdf_data_dir_preexisting || true)" \
+    = "false" ]; then
     log "Removing $TARGET_ASDF_DATA_DIR ..."
     run rm -rf "$TARGET_ASDF_DATA_DIR"
-    lt_report removed "$TARGET_ASDF_DATA_DIR (entire asdf data dir: installs, plugins, shims)"
+    lt_report removed \
+      "$TARGET_ASDF_DATA_DIR (entire asdf data dir: installs, plugins, shims)"
   else
-    log "Skipping $TARGET_ASDF_DATA_DIR — it looks like it existed before langtoolchain was installed (or that can't be confirmed from a missing snapshot), so it's being left in place rather than risk deleting asdf state this tool didn't create. If you're sure it's safe, remove it yourself: rm -rf \"$TARGET_ASDF_DATA_DIR\""
-    lt_report skipped "$TARGET_ASDF_DATA_DIR (looked pre-existing, or unconfirmed — not removed; see README)"
+    log "Skipping $TARGET_ASDF_DATA_DIR — it looks like it existed before" \
+      "langtoolchain was installed (or that can't be confirmed from a missing" \
+      "snapshot), so it's being left in place rather than risk deleting asdf" \
+      "state this tool didn't create. If you're sure it's safe, remove it" \
+      "yourself: rm -rf \"$TARGET_ASDF_DATA_DIR\""
+    lt_report skipped "$TARGET_ASDF_DATA_DIR"' (looked pre-existing, or'\
+' unconfirmed — not removed; see README)'
   fi
 fi
 
