@@ -44,25 +44,30 @@ EOF
   }
 
   Describe 'shim-path check (TASK-57 regression)'
-    It 'reports OK when the binary resolves under a custom (non-".asdf") ASDF_DATA_DIR'
+    It 'reports OK when the binary resolves under a custom'\
+' (non-".asdf") ASDF_DATA_DIR'
       fake_cmd rustc 'rustc 1.94.0 (abc 2026-01-01)'
       printf 'rust 1.94.0\n' > "$tool_versions"
-      export ASDF_DATA_DIR="$data_dir" TOOL_VERSIONS_FILE="$tool_versions" DRY_RUN=false
+      export ASDF_DATA_DIR="$data_dir" TOOL_VERSIONS_FILE="$tool_versions" \
+        DRY_RUN=false
       When run "$SCRIPT"
       The status should be success
       The output should include 'OK:   rustc ->'
       The output should not include 'WARN: rustc resolves outside asdf shims'
     End
 
-    It 'WARNs (but still exits success) when the binary resolves outside asdf shims'
+    It 'WARNs (but still exits success) when the binary resolves'\
+' outside asdf shims'
       # A system-wide install shadowing the asdf shim - real regression this
       # check exists to catch (see the WARN branch in 07_validate.sh's own
       # case statement), never exercised by any existing test until now.
       outside_dir="$(mktemp -d)"
-      printf '#!/usr/bin/env bash\necho "rustc 1.94.0 (abc 2026-01-01)"\n' > "$outside_dir/rustc"
+      printf '#!/usr/bin/env bash\necho "rustc 1.94.0 (abc 2026-01-01)"\n' \
+        > "$outside_dir/rustc"
       chmod +x "$outside_dir/rustc"
       printf 'rust 1.94.0\n' > "$tool_versions"
-      export ASDF_DATA_DIR="$data_dir" TOOL_VERSIONS_FILE="$tool_versions" DRY_RUN=false
+      export ASDF_DATA_DIR="$data_dir" TOOL_VERSIONS_FILE="$tool_versions" \
+        DRY_RUN=false
       export PATH="$outside_dir:$PATH"
       When run "$SCRIPT"
       The status should be success
@@ -75,24 +80,29 @@ EOF
     It 'WARNs when the installed version differs from .tool-versions'
       fake_cmd go 'go version go1.20.0 darwin/arm64'
       printf 'golang 1.26.1\n' > "$tool_versions"
-      export ASDF_DATA_DIR="$data_dir" TOOL_VERSIONS_FILE="$tool_versions" DRY_RUN=false
+      export ASDF_DATA_DIR="$data_dir" TOOL_VERSIONS_FILE="$tool_versions" \
+        DRY_RUN=false
       When run "$SCRIPT"
-      The output should include "WARN: go reports 'go version go1.20.0 darwin/arm64', expected version matching '1.26.1'"
+      The output should include "WARN: go reports 'go version go1.20.0 \
+darwin/arm64', expected version matching '1.26.1'"
     End
 
     It 'stays quiet (no WARN) when the installed version matches'
       fake_cmd rustc 'rustc 1.94.0 (abc 2026-01-01)'
       printf 'rust 1.94.0\n' > "$tool_versions"
-      export ASDF_DATA_DIR="$data_dir" TOOL_VERSIONS_FILE="$tool_versions" DRY_RUN=false
+      export ASDF_DATA_DIR="$data_dir" TOOL_VERSIONS_FILE="$tool_versions" \
+        DRY_RUN=false
       When run "$SCRIPT"
       The output should not include 'WARN: rustc reports'
       The output should include 'rustc 1.94.0 (abc 2026-01-01)'
     End
 
-    It 'skips the version comparison for a non-numeric alias like "lts" (no false WARN)'
+    It 'skips the version comparison for a non-numeric alias like'\
+' "lts" (no false WARN)'
       fake_cmd node 'v24.14.0'
       printf 'nodejs lts\n' > "$tool_versions"
-      export ASDF_DATA_DIR="$data_dir" TOOL_VERSIONS_FILE="$tool_versions" DRY_RUN=false
+      export ASDF_DATA_DIR="$data_dir" TOOL_VERSIONS_FILE="$tool_versions" \
+        DRY_RUN=false
       When run "$SCRIPT"
       The output should not include 'WARN: node reports'
       The output should include 'v24.14.0'
@@ -100,10 +110,12 @@ EOF
   End
 
   Describe 'multi-line version banner (m-7/TASK-101 regression)'
-    It 'finds the version on a later line when the first line has no digits (gradle-style banner)'
+    It 'finds the version on a later line when the first line has no'\
+' digits (gradle-style banner)'
       fake_banner_cmd gradle '------------------------------------------------------------' 'Gradle 9.4.1'
       printf 'gradle 9.4.1\n' > "$tool_versions"
-      export ASDF_DATA_DIR="$data_dir" TOOL_VERSIONS_FILE="$tool_versions" DRY_RUN=false
+      export ASDF_DATA_DIR="$data_dir" TOOL_VERSIONS_FILE="$tool_versions" \
+        DRY_RUN=false
       When run "$SCRIPT"
       The status should be success
       The output should not include 'WARN: gradle reports'
@@ -114,7 +126,8 @@ EOF
   Describe 'command not found'
     It 'reports FAIL instead of erroring out'
       printf 'rust 1.94.0\n' > "$tool_versions"
-      export ASDF_DATA_DIR="$data_dir" TOOL_VERSIONS_FILE="$tool_versions" DRY_RUN=false
+      export ASDF_DATA_DIR="$data_dir" TOOL_VERSIONS_FILE="$tool_versions" \
+        DRY_RUN=false
       # This dev machine has a real rustc on PATH via its own real asdf
       # install - strip PATH down to just enough to run the script itself
       # (bash builtins, awk, mktemp, head, grep) so "not found" is genuine.
@@ -126,7 +139,8 @@ EOF
   End
 
   Describe 'multiple tools (m-8 validate_one_tool() extraction regression)'
-    It 'still fails overall when an earlier tool fails even if a later tool succeeds'
+    It 'still fails overall when an earlier tool fails even if a'\
+' later tool succeeds'
       # validate_one_tool() now returns per-tool status and the loop does
       # `validate_one_tool ... || OK=false` - this pins down that a later
       # successful call can't accidentally clear an earlier failure's
@@ -135,7 +149,8 @@ EOF
       # PATH), rust listed second (succeeds: rustc is faked into shims).
       fake_cmd rustc 'rustc 1.94.0 (abc 2026-01-01)'
       printf 'golang 1.26.1\nrust 1.94.0\n' > "$tool_versions"
-      export ASDF_DATA_DIR="$data_dir" TOOL_VERSIONS_FILE="$tool_versions" DRY_RUN=false
+      export ASDF_DATA_DIR="$data_dir" TOOL_VERSIONS_FILE="$tool_versions" \
+        DRY_RUN=false
       export PATH="$data_dir/shims:/usr/bin:/bin:/usr/sbin:/sbin"
       When run "$SCRIPT"
       The status should be failure
@@ -147,9 +162,11 @@ EOF
   Describe 'DRY_RUN=true'
     It 'skips all validation instead of reporting false failures'
       printf 'rust 1.94.0\n' > "$tool_versions"
-      export ASDF_DATA_DIR="$data_dir" TOOL_VERSIONS_FILE="$tool_versions" DRY_RUN=true
+      export ASDF_DATA_DIR="$data_dir" TOOL_VERSIONS_FILE="$tool_versions" \
+        DRY_RUN=true
       When run "$SCRIPT"
-      The output should include 'dry-run: no runtimes were actually installed, skipping validation'
+      The output should include 'dry-run: no runtimes were actually'\
+' installed, skipping validation'
       The output should not include 'FAIL'
       The status should be success
     End
