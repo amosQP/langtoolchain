@@ -51,7 +51,7 @@ uninstall_from_config_file() {
   # fd 3, not stdin — see scripts/install/02_install_plugins.sh for why.
   # POSIX sh has no process substitution, so each_tool's output goes to a
   # temp file first.
-  local each_tool_tmp
+  local each_tool_tmp plugin version
   each_tool_tmp="$(mktemp)"
   each_tool "$1" > "$each_tool_tmp"
   while read -r plugin version <&3; do
