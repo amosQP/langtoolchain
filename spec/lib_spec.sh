@@ -155,7 +155,9 @@ EOF
 
     It 'skips comment and blank lines, printing only "plugin version" pairs'
       When call each_tool "$tool_versions"
-      The output should eq "$(printf 'nodejs lts\njava temurin-25.0.2+10.0.LTS\npython 3.12.13')"
+      expected="$(printf 'nodejs lts\njava temurin-25.0.2+10.0.LTS\n'\
+'python 3.12.13')"
+      The output should eq "$expected"
     End
   End
 
@@ -204,13 +206,17 @@ EOF
     AfterEach 'cleanup'
 
     It 'appends the line when the search pattern is not already present'
-      When call append_env_var "$rc_file" 'ASDF_DATA_DIR' 'export ASDF_DATA_DIR="$HOME/.asdf"'
-      The contents of file "$rc_file" should include 'export ASDF_DATA_DIR="$HOME/.asdf"'
+      When call append_env_var "$rc_file" 'ASDF_DATA_DIR' \
+        'export ASDF_DATA_DIR="$HOME/.asdf"'
+      The contents of file "$rc_file" should include 'export'\
+' ASDF_DATA_DIR="$HOME/.asdf"'
     End
 
     It 'does not duplicate the line on a second call (idempotent re-runs)'
-      append_env_var "$rc_file" 'ASDF_DATA_DIR' 'export ASDF_DATA_DIR="$HOME/.asdf"'
-      When call append_env_var "$rc_file" 'ASDF_DATA_DIR' 'export ASDF_DATA_DIR="$HOME/.asdf"'
+      append_env_var "$rc_file" 'ASDF_DATA_DIR' \
+        'export ASDF_DATA_DIR="$HOME/.asdf"'
+      When call append_env_var "$rc_file" 'ASDF_DATA_DIR' \
+        'export ASDF_DATA_DIR="$HOME/.asdf"'
       count="$(grep -c 'ASDF_DATA_DIR' "$rc_file")"
       The variable count should eq 1
     End
@@ -223,14 +229,17 @@ EOF
     AfterEach 'cleanup'
 
     It 'inserts the new line ahead of the file''s existing content'
-      When call prepend_env_var "$rc_file" 'brew shellenv' 'eval "$(/opt/homebrew/bin/brew shellenv)"'
+      When call prepend_env_var "$rc_file" 'brew shellenv' \
+        'eval "$(/opt/homebrew/bin/brew shellenv)"'
       The line 1 of contents of file "$rc_file" should include 'brew shellenv'
       The line 2 of contents of file "$rc_file" should eq 'existing line'
     End
 
     It 'does not duplicate the line on a second call (idempotent re-runs)'
-      prepend_env_var "$rc_file" 'brew shellenv' 'eval "$(/opt/homebrew/bin/brew shellenv)"'
-      When call prepend_env_var "$rc_file" 'brew shellenv' 'eval "$(/opt/homebrew/bin/brew shellenv)"'
+      prepend_env_var "$rc_file" 'brew shellenv' \
+        'eval "$(/opt/homebrew/bin/brew shellenv)"'
+      When call prepend_env_var "$rc_file" 'brew shellenv' \
+        'eval "$(/opt/homebrew/bin/brew shellenv)"'
       count="$(grep -c 'brew shellenv' "$rc_file")"
       The variable count should eq 1
     End
@@ -283,7 +292,8 @@ EOF
       The variable PATH should eq "$before"
     End
 
-    It 'prepends the fixed Homebrew prefix bin dir when brew is missing from PATH but installed there (TASK-78)'
+    It 'prepends the fixed Homebrew prefix bin dir when brew is'\
+' missing from PATH but installed there (TASK-78)'
       fake_prefix="$(mktemp -d)"
       mkdir -p "$fake_prefix/bin"
       printf '#!/bin/sh\necho fake-brew\n' > "$fake_prefix/bin/brew"
@@ -295,7 +305,8 @@ EOF
       rm -rf "$fake_prefix"
     End
 
-    It 'does not error when brew is not resolvable anywhere (fixed prefix included)'
+    It 'does not error when brew is not resolvable anywhere'\
+' (fixed prefix included)'
       lt_homebrew_prefix() { echo "/nonexistent-homebrew-prefix-$$"; }
       PATH="/usr/bin:/bin"
       before="$PATH"
@@ -306,7 +317,8 @@ EOF
   End
 
   Describe 'ensure_build_flags() (batched brew --prefix)'
-    It 'builds LDFLAGS/CPPFLAGS/PKG_CONFIG_PATH from one batched "brew --prefix" call, in argument order'
+    It 'builds LDFLAGS/CPPFLAGS/PKG_CONFIG_PATH from one batched'\
+' "brew --prefix" call, in argument order'
       # One Mocked `brew` handles both ensure_brew_on_path's `command -v brew`
       # check and the actual `--prefix openssl readline sqlite3 zlib` call -
       # its four-line output must land in the same openssl/readline/sqlite/
@@ -315,9 +327,12 @@ EOF
         printf '%s\n' /fake/openssl /fake/readline /fake/sqlite /fake/zlib
       End
       When call ensure_build_flags
-      The variable LDFLAGS should eq '-L/fake/openssl/lib -L/fake/readline/lib -L/fake/sqlite/lib -L/fake/zlib/lib'
-      The variable CPPFLAGS should eq '-I/fake/openssl/include -I/fake/readline/include -I/fake/sqlite/include -I/fake/zlib/include'
-      The variable PKG_CONFIG_PATH should eq '/fake/openssl/lib/pkgconfig:/fake/readline/lib/pkgconfig:/fake/sqlite/lib/pkgconfig'
+      The variable LDFLAGS should eq '-L/fake/openssl/lib -L/fake/readline/lib'\
+' -L/fake/sqlite/lib -L/fake/zlib/lib'
+      The variable CPPFLAGS should eq '-I/fake/openssl/include'\
+' -I/fake/readline/include -I/fake/sqlite/include -I/fake/zlib/include'
+      The variable PKG_CONFIG_PATH should eq '/fake/openssl/lib/pkgconfig:'\
+'/fake/readline/lib/pkgconfig:/fake/sqlite/lib/pkgconfig'
     End
   End
 
@@ -348,12 +363,14 @@ EOF
       The status should be success
     End
 
-    It 'a second acquire while the first is still held by a live pid dies with a clear error'
+    It 'a second acquire while the first is still held by a live pid'\
+' dies with a clear error'
       # acquire_lock's die() path calls a real `exit`, which would tear down
       # the shellspec runner itself under `When call` (same-process). Run it
       # as a real subprocess instead, so its exit only ends that subprocess.
       acquire_lock
-      When run command env LT_LOCK_DIR="$LT_LOCK_DIR" sh -c '. ./scripts/lib.sh && acquire_lock'
+      When run command env LT_LOCK_DIR="$LT_LOCK_DIR" sh -c \
+        '. ./scripts/lib.sh && acquire_lock'
       The status should be failure
       The error should include 'appears to be running'
       The path "$LT_LOCK_DIR" should be exist
@@ -367,7 +384,8 @@ EOF
       The contents of file "$LT_LOCK_DIR/pid" should eq "$$"
     End
 
-    It 'reports the live winner instead of a generic failure when this process loses the stale-lock reclaim race'
+    It 'reports the live winner instead of a generic failure when'\
+' this process loses the stale-lock reclaim race'
       # Simulates two processes reclaiming the same stale lock at once
       # (lib.sh's own comment on this branch): pre-seed a dead pid so the
       # first check finds it stale, then make `mkdir` behave as if another
@@ -417,7 +435,8 @@ EOF
 
     It 'dies with a clear message when the recorded pid is alive'
       printf '%s\n' "$$" > "$LT_LOCK_DIR/pid"
-      When run command env LT_LOCK_DIR="$LT_LOCK_DIR" sh -c '. ./scripts/lib.sh && lt_die_if_lock_held'
+      When run command env LT_LOCK_DIR="$LT_LOCK_DIR" sh -c \
+        '. ./scripts/lib.sh && lt_die_if_lock_held'
       The status should be failure
       The error should include 'appears to be running'
     End
@@ -504,7 +523,8 @@ EOF
   Describe 'ensure_disk_space() (TASK-91)'
     It 'passes when there is enough free space'
       Mock df
-        printf '%s\n' 'Filesystem 1024-blocks Used Available Capacity Mounted' '/dev/disk1 100000000 0 10485760 1% /'
+        printf '%s\n' 'Filesystem 1024-blocks Used Available Capacity Mounted' \
+          '/dev/disk1 100000000 0 10485760 1% /'
       End
       When call ensure_disk_space 5
       The status should be success
@@ -515,7 +535,8 @@ EOF
       # acquire_lock's die() path above), with `df` Mocked for that
       # subprocess too since Mock's PATH change is example-scoped.
       Mock df
-        printf '%s\n' 'Filesystem 1024-blocks Used Available Capacity Mounted' '/dev/disk1 100000000 0 1048576 1% /'
+        printf '%s\n' 'Filesystem 1024-blocks Used Available Capacity Mounted' \
+          '/dev/disk1 100000000 0 1048576 1% /'
       End
       When run command sh -c '. ./scripts/lib.sh && ensure_disk_space 5'
       The status should be failure
@@ -553,7 +574,8 @@ child_pid=$!
 # lib.sh's own top-level `LT_CHILD_PID=""` initialization would otherwise
 # clobber an inherited env value right back to empty, same as it does on
 # every real run_phase() invocation between phases.
-sh -c ". ./scripts/lib.sh; LT_CHILD_PID=$child_pid; handle_interrupt" >/dev/null 2>&1
+sh -c ". ./scripts/lib.sh; LT_CHILD_PID=$child_pid;\
+ handle_interrupt" >/dev/null 2>&1
 child_alive=true
 i=0
 while [ "$i" -lt 20 ]; do
@@ -562,7 +584,8 @@ while [ "$i" -lt 20 ]; do
   i=$((i + 1))
 done
 echo "child_alive:$child_alive"
-kill "$child_pid" 2>/dev/null   # safety net if the loop above ever finds it still alive
+# safety net if the loop above ever finds it still alive
+kill "$child_pid" 2>/dev/null
 exit 0
 RUNNER_EOF
       When run command sh "$runner_script"
@@ -596,7 +619,8 @@ RUNNER_EOF
       rm -f "$phase_script"
     End
 
-    It 'terminates a long-running phase promptly on SIGTERM instead of waiting for it to finish (regression)'
+    It 'terminates a long-running phase promptly on SIGTERM instead'\
+' of waiting for it to finish (regression)'
       # Reproduces the exact TASK-32/TASK-93 CI failure at unit-test speed:
       # a phase mid-sleep must be killed and its lock released the instant
       # SIGTERM arrives, not only after the phase finishes naturally.
@@ -651,12 +675,16 @@ RUNNER_EOF
       DRY_RUN=false
       When call lt_report installed 'asdf plugin: pnpm'
       The status should be success
-      The contents of file "$LT_REPORT_FILE" should include '[installed] asdf plugin: pnpm'
-      # e.g. "2026-08-30 12:34:56 [installed] ..." - a real date, not literal text.
-      The contents of file "$LT_REPORT_FILE" should match pattern '[0-9][0-9][0-9][0-9]-*'
+      The contents of file "$LT_REPORT_FILE" should include '[installed]'\
+' asdf plugin: pnpm'
+      # e.g. "2026-08-30 12:34:56 [installed] ..." - a real date, not
+      # literal text.
+      The contents of file "$LT_REPORT_FILE" should match pattern '[0-9][0-9]'\
+'[0-9][0-9]-*'
     End
 
-    It 'writes nothing under DRY_RUN=true - a preview made no real change to report'
+    It 'writes nothing under DRY_RUN=true - a preview made no real'\
+' change to report'
       DRY_RUN=true
       When call lt_report installed 'asdf plugin: pnpm'
       The status should be success
@@ -676,7 +704,8 @@ RUNNER_EOF
     End
   End
 
-  Describe 'lt_snapshot_prior_asdf_state() / lt_prior_state_get() (m-13/TASK-123, decision-6)'
+  Describe 'lt_snapshot_prior_asdf_state() / lt_prior_state_get()'\
+' (m-13/TASK-123, decision-6)'
     # SAFETY: `brew`/`asdf` are always Mocked below, never left to resolve
     # for real - same reasoning as purge_asdf_core_spec.sh/
     # bootstrap_asdf_spec.sh's own header comments (this dev machine has a
@@ -703,7 +732,8 @@ RUNNER_EOF
     BeforeEach 'setup'
     AfterEach 'cleanup'
 
-    It 'records everything as pre-existing when asdf/its data dir/plugins already exist'
+    It 'records everything as pre-existing when asdf/its data'\
+' dir/plugins already exist'
       Mock brew
         case "$1 $2" in
           "list asdf") exit 0 ;;
@@ -717,13 +747,18 @@ RUNNER_EOF
       mkdir -p "$ASDF_DATA_DIR/shims"
       When call lt_snapshot_prior_asdf_state
       The status should be success
-      The contents of file "$LT_PRIOR_STATE_FILE" should include 'asdf_preexisting=true'
-      The contents of file "$LT_PRIOR_STATE_FILE" should include "asdf_data_dir=$ASDF_DATA_DIR"
-      The contents of file "$LT_PRIOR_STATE_FILE" should include 'asdf_data_dir_preexisting=true'
-      The contents of file "$LT_PRIOR_STATE_FILE" should include 'asdf_plugins_preexisting=nodejs java'
+      The contents of file "$LT_PRIOR_STATE_FILE" should include \
+        'asdf_preexisting=true'
+      The contents of file "$LT_PRIOR_STATE_FILE" should include \
+        "asdf_data_dir=$ASDF_DATA_DIR"
+      The contents of file "$LT_PRIOR_STATE_FILE" should include \
+        'asdf_data_dir_preexisting=true'
+      The contents of file "$LT_PRIOR_STATE_FILE" should include \
+        'asdf_plugins_preexisting=nodejs java'
     End
 
-    It 'records asdf/its data dir as NOT pre-existing on what looks like a fresh machine'
+    It 'records asdf/its data dir as NOT pre-existing on what looks'\
+' like a fresh machine'
       Mock brew
         case "$1 $2" in
           "list asdf") exit 1 ;;
@@ -736,12 +771,16 @@ RUNNER_EOF
       End
       When call lt_snapshot_prior_asdf_state
       The status should be success
-      The contents of file "$LT_PRIOR_STATE_FILE" should include 'asdf_preexisting=false'
-      The contents of file "$LT_PRIOR_STATE_FILE" should include 'asdf_data_dir_preexisting=false'
-      The contents of file "$LT_PRIOR_STATE_FILE" should include 'asdf_plugins_preexisting='
+      The contents of file "$LT_PRIOR_STATE_FILE" should include \
+        'asdf_preexisting=false'
+      The contents of file "$LT_PRIOR_STATE_FILE" should include \
+        'asdf_data_dir_preexisting=false'
+      The contents of file "$LT_PRIOR_STATE_FILE" should include \
+        'asdf_plugins_preexisting='
     End
 
-    It 'does not overwrite an existing snapshot on a second call (re-run safety)'
+    It 'does not overwrite an existing snapshot on a second call'\
+' (re-run safety)'
       Mock brew
         case "$1 $2" in
           "list asdf") exit 0 ;;
@@ -752,14 +791,19 @@ RUNNER_EOF
           "plugin list") printf '%s\n' nodejs ;;
         esac
       End
-      printf 'asdf_preexisting=false\nasdf_data_dir=/original\nasdf_data_dir_preexisting=false\nasdf_plugins_preexisting=\n' > "$LT_PRIOR_STATE_FILE"
+      printf 'asdf_preexisting=false\n'\
+'asdf_data_dir=/original\n'\
+'asdf_data_dir_preexisting=false\n'\
+'asdf_plugins_preexisting=\n' > "$LT_PRIOR_STATE_FILE"
       When call lt_snapshot_prior_asdf_state
       The status should be success
-      The contents of file "$LT_PRIOR_STATE_FILE" should include 'asdf_data_dir=/original'
+      The contents of file "$LT_PRIOR_STATE_FILE" should include \
+        'asdf_data_dir=/original'
       The contents of file "$LT_PRIOR_STATE_FILE" should not include 'nodejs'
     End
 
-    It 'writes nothing under DRY_RUN=true - a preview must not create a fake baseline'
+    It 'writes nothing under DRY_RUN=true - a preview must not'\
+' create a fake baseline'
       DRY_RUN=true
       Mock brew
         case "$1 $2" in
@@ -777,7 +821,10 @@ RUNNER_EOF
     End
 
     It 'lt_prior_state_get reads back a key written by the snapshot'
-      printf 'asdf_preexisting=true\nasdf_data_dir=/x/.asdf\nasdf_data_dir_preexisting=true\nasdf_plugins_preexisting=nodejs java\n' > "$LT_PRIOR_STATE_FILE"
+      printf 'asdf_preexisting=true\n'\
+'asdf_data_dir=/x/.asdf\n'\
+'asdf_data_dir_preexisting=true\n'\
+'asdf_plugins_preexisting=nodejs java\n' > "$LT_PRIOR_STATE_FILE"
       When call lt_prior_state_get asdf_data_dir_preexisting
       The output should eq 'true'
     End
@@ -831,9 +878,11 @@ RUNNER_EOF
       The output should eq '9.7.1'
     End
 
-    It 'extracts the tag_name from GitHub Releases for uv (m-12/TASK-121, decision-5)'
+    It 'extracts the tag_name from GitHub Releases for uv'\
+' (m-12/TASK-121, decision-5)'
       Mock curl
-        echo '{"tag_name":"0.12.9","name":"0.12.9","draft":false,"prerelease":false}'
+        echo '{"tag_name":"0.12.9","name":"0.12.9",'\
+'"draft":false,"prerelease":false}'
       End
       When call lt_upstream_latest_version uv
       The status should be success
@@ -842,7 +891,8 @@ RUNNER_EOF
 
     It 'extracts and strips the "go" prefix from go.dev/dl for golang'
       Mock curl
-        echo '[{"version":"go1.27.1","stable":true},{"version":"go1.26.1","stable":true}]'
+        echo '[{"version":"go1.27.1","stable":true},'\
+'{"version":"go1.26.1","stable":true}]'
       End
       When call lt_upstream_latest_version golang
       The status should be success
@@ -851,14 +901,17 @@ RUNNER_EOF
 
     It 'extracts the [pkg.rust] version from the channel manifest for rust'
       Mock curl
-        printf 'manifest-version = "2"\ndate = "2026-08-20"\n\n[pkg.cargo]\nversion = "0.99.0 (deadbeef 2026-08-05)"\n\n[pkg.rust]\nversion = "1.98.0 (88d9e12ae 2026-08-18)"\ngit_commit_hash = "88d9e12ae"\n'
+        printf 'manifest-version = "2"\ndate = "2026-08-20"\n\n[pkg.cargo]\n'\
+'version = "0.99.0 (deadbeef 2026-08-05)"\n\n[pkg.rust]\n'\
+'version = "1.98.0 (88d9e12ae 2026-08-18)"\ngit_commit_hash = "88d9e12ae"\n'
       End
       When call lt_upstream_latest_version rust
       The status should be success
       The output should eq '1.98.0'
     End
 
-    It 'filters cpython pre-release tags and numerically sorts final releases for python'
+    It 'filters cpython pre-release tags and numerically sorts'\
+' final releases for python'
       Mock git
         printf 'aaa\trefs/tags/v3.9.9\n'
         printf 'bbb\trefs/tags/v3.14.7\n'
@@ -876,7 +929,8 @@ RUNNER_EOF
       The output should eq '3.14.10'
     End
 
-    It 'fails quickly instead of hanging forever when git ls-remote blackholes (TASK-138.2, decision-10)'
+    It 'fails quickly instead of hanging forever when git ls-remote'\
+' blackholes (TASK-138.2, decision-10)'
       # Simulates the DNS/TCP/TLS handshake blackhole decision-10 describes:
       # git never returns anything, ever. Without lt_run_with_timeout
       # wrapping this call, this test would hang for real (no network used -
@@ -896,11 +950,13 @@ RUNNER_EOF
       The variable failed_fast should eq 'true'
     End
 
-    It 'resolves the current LTS major then its latest GA build for java (two curl calls)'
+    It 'resolves the current LTS major then its latest GA build for'\
+' java (two curl calls)'
       Mock curl
         case "$*" in
           *available_releases*)
-            echo '{"available_lts_releases":[8,11,17,21,25],"most_recent_lts":25}'
+            echo '{"available_lts_releases":[8,11,17,21,25],'\
+'"most_recent_lts":25}'
             ;;
           *assets/latest*)
             echo '{"version":{"semver":"25.0.4+101.0.LTS"}}'
@@ -930,7 +986,8 @@ RUNNER_EOF
       The output should eq ''
     End
 
-    It 'fails cleanly when java second call (asset lookup) fails after the first succeeds'
+    It 'fails cleanly when java second call (asset lookup) fails'\
+' after the first succeeds'
       Mock curl
         case "$*" in
           *available_releases*) echo '{"most_recent_lts":25}' ;;
@@ -948,7 +1005,10 @@ RUNNER_EOF
     # $HOME/.langtoolchain-version-cache - lt_resolve_default_version's
     # success path writes to LT_VERSION_CACHE_FILE, and this repo's own
     # safety rule is that tests never touch real machine state.
-    setup() { LT_VERSION_CACHE_FILE="$(mktemp)"; rm -f "$LT_VERSION_CACHE_FILE"; }
+    setup() {
+      LT_VERSION_CACHE_FILE="$(mktemp)"
+      rm -f "$LT_VERSION_CACHE_FILE"
+    }
     cleanup() { rm -f "$LT_VERSION_CACHE_FILE"; }
     BeforeEach 'setup'
     AfterEach 'cleanup'
@@ -964,7 +1024,8 @@ RUNNER_EOF
       The contents of file "$LT_VERSION_CACHE_FILE" should include '|||12.3.1'
     End
 
-    It 'falls back to the static default when the dynamic lookup fails (and does not cache it)'
+    It 'falls back to the static default when the dynamic lookup'\
+' fails (and does not cache it)'
       Mock curl
         exit 1
       End
@@ -974,13 +1035,15 @@ RUNNER_EOF
       The path "$LT_VERSION_CACHE_FILE" should not be exist
     End
 
-    It 'falls back to the static default for a plugin lt_upstream_latest_version does not map'
+    It 'falls back to the static default for a plugin'\
+' lt_upstream_latest_version does not map'
       When call lt_resolve_default_version some-unmapped-plugin '1.2.3'
       The status should be success
       The output should eq '1.2.3'
     End
 
-    It 'never fails itself even when the network is completely unreachable (install must not stop)'
+    It 'never fails itself even when the network is completely'\
+' unreachable (install must not stop)'
       Mock curl
         exit 7
       End
@@ -1006,7 +1069,8 @@ RUNNER_EOF
     It 'ignores a stale (past-TTL) cache entry and re-fetches'
       LT_VERSION_CACHE_TTL=60
       # 3600s old - well past a 60s TTL.
-      printf 'pnpm|||%s|||9.9.9\n' "$(($(date +%s) - 3600))" > "$LT_VERSION_CACHE_FILE"
+      printf 'pnpm|||%s|||9.9.9\n' "$(($(date +%s) - 3600))" \
+        > "$LT_VERSION_CACHE_FILE"
       Mock curl
         echo '{"version":"12.3.1"}'
       End
@@ -1015,7 +1079,8 @@ RUNNER_EOF
       The output should eq '12.3.1'
     End
 
-    It 'only refreshes the plugin it looked up - other cached plugins are left alone'
+    It 'only refreshes the plugin it looked up - other cached'\
+' plugins are left alone'
       printf 'pnpm|||%s|||9.9.9\n' "$(date +%s)" > "$LT_VERSION_CACHE_FILE"
       Mock curl
         echo '{"version":"9.7.1"}'
@@ -1028,7 +1093,8 @@ RUNNER_EOF
       The contents of file "$LT_VERSION_CACHE_FILE" should include 'gradle|||'
     End
 
-    It 'resolves the companion tool uv through the same dynamic+cache path as the 7 languages (m-12/TASK-121.3)'
+    It 'resolves the companion tool uv through the same'\
+' dynamic+cache path as the 7 languages (m-12/TASK-121.3)'
       Mock curl
         echo '{"tag_name":"0.12.9"}'
       End
