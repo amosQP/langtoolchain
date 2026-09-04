@@ -23,7 +23,8 @@ Describe 'scripts/install/04_configure_shell_env.sh'
     The output should include 'Phase 4'
     rc_file="$fake_home/.zshrc"
     brew_line="$(grep -n 'brew shellenv' "$rc_file" | head -n1 | cut -d: -f1)"
-    shim_line="$(grep -n 'ASDF_DATA_DIR/shims' "$rc_file" | head -n1 | cut -d: -f1)"
+    shim_line="$(grep -n 'ASDF_DATA_DIR/shims' "$rc_file" |
+      head -n1 | cut -d: -f1)"
     The variable brew_line should be present
     The variable shim_line should be present
     order_ok=false

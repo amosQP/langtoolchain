@@ -16,7 +16,8 @@ Describe 'scripts/install/02_install_plugins.sh'
     # the REAL one, since this spec doesn't override HOME. Redirect to a
     # scratch file so running this test suite doesn't pollute it.
     report_file="$(mktemp)"
-    export ASDF_DATA_DIR="$data_dir" TOOL_VERSIONS_FILE="$tool_versions" DRY_RUN=false LT_REPORT_FILE="$report_file"
+    export ASDF_DATA_DIR="$data_dir" TOOL_VERSIONS_FILE="$tool_versions" \
+      DRY_RUN=false LT_REPORT_FILE="$report_file"
   }
   cleanup() { rm -rf "$(dirname "$data_dir")" "$tool_versions" "$report_file"; }
   BeforeEach 'setup'
