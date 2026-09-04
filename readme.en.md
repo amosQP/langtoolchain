@@ -180,6 +180,7 @@ fully gone.
 - **Companion tools exist only for nodejs/java** — pnpm (nodejs) and gradle (java) are the only ones; Rust/Go don't need one (cargo/the module system are already built in), and Python's ecosystem (`poetry`, `uv`, etc.) hasn't been evaluated.
 - **Some features go beyond the core mission ("install compilers")** — global/local version pinning and the interactive picker are really a wrapper around asdf's own version management. This was reviewed once and deliberately kept as-is; no plan to trim it.
 - **No support for tooling outside Homebrew/asdf** — MacPorts (`/opt/local`) doesn't overlap paths, so no file conflicts, but a same-named binary it installs still wins if its rc entry loads later. `mise`, which reads `.tool-versions` directly and activates via its own PATH hook, is the more realistic risk — if it loads after langtoolchain in the rc file, it can silently shadow the asdf shim. Neither case is detected or warned about.
+- **A dynamic default can suggest a version asdf doesn't support yet** — language version defaults are now fetched live from each language's official source (e.g. cpython's tags, m-12); if the asdf plugin hasn't caught up to that version, the install can fail with "version not installable" (decision-12). This will be resolved structurally once m-15 (an install-picker built on the actual list of installable versions) ships, since an asdf-unsupported version would never appear as a choice in the first place.
 
 ### Download/install chain trust boundary (m-11)
 

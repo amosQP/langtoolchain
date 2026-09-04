@@ -56,6 +56,10 @@ Describe 'scripts/install/05_install_runtimes.sh'
     The output should include 'INSTALLED: golang 1.26.1'
     The error should include 'One or more runtimes failed to install:'\
 ' python 3.12.13'
+    # TASK-151/decision-12: a recurring failure may mean the asdf plugin
+    # doesn't support that version yet, not a transient network blip -
+    # point the user at the actual escape hatch instead of just "re-run".
+    The error should include 'asdf list all <plugin>'
   End
 
   It 'retries a transient failure and succeeds without ever reporting'\

@@ -50,4 +50,7 @@ rm -f "$EACH_TOOL_TMP"
 
 [ -z "$FAILED" ] || die "One or more runtimes failed to install:" \
   "$FAILED. Re-run to retry just the missing ones" \
-  "(asdf skips what's already installed)."
+  "(asdf skips what's already installed)." \
+  "If a failure keeps recurring, the asdf plugin may not support that" \
+  "version yet (decision-12) - check with 'asdf list all <plugin>' and" \
+  "pin an older version in .tool-versions if needed."

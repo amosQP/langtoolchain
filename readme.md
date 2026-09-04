@@ -176,6 +176,7 @@ curl -fsSL https://raw.githubusercontent.com/amosQP/langtoolchain/main/uninstall
 - **동반 도구는 nodejs/java 둘뿐** — pnpm(nodejs), gradle(java) 외 언어는 동반 도구 개념이 없음(Rust/Go는 cargo/모듈 시스템이 이미 내장이라 필요 없다고 판단, Python은 미검토 상태로 남음).
 - **핵심 목적("컴파일러 설치")보다 넓은 기능이 있음** — 전역/로컬 버전 고정, 대화형 선택기는 사실 asdf 버전 관리를 감싼 부가 기능. 한 번 검토를 거쳐 "유지"로 결정했고, 걷어낼 계획은 없음.
 - **Homebrew/asdf 외 도구체인은 지원 대상 아님** — MacPorts(`/opt/local`)는 경로 자체가 겹치지 않아 파일 충돌은 없지만, 같은 이름의 바이너리를 깔았다면 rc 파일에서 나중에 소싱되는 쪽이 이긴다. `mise`처럼 `.tool-versions`를 직접 읽고 자체 PATH 훅으로 셸을 활성화하는 도구는 더 실질적인 위험 — rc 파일에서 langtoolchain보다 나중에 로드되면 asdf shim을 조용히 가릴 수 있음. 둘 다 감지/경고 로직은 없음.
+- **동적 기본값이 asdf가 아직 못 따라잡은 최신 버전을 제안할 수 있음** — 언어 버전 기본값을 언어 공식 소스(예: cpython 태그)에서 실시간으로 가져오는데(m-12), asdf 플러그인이 그 버전을 아직 지원 안 하면 설치가 "version not installable"로 실패할 수 있음(decision-12). m-15(실제 설치 가능한 버전 목록 기반 선택 UI)가 완료되면 애초에 asdf 미지원 버전은 선택지에도 안 뜨게 되어 구조적으로 해소될 예정.
 
 ### 다운로드/설치 체인 신뢰 경계 (m-11)
 
