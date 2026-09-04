@@ -1,9 +1,10 @@
 ---
 id: TASK-136
 title: 코드 품질 정적분석 도구(SonarQube/CodeQL 등) 도입 조사
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-09-03 11:31'
+updated_date: '2026-09-04 20:03'
 labels: []
 milestone: m-16
 dependencies: []
@@ -32,3 +33,9 @@ check-hardcoded-paths.sh, m-14/TASK-125)만 쓰고 있다. SonarQube/CodeQL 같�
 이 마일스톤(m-16)이 "코드 리뷰 후속 조치"라는 성격에 맞게, 도구 도입 자체를 이 태스크에서
 바로 실행하지 않고 조사·비교·채택 여부 결정까지만 다룬다.
 <!-- SECTION:DESCRIPTION:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+CodeQL은 shell 전면 미지원으로 기각, SonarQube Cloud(Free 플랜, public repo 조건 충족)를 채택 결정(decision-13). 셀프호스팅 무료판은 shell 미지원이라 제외. CI 통합 스캐폴딩은 TASK-152로 분리(SONAR_TOKEN 발급 등 사용자 수동 단계 필요, 이번 세션 범위 밖).
+<!-- SECTION:FINAL_SUMMARY:END -->
