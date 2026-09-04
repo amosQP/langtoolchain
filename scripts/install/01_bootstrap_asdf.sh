@@ -34,6 +34,17 @@ readonly HOMEBREW_INSTALL_COMMIT="c8188c1d48d77234a458b944d1d1b750f015a1c4"
 readonly HOMEBREW_INSTALL_URL="https://raw.githubusercontent.com/Homebrew/install/$HOMEBREW_INSTALL_COMMIT/install.sh"
 readonly HOMEBREW_INSTALL_SHA256="12479a24be3f5307eecac7cde670fad7118640f031229e964f544b1367b52a41"
 
+# LT_DOWNLOAD_TIMEOUT (TASK-145.1): fetch_verified_homebrew_installer() below
+# used to share LT_VERSION_FETCH_TIMEOUT (lib.sh, default 5s) with the small
+# JSON API calls in lt_upstream_latest_version() - too tight a budget for
+# this fetch, which pulls the whole Homebrew install script rather than a
+# few hundred bytes of JSON. A slow-but-fine connection (mobile tethering,
+# etc.) can genuinely take 6-8s for this, and install_homebrew_if_missing()
+# retries it 3 times (retry 3 5) - at 5s every retry hit the same wall.
+# Given its own larger budget instead. Override-able like
+# LT_VERSION_FETCH_TIMEOUT (test can shrink it), so not readonly.
+LT_DOWNLOAD_TIMEOUT="${LT_DOWNLOAD_TIMEOUT:-30}"
+
 step "Phase 1: Ensuring Homebrew and asdf are installed"
 
 # Hard requirement: everything downstream (Homebrew formulas, asdf itself)
@@ -56,7 +67,7 @@ ensure_brew_on_path
 # Globals:
 #   HOMEBREW_INSTALL_URL
 #   HOMEBREW_INSTALL_SHA256
-#   LT_VERSION_FETCH_TIMEOUT
+#   LT_DOWNLOAD_TIMEOUT
 # Arguments:
 #   $1: dest — file path to download the installer to
 # Outputs:
@@ -67,7 +78,7 @@ ensure_brew_on_path
 #######################################
 fetch_verified_homebrew_installer() {
   local dest="$1" actual_sha256
-  curl -fsSL --max-time "$LT_VERSION_FETCH_TIMEOUT" -o "$dest" "$HOMEBREW_INSTALL_URL" || return 1
+  curl -fsSL --max-time "$LT_DOWNLOAD_TIMEOUT" -o "$dest" "$HOMEBREW_INSTALL_URL" || return 1
   actual_sha256="$(shasum -a 256 "$dest" | awk '{print $1}')"
   if [ "$actual_sha256" != "$HOMEBREW_INSTALL_SHA256" ]; then
     log "  Homebrew installer checksum mismatch: expected" \

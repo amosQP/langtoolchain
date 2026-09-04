@@ -1,9 +1,10 @@
 ---
 id: TASK-145.1
 title: Homebrew 설치 스크립트 다운로드 타임아웃을 별도 예산으로 분리
-status: To Do
+status: In Progress
 assignee: []
 created_date: '2026-09-04 08:56'
+updated_date: '2026-09-04 13:53'
 labels: []
 dependencies: []
 parent_task_id: TASK-145
