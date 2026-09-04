@@ -7,8 +7,11 @@
 # Checks (see hardcoded-paths-patterns.md for the full rationale):
 #   1. A literal ".asdf" path component instead of $ASDF_DATA_DIR /
 #      lt_asdf_data_dir() / $LT_ASDF_DATA_DIR_DEFAULT.
-#   2. A literal "/opt/homebrew" (Apple-Silicon-only prefix) instead of
-#      lt_homebrew_prefix().
+#   2. A literal "/opt/homebrew" (Apple Silicon) or "/usr/local" (Intel)
+#      Homebrew prefix instead of lt_homebrew_prefix() (TASK-148: the
+#      original check only grepped the Apple Silicon side, so a script
+#      that hardcoded the Intel prefix instead — the exact mirror image
+#      of the TASK-61 bug this check exists to catch — passed clean).
 #   3. "$HOME/.asdf" or "~/.asdf" spelled out directly instead of going
 #      through the ASDF_DATA_DIR helpers above.
 #
@@ -48,6 +51,7 @@ scripts/lib.sh:LT_ASDF_DATA_DIR_NAME=
 '
 readonly HOMEBREW_PREFIX_ALLOWLIST='
 scripts/lib.sh:arm64) echo "/opt/homebrew"
+scripts/lib.sh:*)     echo "/usr/local"
 '
 
 violations=0
@@ -117,9 +121,9 @@ check '하드코딩된 .asdf 리터럴 — $ASDF_DATA_DIR/lt_asdf_data_dir()/'\
   '(^|[^A-Za-z0-9_/.])\.asdf(/|["'"'"']|$)' \
   "$ASDF_LITERAL_ALLOWLIST" "$@"
 
-check '하드코딩된 /opt/homebrew — lt_homebrew_prefix()를 대신 사용하세요'\
-' (TASK-61 재발 패턴, Intel Mac에서 깨짐)' \
-  '/opt/homebrew' \
+check '하드코딩된 /opt/homebrew 또는 /usr/local — lt_homebrew_prefix()를 대신 사용하세요'\
+' (TASK-61/148 재발 패턴, Apple Silicon·Intel Mac 중 한쪽에서 깨짐)' \
+  '(/opt/homebrew|/usr/local)' \
   "$HOMEBREW_PREFIX_ALLOWLIST" "$@"
 
 # shellcheck disable=SC2016
