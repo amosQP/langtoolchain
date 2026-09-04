@@ -1194,6 +1194,23 @@ version_core() {
 # a test can shrink it instead of waiting out a real timeout.
 LT_VERSION_FETCH_TIMEOUT="${LT_VERSION_FETCH_TIMEOUT:-5}"
 
+# LT_PYTHON_TAGS_TIMEOUT (TASK-145.2): the python branch below lists
+# cpython's ENTIRE tag history (1000+ tags, final releases mixed with
+# pre-releases) via `git ls-remote --tags --refs`, unlike every other
+# branch here which fetches a few hundred bytes of JSON for a single
+# already-latest value - LT_VERSION_FETCH_TIMEOUT's 5s default is tuned
+# for that JSON case and this call routinely exceeds it even on a normal
+# connection, so lt_run_with_timeout() kills it and the caller silently
+# falls back to a stale static default (the feature never actually
+# engages). A server-side refs filter (e.g. `refs/tags/v3.*`) was
+# considered instead of a bigger budget, but rejected: it would require
+# already knowing the latest major.minor to filter for, which is exactly
+# what this call exists to discover - filtering could silently miss a
+# new major/minor's tags. Given its own larger budget instead.
+# Override-able like LT_VERSION_FETCH_TIMEOUT (test can shrink it), so
+# not readonly.
+LT_PYTHON_TAGS_TIMEOUT="${LT_PYTHON_TAGS_TIMEOUT:-20}"
+
 # lt_adoptium_arch: prints the CPU architecture name Adoptium's API expects
 # (used by lt_upstream_latest_version's java case below) - different from
 # lt_homebrew_prefix's own uname -m mapping only in spelling ("aarch64" vs
@@ -1277,6 +1294,7 @@ lt_json_field() {
 # Fetch a plugin's latest stable version from its official upstream index.
 # Globals:
 #   LT_VERSION_FETCH_TIMEOUT
+#   LT_PYTHON_TAGS_TIMEOUT
 # Arguments:
 #   $1: asdf plugin name
 # Outputs:
@@ -1348,13 +1366,17 @@ lt_upstream_latest_version() {
       # connection blackholes during DNS/TCP/TLS handshake, before any byte
       # has moved (TASK-131.2/decision-10). lt_run_with_timeout (TASK-138.1)
       # wraps the whole call in a hard wall-clock kill so that case can't
-      # hang past LT_VERSION_FETCH_TIMEOUT either - the two guards are kept
+      # hang past LT_PYTHON_TAGS_TIMEOUT either - the two guards are kept
       # together rather than one replacing the other, since the lowSpeed*
       # flags cost nothing extra and still cover the "slow, not stalled"
       # case a bit more gracefully (git's own clean abort vs. a SIGTERM).
-      body="$(lt_run_with_timeout "$LT_VERSION_FETCH_TIMEOUT" git \
+      # Its own larger LT_PYTHON_TAGS_TIMEOUT budget (TASK-145.2), not the
+      # shared LT_VERSION_FETCH_TIMEOUT every other branch above uses -
+      # listing cpython's entire tag history is a much bigger call than a
+      # few hundred bytes of JSON, and routinely overran the 5s default.
+      body="$(lt_run_with_timeout "$LT_PYTHON_TAGS_TIMEOUT" git \
         -c http.lowSpeedLimit=1000 \
-        -c http.lowSpeedTime="$LT_VERSION_FETCH_TIMEOUT" \
+        -c http.lowSpeedTime="$LT_PYTHON_TAGS_TIMEOUT" \
         ls-remote --tags --refs https://github.com/python/cpython.git \
         2>/dev/null)" || return 1
       printf '%s\n' "$body" |

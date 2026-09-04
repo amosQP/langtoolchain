@@ -62,7 +62,9 @@ Describe 'scripts/install/01_bootstrap_asdf.sh'
     # the file is *executed* as its own process (`When run`, where the
     # shell sets $0 to the script path) - sourcing it with `.` leaves $0 as
     # shellspec's own, so SCRIPT_DIR resolves to the wrong directory and
-    # lib.sh (and LT_VERSION_FETCH_TIMEOUT with it) never actually loads.
+    # lib.sh never actually loads (LT_DOWNLOAD_TIMEOUT itself is declared
+    # in this file, not lib.sh, but the same sibling-source limitation
+    # still applies to a `When call` test here).
     # And reaching this function through a real `When run` requires brew to
     # be genuinely absent from PATH, which - per this file's header comment
     # above - Mock can't simulate (it only adds a fake command to PATH, it
@@ -72,13 +74,13 @@ Describe 'scripts/install/01_bootstrap_asdf.sh'
     # Homebrew installer fetch has a hard timeout like every other
     # network call in this diff), a static assertion instead of a dynamic
     # one.
-    It 'passes --max-time LT_VERSION_FETCH_TIMEOUT to the installer'\
+    It 'passes --max-time LT_DOWNLOAD_TIMEOUT to the installer'\
 ' fetch, like every other curl call in this file'
       fetch_line="$(grep -n 'curl -fsSL' "$SCRIPT" |
         grep 'HOMEBREW_INSTALL_URL')"
       When call echo "$fetch_line"
       The output should include '--max-time'
-      The output should include 'LT_VERSION_FETCH_TIMEOUT'
+      The output should include 'LT_DOWNLOAD_TIMEOUT'
     End
   End
 End

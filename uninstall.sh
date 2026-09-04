@@ -60,6 +60,55 @@ WORKDIR="$(mktemp -d)"
 readonly WORKDIR
 trap 'rm -rf "$WORKDIR"' EXIT
 
+# CLONE_FETCH_TIMEOUT / clone_fetch_with_timeout (TASK-145.3): see
+# install.sh's copy of these for the full reasoning — a small inline
+# duplicate of lt_run_with_timeout()'s (scripts/lib.sh, TASK-138.1)
+# wall-clock-kill idea, since this file can't source lib.sh (no repo on
+# disk yet) or rely on timeout(1)/gtimeout(1) (pre-Homebrew, decision-10)
+# either. `git fetch` alone has no wall-clock cap against a DNS/TCP/TLS
+# handshake blackhole (decision-10). Simpler than lt_run_with_timeout()
+# though: no stdout/stderr tempfile capture, since every caller here
+# already discards clone_pinned()'s output wholesale (`>/dev/null 2>&1`
+# in the retry loop below).
+readonly CLONE_FETCH_TIMEOUT="${LANGTOOLCHAIN_CLONE_TIMEOUT:-30}"
+
+#######################################
+# Run `git fetch --depth 1 origin <ref>` under a hard wall-clock timeout.
+# Globals:
+#   CLONE_FETCH_TIMEOUT
+# Arguments:
+#   $1: ref — commit SHA, tag, or branch name to fetch
+# Outputs:
+#   git's own (-q-quieted) output, same as any other step in clone_pinned().
+# Returns:
+#   124 if the fetch was killed for exceeding CLONE_FETCH_TIMEOUT;
+#   otherwise git fetch's own exit status.
+#######################################
+clone_fetch_with_timeout() {
+  local ref="$1" fetch_pid watchdog_pid status timeout_marker
+  timeout_marker="$(mktemp -u)"
+  git fetch -q --depth 1 origin "$ref" &
+  fetch_pid=$!
+  (
+    sleep "$CLONE_FETCH_TIMEOUT"
+    if kill -0 "$fetch_pid" 2>/dev/null; then
+      : > "$timeout_marker"
+      kill -TERM "$fetch_pid" 2>/dev/null
+    fi
+  ) &
+  watchdog_pid=$!
+  status=0
+  wait "$fetch_pid" || status=$?
+  kill "$watchdog_pid" 2>/dev/null
+  wait "$watchdog_pid" 2>/dev/null
+  if [ -f "$timeout_marker" ]; then
+    rm -f "$timeout_marker"
+    return 124
+  fi
+  rm -f "$timeout_marker"
+  return "$status"
+}
+
 # clone_pinned <ref>: see install.sh's copy of this function for the full
 # reasoning (fetches exactly <ref> — SHA, tag, or branch name — instead of
 # trusting whatever a branch currently points to; `git clone --branch`
@@ -76,7 +125,8 @@ trap 'rm -rf "$WORKDIR"' EXIT
 #   the caller redirects it (the retry loop below sends it to /dev/null).
 # Returns:
 #   0 if every git step succeeds; non-zero (the subshell's status) if any
-#   step in the init/remote/fetch/checkout chain fails.
+#   step in the init/remote/fetch/checkout chain fails (including 124 if
+#   the fetch step specifically timed out).
 #######################################
 clone_pinned() {
   rm -rf "$WORKDIR/langtoolchain"
@@ -85,7 +135,7 @@ clone_pinned() {
     cd "$WORKDIR/langtoolchain" &&
     git init -q &&
     git remote add origin "$REPO_URL" &&
-    git fetch -q --depth 1 origin "$1" &&
+    clone_fetch_with_timeout "$1" &&
     git checkout -q FETCH_HEAD
   )
 }
