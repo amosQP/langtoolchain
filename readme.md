@@ -45,6 +45,7 @@ curl -fsSL https://raw.githubusercontent.com/amosQP/langtoolchain/main/install.s
 - [빠른 시작](#-빠른-시작)
 - [사전 요구사항](#-사전-요구사항)
 - [설치/제거되는 것](#-설치제거되는-것)
+- [아키텍처](#-아키텍처)
 - [알려진 한계 / 기술적 한계](#-알려진-한계--기술적-한계)
 - [기여하기](#-기여하기)
 - [License](#-license)
@@ -164,6 +165,14 @@ curl -fsSL https://raw.githubusercontent.com/amosQP/langtoolchain/main/uninstall
 
 실행 전 한 번 확인을 물으며(`--yes`로 생략 가능), `--dry-run`도 동일하게 지원합니다. 설치/제거
 후에는 `exec $SHELL`로 새 셸 세션을 열어야 PATH 등 캐시된 상태가 완전히 사라집니다.
+
+<br>
+
+## 🗺️ 아키텍처
+
+install.sh/uninstall.sh가 각각 어떤 phase를 순서대로 거치는지, uninstall의 안전장치
+(설치 전부터 있던 asdf 상태는 안 지운다)가 정확히 어느 지점에서 개입하는지를 다이어그램
+으로 정리해뒀습니다 — [docs/architecture.md](docs/architecture.md).
 
 <br>
 

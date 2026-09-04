@@ -45,6 +45,7 @@ Every new Mac meant reinstalling Homebrew and asdf, adding plugins, and fixing `
 - [Quick Start](#-quick-start)
 - [Prerequisites](#-prerequisites)
 - [What Gets Installed / Removed](#-what-gets-installed--removed)
+- [Architecture](#-architecture)
 - [Known Limitations / Technical Limitations](#-known-limitations--technical-limitations)
 - [Contributing](#-contributing)
 - [License](#-license)
@@ -168,6 +169,14 @@ curl -fsSL https://raw.githubusercontent.com/amosQP/langtoolchain/main/uninstall
 Asks for confirmation once before running (skip with `--yes`); `--dry-run` is supported the same way.
 After installing/uninstalling, open a new shell session with `exec $SHELL` so cached state like PATH is
 fully gone.
+
+<br>
+
+## 🗺️ Architecture
+
+A diagram of the exact phase order install.sh/uninstall.sh each walk through, and precisely
+where uninstall's safety net (never delete asdf state that predates this tool) kicks in —
+see [docs/architecture.md](docs/architecture.md).
 
 <br>
 
