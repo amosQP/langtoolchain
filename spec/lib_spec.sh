@@ -1079,6 +1079,21 @@ RUNNER_EOF
       The output should eq '12.3.1'
     End
 
+    It 'treats a future-timestamped cache entry (clock skew) as'\
+' stale and re-fetches'
+      # ts 3600s in the future - e.g. the system clock jumped forward
+      # and then got corrected back by NTP. now - ts is negative here,
+      # which must not be misread as "well under the TTL".
+      printf 'pnpm|||%s|||9.9.9\n' "$(($(date +%s) + 3600))" \
+        > "$LT_VERSION_CACHE_FILE"
+      Mock curl
+        echo '{"version":"12.3.1"}'
+      End
+      When call lt_resolve_default_version pnpm '10.33.0'
+      The status should be success
+      The output should eq '12.3.1'
+    End
+
     It 'only refreshes the plugin it looked up - other cached'\
 ' plugins are left alone'
       printf 'pnpm|||%s|||9.9.9\n' "$(date +%s)" > "$LT_VERSION_CACHE_FILE"

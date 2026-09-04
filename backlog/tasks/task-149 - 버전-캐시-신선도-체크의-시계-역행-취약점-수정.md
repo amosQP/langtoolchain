@@ -1,9 +1,10 @@
 ---
 id: TASK-149
 title: 버전 캐시 신선도 체크의 시계 역행 취약점 수정
-status: To Do
+status: In Progress
 assignee: []
 created_date: '2026-09-04 08:57'
+updated_date: '2026-09-04 13:52'
 labels: []
 milestone: m-17
 dependencies: []
