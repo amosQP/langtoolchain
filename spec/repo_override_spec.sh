@@ -40,8 +40,10 @@ Describe 'LANGTOOLCHAIN_REPO_URL / LANGTOOLCHAIN_BRANCH override (TASK-117.6)'
     old_sha="$(cd "$src" && git rev-parse HEAD)"
 
     mkdir -p "$src/scripts/install" "$src/scripts/uninstall"
-    printf '#!/bin/sh\necho "MARKER: install-pinned-ok $*"\n' > "$src/scripts/install/main.sh"
-    printf '#!/bin/sh\necho "MARKER: uninstall-pinned-ok $*"\n' > "$src/scripts/uninstall/main.sh"
+    printf '#!/bin/sh\necho "MARKER: install-pinned-ok $*"\n' \
+      > "$src/scripts/install/main.sh"
+    printf '#!/bin/sh\necho "MARKER: uninstall-pinned-ok $*"\n' \
+      > "$src/scripts/uninstall/main.sh"
     chmod +x "$src/scripts/install/main.sh" "$src/scripts/uninstall/main.sh"
     ( cd "$src" &&
       git add scripts &&
@@ -63,10 +65,12 @@ Describe 'LANGTOOLCHAIN_REPO_URL / LANGTOOLCHAIN_BRANCH override (TASK-117.6)'
       When run command sh -c 'LANGTOOLCHAIN_REPO_URL="file://$1" LANGTOOLCHAIN_BRANCH="$2" sh -s -- --dry-run < ./install.sh' -- "$bare" "$new_sha"
       The status should be success
       The output should include 'MARKER: install-pinned-ok --dry-run'
-      The error should include 'WARNING: LANGTOOLCHAIN_REPO_URL/LANGTOOLCHAIN_BRANCH override detected'
+      The error should include 'WARNING: LANGTOOLCHAIN_REPO_URL/'\
+'LANGTOOLCHAIN_BRANCH override detected'
     End
 
-    It 'checks out the OLD commit, not the branch tip, when pinned to it (proves exact-ref fetch, not "latest")'
+    It 'checks out the OLD commit, not the branch tip, when pinned to'\
+' it (proves exact-ref fetch, not "latest")'
       When run command sh -c 'LANGTOOLCHAIN_REPO_URL="file://$1" LANGTOOLCHAIN_BRANCH="$2" sh -s -- --dry-run < ./install.sh' -- "$bare" "$old_sha"
       The status should be failure
       The error should include 'main.sh: No such file or directory'
@@ -78,7 +82,8 @@ Describe 'LANGTOOLCHAIN_REPO_URL / LANGTOOLCHAIN_BRANCH override (TASK-117.6)'
       When run command sh -c 'LANGTOOLCHAIN_REPO_URL="file://$1" LANGTOOLCHAIN_BRANCH="$2" sh -s -- --dry-run < ./uninstall.sh' -- "$bare" "$new_sha"
       The status should be success
       The output should include 'MARKER: uninstall-pinned-ok --dry-run'
-      The error should include 'WARNING: LANGTOOLCHAIN_REPO_URL/LANGTOOLCHAIN_BRANCH override detected'
+      The error should include 'WARNING: LANGTOOLCHAIN_REPO_URL/'\
+'LANGTOOLCHAIN_BRANCH override detected'
     End
   End
 End
