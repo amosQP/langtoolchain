@@ -1,9 +1,10 @@
 ---
 id: TASK-145.2
 title: python git ls-remote를 더 큰 타임아웃 또는 부분 페치로 전환
-status: To Do
+status: In Progress
 assignee: []
 created_date: '2026-09-04 08:56'
+updated_date: '2026-09-04 13:56'
 labels: []
 dependencies: []
 parent_task_id: TASK-145

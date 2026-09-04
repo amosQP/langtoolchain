@@ -938,7 +938,7 @@ RUNNER_EOF
       Mock git
         sleep 30
       End
-      LT_VERSION_FETCH_TIMEOUT=1
+      LT_PYTHON_TAGS_TIMEOUT=1
       start_ts=$(date +%s)
       status=0
       lt_upstream_latest_version python >/dev/null || status=$?
