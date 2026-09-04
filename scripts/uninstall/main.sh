@@ -33,7 +33,8 @@ done
 export DRY_RUN
 
 printf '%s\n' "langtoolchain uninstaller"
-printf '%s\n' "This will remove asdf, every asdf-managed runtime, the related Homebrew packages, and the shell config this tool added."
+printf '%s%s\n' "This will remove asdf, every asdf-managed runtime," \
+  " the related Homebrew packages, and the shell config this tool added."
 
 # confirm_uninstall (m-8): extracted so main.sh's own top-level flow reads
 # as a named step (see the call right below this function) instead of this
