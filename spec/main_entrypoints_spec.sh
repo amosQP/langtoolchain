@@ -30,7 +30,8 @@ Describe 'install.sh -> scripts/install/main.sh (flag validation)'
     The error should include 'Unknown option: --bogus-flag'
   End
 
-  It 'releases the lock even when rejecting an unknown flag (EXIT trap still fires)'
+  It 'releases the lock even when rejecting an unknown flag (EXIT'\
+' trap still fires)'
     "$SCRIPT" --bogus-flag 2>/dev/null || true
     When call true
     The path "$lock_dir" should not be exist
@@ -54,7 +55,8 @@ Describe 'uninstall.sh -> scripts/uninstall/main.sh (flag validation)'
     The error should include 'Unknown option: --bogus-flag'
   End
 
-  It 'releases the lock even when rejecting an unknown flag (EXIT trap still fires)'
+  It 'releases the lock even when rejecting an unknown flag (EXIT'\
+' trap still fires)'
     "$SCRIPT" --bogus-flag 2>/dev/null || true
     When call true
     The path "$lock_dir" should not be exist

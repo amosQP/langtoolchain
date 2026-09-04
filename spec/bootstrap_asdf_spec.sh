@@ -72,8 +72,10 @@ Describe 'scripts/install/01_bootstrap_asdf.sh'
     # Homebrew installer fetch has a hard timeout like every other
     # network call in this diff), a static assertion instead of a dynamic
     # one.
-    It 'passes --max-time LT_VERSION_FETCH_TIMEOUT to the installer fetch, like every other curl call in this file'
-      fetch_line="$(grep -n 'curl -fsSL' "$SCRIPT" | grep 'HOMEBREW_INSTALL_URL')"
+    It 'passes --max-time LT_VERSION_FETCH_TIMEOUT to the installer'\
+' fetch, like every other curl call in this file'
+      fetch_line="$(grep -n 'curl -fsSL' "$SCRIPT" |
+        grep 'HOMEBREW_INSTALL_URL')"
       When call echo "$fetch_line"
       The output should include '--max-time'
       The output should include 'LT_VERSION_FETCH_TIMEOUT'
