@@ -70,7 +70,8 @@ fetch_verified_homebrew_installer() {
   curl -fsSL --max-time "$LT_VERSION_FETCH_TIMEOUT" -o "$dest" "$HOMEBREW_INSTALL_URL" || return 1
   actual_sha256="$(shasum -a 256 "$dest" | awk '{print $1}')"
   if [ "$actual_sha256" != "$HOMEBREW_INSTALL_SHA256" ]; then
-    log "  Homebrew installer checksum mismatch: expected $HOMEBREW_INSTALL_SHA256, got $actual_sha256 — refusing to run it."
+    log "  Homebrew installer checksum mismatch: expected" \
+      "$HOMEBREW_INSTALL_SHA256, got $actual_sha256 — refusing to run it."
     return 1
   fi
 }
@@ -134,13 +135,15 @@ install_homebrew_if_missing() {
     log "Homebrew found: $(command -v brew)"
     return
   fi
-  log "Homebrew not found — installing (this will ask for your password once, via sudo)..."
+  log "Homebrew not found — installing (this will ask for your" \
+    "password once, via sudo)..."
   if [ "$DRY_RUN" = "true" ]; then
     # `run` alone can't gate this: the real branch's fetch happens inside a
     # function call, not a command substitution `run` could inspect from
     # the outside — gate the whole fetch+verify+execute at this if/else
     # instead, same as before.
-    log "  + fetch $HOMEBREW_INSTALL_URL, verify sha256 == $HOMEBREW_INSTALL_SHA256, then NONINTERACTIVE=1 bash <verified file>"
+    log "  + fetch $HOMEBREW_INSTALL_URL, verify sha256 ==" \
+      "$HOMEBREW_INSTALL_SHA256, then NONINTERACTIVE=1 bash <verified file>"
   else
     # retry (TASK-88): `run_homebrew_installer` (defined above the two
     # top-level calls at the bottom of this file) does its own fresh
@@ -156,13 +159,15 @@ install_homebrew_if_missing() {
   ensure_brew_on_path
   if [ "$DRY_RUN" != "true" ]; then
     command -v brew >/dev/null 2>&1 || die \
-      "Homebrew install finished but 'brew' still isn't on PATH. Open a new terminal and re-run this installer."
+      "Homebrew install finished but 'brew' still isn't on PATH." \
+      "Open a new terminal and re-run this installer."
     log "Homebrew installed: $(command -v brew)"
     lt_report installed "Homebrew ($(command -v brew))"
   fi
 }
 
-# install_asdf_if_missing (m-8): same reasoning as install_homebrew_if_missing above.
+# install_asdf_if_missing (m-8): same reasoning as
+# install_homebrew_if_missing above.
 #######################################
 # Install asdf (via Homebrew) if it isn't already installed.
 # Globals:
