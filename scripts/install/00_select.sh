@@ -164,7 +164,8 @@ tty_out() { printf '%s\n' "$*" > /dev/tty; }
 # Returns:
 #   None
 #######################################
-tty_prompt() { printf '%s' "$*" > /dev/tty; }   # no trailing newline: prompt stays on the input line
+# No trailing newline: prompt stays on the input line.
+tty_prompt() { printf '%s' "$*" > /dev/tty; }
 
 # ANSI escape building blocks for lt_arrow_menu below, and the raw-mode
 # safety net: _LT_RAW_STTY holds the terminal's pre-raw-mode settings
@@ -358,7 +359,11 @@ lt_arrow_menu() {
     tty_out "$question"
     i=1
     for opt in "$@"; do
-      if [ "$i" -eq "$selected" ]; then tty_out "  $i) $opt (default)"; else tty_out "  $i) $opt"; fi
+      if [ "$i" -eq "$selected" ]; then
+        tty_out "  $i) $opt (default)"
+      else
+        tty_out "  $i) $opt"
+      fi
       i=$((i + 1))
     done
     tty_prompt "  > "
@@ -381,10 +386,27 @@ lt_arrow_menu() {
   while :; do
     action="$(lt_read_menu_key "$n")"
     case "$action" in
-      UP)   if [ "$selected" -gt 1 ]; then selected=$((selected - 1)); else selected=$n; fi ;;
-      DOWN) if [ "$selected" -lt "$n" ]; then selected=$((selected + 1)); else selected=1; fi ;;
+      UP)
+        if [ "$selected" -gt 1 ]; then
+          selected=$((selected - 1))
+        else
+          selected=$n
+        fi
+        ;;
+      DOWN)
+        if [ "$selected" -lt "$n" ]; then
+          selected=$((selected + 1))
+        else
+          selected=1
+        fi
+        ;;
       ENTER) stty "$old_stty" < /dev/tty; _LT_RAW_STTY=""; break ;;
-      [1-9]) selected="$action"; stty "$old_stty" < /dev/tty; _LT_RAW_STTY=""; break ;;
+      [1-9])
+        selected="$action"
+        stty "$old_stty" < /dev/tty
+        _LT_RAW_STTY=""
+        break
+        ;;
     esac
     printf '%s[%dA' "$_LT_ESC" "$((n + 1))" > /dev/tty
     lt_draw_arrow_menu "$question" "$@"
@@ -450,7 +472,8 @@ ask_yes_no() {
 #######################################
 ask_version() {
   local default="$1" custom
-  if [ "$(lt_arrow_menu "Version:" 1 "$default (default)" "Enter a specific version")" = "2" ]; then
+  if [ "$(lt_arrow_menu "Version:" 1 "$default (default)" \
+    "Enter a specific version")" = "2" ]; then
     tty_prompt "  Version > "
     read -r custom < /dev/tty || custom=""
     [ -n "$custom" ] && printf '%s\n' "$custom" || printf '%s\n' "$default"
@@ -486,7 +509,8 @@ if ! $INTERACTIVE || $SELECT_ALL; then
   # write to at all in this exact branch, and stdout is reserved for the
   # OUT_FILE path handoff below.
   if ! $INTERACTIVE && ! $SELECT_ALL; then
-    echo "No controlling terminal detected - installing every language in $DEFAULT_CONFIG (same as --all)." >&2
+    echo "No controlling terminal detected - installing every language" \
+      "in $DEFAULT_CONFIG (same as --all)." >&2
   fi
   write_with_scope "$DEFAULT_CONFIG" "$OUT_FILE"
   SUCCESS=true
@@ -545,7 +569,8 @@ done < "$EACH_TOOL_TMP"
 #   None
 #######################################
 lt_offer_language() {
-  local plugin="$1" default_version="$2" cmd version companion companion_default companion_version
+  local plugin="$1" default_version="$2" cmd version companion
+  local companion_default companion_version
   # Just for a friendlier prompt line, e.g. "nodejs (node)".
   cmd="$(binary_for_plugin "$plugin")"
   tty_out ""
@@ -555,7 +580,8 @@ lt_offer_language() {
     # decision: waiting on this alongside a prompt the user is already
     # answering is imperceptible; fetching for languages they end up
     # declining would just be wasted network calls).
-    version="$(ask_version "$(lt_resolve_default_version "$plugin" "$default_version")")"
+    version="$(ask_version \
+      "$(lt_resolve_default_version "$plugin" "$default_version")")"
 
     # Record this language/version as one line of the selection file.
     printf '%s %s\n' "$plugin" "$version" >> "$OUT_FILE"
@@ -566,10 +592,12 @@ lt_offer_language() {
     # can pass - has nothing to offer, so silently skip rather than
     # prompting for a version with no default).
     for companion in $(lt_companion_for_plugin "$plugin"); do
-      companion_default="$(awk -v p="$companion" '$1 == p { print $2; exit }' "$EACH_TOOL_TMP")"
+      companion_default="$(awk -v p="$companion" \
+        '$1 == p { print $2; exit }' "$EACH_TOOL_TMP")"
       [ -n "$companion_default" ] || continue
       if ask_yes_no "  Also install $companion (companion to $plugin)?"; then
-        companion_version="$(ask_version "$(lt_resolve_default_version "$companion" "$companion_default")")"
+        companion_version="$(ask_version \
+          "$(lt_resolve_default_version "$companion" "$companion_default")")"
         printf '%s %s\n' "$companion" "$companion_version" >> "$OUT_FILE"
       fi
     done
@@ -602,7 +630,8 @@ tty_out ""
 
 # Ask where to pin these versions, unless --local[=DIR] already decided it.
 if [ -z "$SCOPE" ]; then
-  if [ "$(lt_arrow_menu "Pin these versions:" 1 "Globally" "Only in this directory")" = "2" ]; then
+  if [ "$(lt_arrow_menu "Pin these versions:" 1 "Globally" \
+    "Only in this directory")" = "2" ]; then
     tty_prompt "  Which directory? [default: current directory] > "
     read -r scope_dir_answer < /dev/tty || scope_dir_answer=""
     SCOPE_DIR="$(resolve_scope_dir "${scope_dir_answer:-$(pwd)}")"
