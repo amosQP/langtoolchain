@@ -1,9 +1,10 @@
 ---
 id: TASK-136.1
 title: 후보 도구 목록화 및 POSIX sh 지원 범위 확인
-status: To Do
+status: In Progress
 assignee: []
 created_date: '2026-09-03 11:31'
+updated_date: '2026-09-04 19:58'
 labels: []
 dependencies: []
 parent_task_id: TASK-136
