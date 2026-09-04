@@ -38,14 +38,19 @@ fi
 
 # `curl | sh`: no local checkout exists, so fetch a throwaway one.
 command -v git >/dev/null 2>&1 || {
-  printf '%s\n' "ERROR: git is required for the one-line uninstaller (macOS ships it with Xcode Command Line Tools)." >&2
+  printf '%s%s\n' "ERROR: git is required for the one-line uninstaller " \
+    "(macOS ships it with Xcode Command Line Tools)." >&2
   exit 1
 }
 
 # See install.sh's copy of this check for the reasoning — only fires once
 # we're actually about to fetch over the network.
-if [ -n "${LANGTOOLCHAIN_REPO_URL:-}" ] || [ -n "${LANGTOOLCHAIN_BRANCH:-}" ]; then
-  printf '%s\n' "WARNING: LANGTOOLCHAIN_REPO_URL/LANGTOOLCHAIN_BRANCH override detected (REPO_URL=$REPO_URL, BRANCH=$BRANCH) — this source has not been reviewed or pinned by this tool. Only use this to test your own fork/branch." >&2
+if [ -n "${LANGTOOLCHAIN_REPO_URL:-}" ] ||
+   [ -n "${LANGTOOLCHAIN_BRANCH:-}" ]; then
+  printf '%s%s%s%s\n' "WARNING: LANGTOOLCHAIN_REPO_URL/LANGTOOLCHAIN_BRANCH " \
+    "override detected (REPO_URL=$REPO_URL, BRANCH=$BRANCH) — this source " \
+    "has not been reviewed or pinned by this tool. Only use this to test " \
+    "your own fork/branch." >&2
 fi
 
 # Deliberately NOT `exec`d below — see install.sh for why: exec replaces

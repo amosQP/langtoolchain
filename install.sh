@@ -66,15 +66,20 @@ fi
 
 # Running via `curl | bash` — there is no local checkout, so fetch one.
 command -v git >/dev/null 2>&1 || {
-  printf '%s\n' "ERROR: git is required for the one-line installer (macOS ships it with Xcode Command Line Tools)." >&2
+  printf '%s%s\n' "ERROR: git is required for the one-line installer (macOS " \
+    "ships it with Xcode Command Line Tools)." >&2
   exit 1
 }
 
 # Only reachable once we're actually about to fetch over the network, so
 # this never fires on the local-clone shortcut above (which doesn't use
 # REPO_URL/BRANCH at all).
-if [ -n "${LANGTOOLCHAIN_REPO_URL:-}" ] || [ -n "${LANGTOOLCHAIN_BRANCH:-}" ]; then
-  printf '%s\n' "WARNING: LANGTOOLCHAIN_REPO_URL/LANGTOOLCHAIN_BRANCH override detected (REPO_URL=$REPO_URL, BRANCH=$BRANCH) — this source has not been reviewed or pinned by this tool. Only use this to test your own fork/branch." >&2
+if [ -n "${LANGTOOLCHAIN_REPO_URL:-}" ] ||
+   [ -n "${LANGTOOLCHAIN_BRANCH:-}" ]; then
+  printf '%s%s%s%s\n' "WARNING: LANGTOOLCHAIN_REPO_URL/LANGTOOLCHAIN_BRANCH " \
+    "override detected (REPO_URL=$REPO_URL, BRANCH=$BRANCH) — this source " \
+    "has not been reviewed or pinned by this tool. Only use this to test " \
+    "your own fork/branch." >&2
 fi
 
 # A scratch directory for the throwaway clone.
