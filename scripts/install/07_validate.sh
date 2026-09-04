@@ -53,7 +53,8 @@ each_tool "$CONFIG_FILE" > "$EACH_TOOL_TMP"
 #   deliberate policy (decision-3) — a WARN never fails the check.
 #######################################
 validate_one_tool() {
-  local plugin="$1" version="$2" cmd flag resolved_path version_line expected_core
+  local plugin="$1" version="$2" cmd flag resolved_path
+  local version_line expected_core
   # e.g. "nodejs" -> "node", so we know which command to actually check.
   cmd="$(binary_for_plugin "$plugin")"
   # e.g. "node" -> "-v", the flag that prints that command's version.
@@ -83,7 +84,12 @@ validate_one_tool() {
     # docs/download-points-inventory.md #9) - whatever this installer just
     # verified/pinned (TASK-117.1/117.2) doesn't cover $cmd once something
     # else is what actually runs when you type it.
-    *) log "  WARN: $cmd resolves outside asdf shims ($resolved_path) — something earlier on PATH is shadowing it; the binary that actually runs isn't the one this installer set up, and isn't covered by anything this installer verifies" ;;
+    *)
+      log "  WARN: $cmd resolves outside asdf shims ($resolved_path) —" \
+        "something earlier on PATH is shadowing it; the binary that" \
+        "actually runs isn't the one this installer set up, and isn't" \
+        "covered by anything this installer verifies"
+      ;;
   esac
 
   # Some tools (java) print their version to stderr, hence 2>&1. First line
@@ -104,7 +110,8 @@ validate_one_tool() {
   if [ -n "$expected_core" ]; then
     case "$version_line" in
       *"$expected_core"*) log "        $version_line" ;;
-      *) log "  WARN: $cmd reports '$version_line', expected version matching '$version'" ;;
+      *) log "  WARN: $cmd reports '$version_line', expected version" \
+        "matching '$version'" ;;
     esac
   else
     log "        $version_line"
@@ -118,7 +125,8 @@ done 3< "$EACH_TOOL_TMP"
 rm -f "$EACH_TOOL_TMP"
 
 log ""
-log "If there are any FAIL/WARN items above: run 'source $RC_FILE' (or open a new terminal) and check again."
+log "If there are any FAIL/WARN items above: run 'source $RC_FILE'" \
+  "(or open a new terminal) and check again."
 
 # Mirrors 06_validate_teardown.sh's OK-tracking exit: a FAIL here means a
 # tool a phase claimed to install isn't actually usable, so a CI/wrapper
