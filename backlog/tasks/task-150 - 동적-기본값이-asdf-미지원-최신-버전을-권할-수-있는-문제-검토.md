@@ -1,13 +1,15 @@
 ---
 id: TASK-150
 title: 동적 기본값이 asdf 미지원 최신 버전을 권할 수 있는 문제 검토
-status: To Do
+status: In Progress
 assignee: []
 created_date: '2026-09-04 08:57'
+updated_date: '2026-09-04 13:55'
 labels: []
 milestone: m-17
 dependencies: []
 references:
+  - decision-12
   - TASK-128
 priority: low
 type: spike
