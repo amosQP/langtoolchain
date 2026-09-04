@@ -1,9 +1,10 @@
 ---
 id: TASK-146
 title: java 버전 조회 브랜치의 exit code 계약 위반 수정
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-09-04 08:57'
+updated_date: '2026-09-04 13:59'
 labels: []
 milestone: m-17
 dependencies: []
@@ -26,3 +27,9 @@ if/fi 의미상 조건이 거짓이고 아무 분기도 안 돌면 그 자체의
 빈 문자열 여부만 체크해서 우연히 안 드러나 있지만, 계약을 그대로 믿는 새 호출부가 추가되면
 빈 문자열을 유효한 버전으로 오인할 수 있는 잠재적 함정이다. else 분기에 return 1 추가.
 <!-- SECTION:DESCRIPTION:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+scripts/lib.sh의 lt_upstream_latest_version() java 브랜치에 else return 1 추가로 exit code 계약(실패 시 1 반환) 위반 수정. spec/lib_spec.sh에 두 번째 curl 호출은 성공하지만 semver가 파싱되지 않는 케이스 추가 — 수정 전 코드로 되돌려 실행하면 이 테스트가 실패(status success인데 failure 기대)하는 것으로 회귀 방지 확인. 전체 스위트 178 examples, 0 failures.
+<!-- SECTION:FINAL_SUMMARY:END -->

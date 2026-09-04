@@ -998,6 +998,20 @@ RUNNER_EOF
       The status should be failure
       The output should eq ''
     End
+
+    It 'fails cleanly (TASK-146) when the asset lookup succeeds but its'\
+' body has no parseable semver'
+      Mock curl
+        case "$*" in
+          *available_releases*) echo '{"most_recent_lts":25}' ;;
+          *assets/latest*) echo '{"version":{}}' ;;
+          *) exit 1 ;;
+        esac
+      End
+      When call lt_upstream_latest_version java
+      The status should be failure
+      The output should eq ''
+    End
   End
 
   Describe 'lt_resolve_default_version() (m-12/TASK-119.2/TASK-119.3)'

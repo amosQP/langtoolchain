@@ -1382,6 +1382,8 @@ lt_upstream_latest_version() {
       semver="$(printf '%s\n' "$body" | lt_json_field semver)"
       if [ -n "$semver" ]; then
         printf 'temurin-%s\n' "$semver"
+      else
+        return 1
       fi
       ;;
     uv)
