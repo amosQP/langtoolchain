@@ -48,4 +48,6 @@ while read -r plugin version <&3; do
 done 3< "$EACH_TOOL_TMP"
 rm -f "$EACH_TOOL_TMP"
 
-[ -z "$FAILED" ] || die "One or more runtimes failed to install: $FAILED. Re-run to retry just the missing ones (asdf skips what's already installed)."
+[ -z "$FAILED" ] || die "One or more runtimes failed to install:" \
+  "$FAILED. Re-run to retry just the missing ones" \
+  "(asdf skips what's already installed)."
