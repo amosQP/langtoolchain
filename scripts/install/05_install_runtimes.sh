@@ -4,6 +4,7 @@
 # file edits to already be sourced into this process.
 set -eu
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+readonly SCRIPT_DIR
 . "$SCRIPT_DIR/../lib.sh"
 # `asdf install` needs `asdf` itself on PATH ...
 ensure_asdf_on_path
@@ -13,7 +14,8 @@ ensure_asdf_on_path
 ensure_build_flags
 
 REPO_ROOT="$(repo_root_from "$0")"
-CONFIG_FILE="${TOOL_VERSIONS_FILE:-$REPO_ROOT/.tool-versions}"
+readonly REPO_ROOT
+readonly CONFIG_FILE="${TOOL_VERSIONS_FILE:-$REPO_ROOT/.tool-versions}"
 [ -f "$CONFIG_FILE" ] || die "Config file not found: $CONFIG_FILE"
 
 step "Phase 5: Installing language runtimes (this can take a while)"
@@ -29,6 +31,7 @@ step "Phase 5: Installing language runtimes (this can take a while)"
 # `asdf set` a version that was never actually installed.
 FAILED=""
 EACH_TOOL_TMP="$(mktemp)"
+readonly EACH_TOOL_TMP
 each_tool "$CONFIG_FILE" > "$EACH_TOOL_TMP"
 while read -r plugin version <&3; do
   log "Installing $plugin $version ..."
@@ -45,4 +48,9 @@ while read -r plugin version <&3; do
 done 3< "$EACH_TOOL_TMP"
 rm -f "$EACH_TOOL_TMP"
 
-[ -z "$FAILED" ] || die "One or more runtimes failed to install: $FAILED. Re-run to retry just the missing ones (asdf skips what's already installed)."
+[ -z "$FAILED" ] || die "One or more runtimes failed to install:" \
+  "$FAILED. Re-run to retry just the missing ones" \
+  "(asdf skips what's already installed)." \
+  "If a failure keeps recurring, the asdf plugin may not support that" \
+  "version yet (decision-12) - check with 'asdf list all <plugin>' and" \
+  "pin an older version in .tool-versions if needed."

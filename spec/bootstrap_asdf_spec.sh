@@ -52,4 +52,35 @@ Describe 'scripts/install/01_bootstrap_asdf.sh'
     The output should include 'Phase 1'
     The error should include 'only supports macOS'
   End
+
+  Describe 'fetch_verified_homebrew_installer() curl call (TASK-131.1)'
+    # A dynamic Mock-based test (calling fetch_verified_homebrew_installer()
+    # directly with curl Mocked to simulate a timeout) was attempted first,
+    # the same way spec/lib_spec.sh's retry() tests call a lib.sh function
+    # directly. It doesn't work here: 01_bootstrap_asdf.sh locates its own
+    # sibling lib.sh via `dirname "$0"`, which only resolves correctly when
+    # the file is *executed* as its own process (`When run`, where the
+    # shell sets $0 to the script path) - sourcing it with `.` leaves $0 as
+    # shellspec's own, so SCRIPT_DIR resolves to the wrong directory and
+    # lib.sh never actually loads (LT_DOWNLOAD_TIMEOUT itself is declared
+    # in this file, not lib.sh, but the same sibling-source limitation
+    # still applies to a `When call` test here).
+    # And reaching this function through a real `When run` requires brew to
+    # be genuinely absent from PATH, which - per this file's header comment
+    # above - Mock can't simulate (it only adds a fake command to PATH, it
+    # can't remove the real one), and restricting PATH by hand breaks
+    # Mock's own prepend in this shellspec version. So this checks the
+    # fetch call's source line directly instead: same intent (confirm the
+    # Homebrew installer fetch has a hard timeout like every other
+    # network call in this diff), a static assertion instead of a dynamic
+    # one.
+    It 'passes --max-time LT_DOWNLOAD_TIMEOUT to the installer'\
+' fetch, like every other curl call in this file'
+      fetch_line="$(grep -n 'curl -fsSL' "$SCRIPT" |
+        grep 'HOMEBREW_INSTALL_URL')"
+      When call echo "$fetch_line"
+      The output should include '--max-time'
+      The output should include 'LT_DOWNLOAD_TIMEOUT'
+    End
+  End
 End

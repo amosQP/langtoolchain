@@ -20,7 +20,8 @@ Describe 'scripts/uninstall/06_validate_teardown.sh'
   AfterEach 'cleanup'
 
   Describe 'PATH check (custom ASDF_DATA_DIR)'
-    It 'reports OK when a clean PATH holds no leftover shims for a custom ASDF_DATA_DIR'
+    It 'reports OK when a clean PATH holds no leftover shims for a'\
+' custom ASDF_DATA_DIR'
       export ASDF_DATA_DIR="$data_dir" PATH="$clean_path" DRY_RUN=false
       unset -v JAVA_HOME
       When run "$SCRIPT"
@@ -29,37 +30,45 @@ Describe 'scripts/uninstall/06_validate_teardown.sh'
     End
 
     It 'reports FAIL when the custom ASDF_DATA_DIR shims path is still on PATH'
-      export ASDF_DATA_DIR="$data_dir" PATH="$data_dir/shims:$clean_path" DRY_RUN=false
+      export ASDF_DATA_DIR="$data_dir" PATH="$data_dir/shims:$clean_path" \
+        DRY_RUN=false
       unset -v JAVA_HOME
       When run "$SCRIPT"
-      The output should include 'FAIL: $ASDF_DATA_DIR/shims is still in this session'"'"'s PATH.'
+      The output should include 'FAIL: $ASDF_DATA_DIR/shims is still'\
+' in this session'"'"'s PATH.'
       The status should be failure
     End
   End
 
   Describe 'JAVA_HOME check (custom ASDF_DATA_DIR)'
     It 'reports OK when JAVA_HOME does not point into the custom ASDF_DATA_DIR'
-      export ASDF_DATA_DIR="$data_dir" PATH="$clean_path" JAVA_HOME="/usr/lib/jvm/system-java" DRY_RUN=false
+      export ASDF_DATA_DIR="$data_dir" PATH="$clean_path" \
+        JAVA_HOME="/usr/lib/jvm/system-java" DRY_RUN=false
       When run "$SCRIPT"
       The output should include 'OK:   JAVA_HOME not pointing at asdf.'
     End
 
     It 'reports FAIL when JAVA_HOME still points into the custom ASDF_DATA_DIR'
-      export ASDF_DATA_DIR="$data_dir" PATH="$clean_path" JAVA_HOME="$data_dir/installs/java/21.0.0" DRY_RUN=false
+      export ASDF_DATA_DIR="$data_dir" PATH="$clean_path" \
+        JAVA_HOME="$data_dir/installs/java/21.0.0" DRY_RUN=false
       When run "$SCRIPT"
-      The output should include 'FAIL: $JAVA_HOME still points into $ASDF_DATA_DIR.'
+      The output should include 'FAIL:'\
+' $JAVA_HOME still points into $ASDF_DATA_DIR.'
       The status should be failure
     End
   End
 
   Describe 'ASDF_DATA_DIR unset (falls back to lib.sh default)'
-    It 'still detects a leftover shim under $HOME/.asdf when ASDF_DATA_DIR is unset'
+    It 'still detects a leftover shim under $HOME/.asdf when'\
+' ASDF_DATA_DIR is unset'
       fake_home="$(mktemp -d)"
       mkdir -p "$fake_home/.asdf/shims"
-      export HOME="$fake_home" PATH="$fake_home/.asdf/shims:$clean_path" DRY_RUN=false
+      export HOME="$fake_home" PATH="$fake_home/.asdf/shims:$clean_path" \
+        DRY_RUN=false
       unset -v ASDF_DATA_DIR JAVA_HOME
       When run "$SCRIPT"
-      The output should include "FAIL: \$ASDF_DATA_DIR/shims is still in this session's PATH."
+      The output should include "FAIL: \$ASDF_DATA_DIR/shims is still in \
+this session's PATH."
       The status should be failure
       rm -rf "$fake_home"
     End
@@ -67,9 +76,11 @@ Describe 'scripts/uninstall/06_validate_teardown.sh'
 
   Describe 'DRY_RUN=true'
     It 'skips all validation instead of reporting false failures'
-      export ASDF_DATA_DIR="$data_dir" PATH="$data_dir/shims:$clean_path" DRY_RUN=true
+      export ASDF_DATA_DIR="$data_dir" PATH="$data_dir/shims:$clean_path" \
+        DRY_RUN=true
       When run "$SCRIPT"
-      The output should include '(dry-run: nothing was actually removed, skipping validation)'
+      The output should include '(dry-run: nothing was actually removed,'\
+' skipping validation)'
       The output should not include 'FAIL'
       The status should be success
     End

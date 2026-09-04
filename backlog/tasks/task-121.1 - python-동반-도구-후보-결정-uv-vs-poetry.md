@@ -1,11 +1,14 @@
 ---
 id: TASK-121.1
 title: python 동반 도구 후보 결정 (uv vs poetry)
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-08-30 12:01'
+updated_date: '2026-09-03 11:27'
 labels: []
 dependencies: []
+references:
+  - decision-5
 parent_task_id: TASK-121
 type: task
 ordinal: 158000
@@ -19,5 +22,17 @@ python 생태계의 대표 패키지 관리자 후보인 uv와 poetry 중 이 �
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 uv/poetry 중 하나(또는 둘 다 지원)가 결정되고 근거가 기록됨
+- [x] #1 uv/poetry 중 하나(또는 둘 다 지원)가 결정되고 근거가 기록됨
 <!-- AC:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+결정 내용/근거는 decision-5 참고. uv 채택, poetry 및 둘다지원안 기각.
+<!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+python 동반 도구 후보로 uv와 poetry를 비교 — asdf 플러그인 성숙도, 설치 방식(uv=단일 바이너리 vs poetry=pip/pipx 경유가 흔함, 이 저장소가 이미 asdf 플러그인 체계를 쓰는 점 고려), 생태계 최근 채택 추세를 근거로 uv 채택, poetry 및 둘 다 지원하는 안은 기각. 결정 근거는 decision-5에 기록, TASK-121.2 구현 입력이 됨.
+<!-- SECTION:FINAL_SUMMARY:END -->

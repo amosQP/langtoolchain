@@ -8,7 +8,8 @@
 Describe 'scripts/install/00_select.sh'
   SCRIPT='./scripts/install/00_select.sh'
 
-  It 'writes the default .tool-versions languages with a global scope line under --all'
+  It 'writes the default .tool-versions languages with a global scope'\
+' line under --all'
     When run "$SCRIPT" --all
     out_file="$(tail -n1 "$SHELLSPEC_STDOUT_FILE")"
     The status should be success
@@ -23,7 +24,8 @@ Describe 'scripts/install/00_select.sh'
     rm -f "$out_file"
   End
 
-  It 'writes a local scope line pointing at the given directory under --local=DIR'
+  It 'writes a local scope line pointing at the given directory under'\
+' --local=DIR'
     target_dir="$(mktemp -d)"
     When run "$SCRIPT" --all --local="$target_dir"
     out_file="$(tail -n1 "$SHELLSPEC_STDOUT_FILE")"
@@ -34,13 +36,15 @@ Describe 'scripts/install/00_select.sh'
     rmdir "$target_dir"
   End
 
-  It 'fails with a clear error when --local points at a directory that does not exist'
+  It 'fails with a clear error when --local points at a directory that'\
+' does not exist'
     When run "$SCRIPT" --all --local=/no/such/directory/anywhere
     The status should be failure
     The error should include 'Directory not found'
   End
 
-  It 'has no controlling tty in this test process, so a bare run also takes the non-interactive path'
+  It 'has no controlling tty in this test process, so a bare run also'\
+' takes the non-interactive path'
     When run "$SCRIPT"
     out_file="$(tail -n1 "$SHELLSPEC_STDOUT_FILE")"
     The status should be success
@@ -52,7 +56,8 @@ Describe 'scripts/install/00_select.sh'
     rm -f "$out_file"
   End
 
-  It 'does not announce the fallback when --all was explicitly given (the user already knows)'
+  It 'does not announce the fallback when --all was explicitly given'\
+' (the user already knows)'
     When run "$SCRIPT" --all
     out_file="$(tail -n1 "$SHELLSPEC_STDOUT_FILE")"
     The status should be success

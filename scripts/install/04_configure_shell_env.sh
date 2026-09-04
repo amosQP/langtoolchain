@@ -8,6 +8,7 @@
 # did nothing — this replaces that with the two exports asdf actually needs.
 set -eu
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+readonly SCRIPT_DIR
 . "$SCRIPT_DIR/../lib.sh"
 
 step "Phase 4: Configuring shell environment"
@@ -15,6 +16,7 @@ step "Phase 4: Configuring shell environment"
 # Which rc file to edit depends on the user's actual login shell ($SHELL),
 # not whatever shell happens to be running this installer.
 RC_FILE="$(detect_rc_file)"
+readonly RC_FILE
 # Make sure the file exists before grep/sed touch it (e.g. a brand new
 # machine with no .bash_profile yet).
 run touch "$RC_FILE"
@@ -36,6 +38,7 @@ esac
 # vs. append is decided there, as data, not by matching text here.
 # POSIX sh has no process substitution, so the defs go to a temp file first.
 ENV_VAR_DEFS_TMP="$(mktemp)"
+readonly ENV_VAR_DEFS_TMP
 lt_env_var_defs "$JAVA_HOOK" > "$ENV_VAR_DEFS_TMP"
 while IFS= read -r def; do
   search="${def%%|||*}"

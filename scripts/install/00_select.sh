@@ -29,13 +29,15 @@ set -eu
 # — POSIX sh has no BASH_SOURCE) works here because every caller always
 # invokes this script by path (never a bare name looked up on PATH).
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+readonly SCRIPT_DIR
 # Pull in log/step/die/run/each_tool/binary_for_plugin/etc.
 . "$SCRIPT_DIR/../lib.sh"
 
 # Two directories up from scripts/install/ is the repo root.
 REPO_ROOT="$(repo_root_from "$0")"
+readonly REPO_ROOT
 # The shipped, default list of languages/versions this repo installs.
-DEFAULT_CONFIG="$REPO_ROOT/.tool-versions"
+readonly DEFAULT_CONFIG="$REPO_ROOT/.tool-versions"
 # Bail out early with a clear message if the repo is somehow missing it.
 [ -f "$DEFAULT_CONFIG" ] || die "Config file not found: $DEFAULT_CONFIG"
 
@@ -61,6 +63,18 @@ done
 # process, possibly with a different cwd) gets an unambiguous path
 # regardless of where it happens to be invoked from. Shared by both the
 # --local=DIR flag path here and the interactive local-scope prompt below.
+#######################################
+# Validate <dir> exists and print its resolved absolute path.
+# Globals:
+#   None
+# Arguments:
+#   $1: dir — directory path to validate
+# Outputs:
+#   Writes the absolute, resolved directory path to STDOUT. On failure,
+#   writes an error message to STDERR (via die()).
+# Returns:
+#   Does not return on failure — exits (via die()) with status 1.
+#######################################
 resolve_scope_dir() {
   [ -d "$1" ] || die "Directory not found: $1"
   ( cd "$1" && pwd )
@@ -73,6 +87,18 @@ fi
 # scope_line: the "# scope: ..." line written as the first line of the
 # output file — a comment, so each_tool's plugin/version parsing (which
 # skips lines starting with '#') never has to know this exists.
+#######################################
+# Print the "# scope: ..." comment line for the selection file.
+# Globals:
+#   SCOPE
+#   SCOPE_DIR
+# Arguments:
+#   None
+# Outputs:
+#   Writes "# scope: local <dir>" or "# scope: global" to STDOUT.
+# Returns:
+#   None
+#######################################
 scope_line() {
   if [ "$SCOPE" = "local" ]; then
     printf '# scope: local %s\n' "$SCOPE_DIR"
@@ -83,6 +109,19 @@ scope_line() {
 
 # write_with_scope <source-file> <dest-file>: prepends the scope line
 # ahead of <source-file>'s content into <dest-file>.
+#######################################
+# Write <source-file>'s content into <dest-file>, prefixed by the scope line.
+# Globals:
+#   None
+# Arguments:
+#   $1: source file to read
+#   $2: dest file to write
+# Outputs:
+#   None to STDOUT. Writes the scope line followed by <source-file>'s
+#   content to <dest-file>.
+# Returns:
+#   None
+#######################################
 write_with_scope() {
   { scope_line; cat "$1"; } > "$2"
 }
@@ -102,8 +141,31 @@ INTERACTIVE=true
 # script's own stdout. That keeps stdout free to carry only the final
 # result (the selection file path) back to whoever called this script via
 # `$(...)`, even while stdin is something else entirely (a curl pipe).
+#######################################
+# Print a line straight to the controlling terminal.
+# Globals:
+#   None
+# Arguments:
+#   $*: message to print
+# Outputs:
+#   Writes <msg> to /dev/tty (not STDOUT).
+# Returns:
+#   None
+#######################################
 tty_out() { printf '%s\n' "$*" > /dev/tty; }
-tty_prompt() { printf '%s' "$*" > /dev/tty; }   # no trailing newline: prompt stays on the input line
+#######################################
+# Print a prompt straight to the controlling terminal, no trailing newline.
+# Globals:
+#   None
+# Arguments:
+#   $*: prompt text to print
+# Outputs:
+#   Writes <text> to /dev/tty (not STDOUT), with no trailing newline.
+# Returns:
+#   None
+#######################################
+# No trailing newline: prompt stays on the input line.
+tty_prompt() { printf '%s' "$*" > /dev/tty; }
 
 # ANSI escape building blocks for lt_arrow_menu below, and the raw-mode
 # safety net: _LT_RAW_STTY holds the terminal's pre-raw-mode settings
@@ -120,6 +182,18 @@ _LT_DIM="$(printf '\033[2m')"
 _LT_BOLD="$(printf '\033[1m')"
 _LT_RESET="$(printf '\033[0m')"
 _LT_RAW_STTY=""
+#######################################
+# Restore the terminal's pre-raw-mode stty settings, if any were saved.
+# Globals:
+#   _LT_RAW_STTY
+# Arguments:
+#   None
+# Outputs:
+#   None
+# Returns:
+#   Always 0 (see prose above — this runs from the EXIT trap and must never
+#   override the script's actual exit status).
+#######################################
 lt_restore_raw_stty() {
   # Always exits 0 - this runs from the EXIT trap, where a failing command
   # would otherwise override the script's actual exit status (the whole
@@ -156,6 +230,21 @@ lt_restore_raw_stty() {
 # (there's no lexical closure to fake otherwise). Split out to a top-level
 # function instead of nested inside lt_arrow_menu purely so it's defined
 # once, not redefined on every single lt_arrow_menu call.
+#######################################
+# Print one frame of the arrow-key menu, highlighting the selected option.
+# Globals:
+#   _LT_CYAN, _LT_BOLD, _LT_DIM, _LT_RESET (read)
+#   selected (read — not a true global; a caller-set local visible here via
+#     POSIX dynamic scoping, see prose above)
+# Arguments:
+#   $1: question text
+#   $2..: option labels
+# Outputs:
+#   Writes the question line and each option line (highlighted if selected)
+#   to /dev/tty.
+# Returns:
+#   None
+#######################################
 lt_draw_arrow_menu() {
   local i opt
   tty_out "${_LT_CYAN}?${_LT_RESET} $1"
@@ -180,6 +269,17 @@ lt_draw_arrow_menu() {
 # does this keypress mean" has its own name, separate from "what do I do
 # about it" (still lt_arrow_menu's job) and "how do I redraw" (already its
 # own lt_draw_arrow_menu).
+#######################################
+# Read and classify exactly one raw keypress from /dev/tty.
+# Globals:
+#   _LT_ESC
+# Arguments:
+#   $1: n — valid option count, for classifying digit shortcuts
+# Outputs:
+#   Writes UP, DOWN, ENTER, a digit string (1..n), or OTHER to STDOUT.
+# Returns:
+#   None
+#######################################
 lt_read_menu_key() {
   local n="$1" key1 key2 key3
   key1="$(dd if=/dev/tty bs=1 count=1 2>/dev/null)"
@@ -207,6 +307,20 @@ lt_read_menu_key() {
 # summary line. Split out of lt_arrow_menu for the same reason as
 # lt_read_menu_key above - "how do I finalize" is a distinct concern from
 # "how do I read input" and "how do I redraw".
+#######################################
+# Clear the drawn menu block and print a single confirmed summary line.
+# Globals:
+#   _LT_ESC, _LT_GREEN, _LT_DIM, _LT_RESET (read)
+# Arguments:
+#   $1: question text
+#   $2: chosen — the chosen option's label
+#   $3: n — option count (how many lines to clear)
+# Outputs:
+#   Writes cursor-movement/clear escape sequences, then "✔ <question>
+#   <chosen>", to /dev/tty.
+# Returns:
+#   None
+#######################################
 lt_collapse_menu() {
   local question="$1" chosen="$2" n="$3" j=0
   printf '%s[%dA' "$_LT_ESC" "$((n + 1))" > /dev/tty
@@ -221,6 +335,21 @@ lt_collapse_menu() {
 # Falls back to the plain always-worked numbered prompt if raw mode isn't
 # available at all (`stty -g` failing to read the tty's own attributes —
 # some unusual terminal) - still fully interactive, just no arrow keys.
+#######################################
+# Run an arrow-key (or numbered-prompt fallback) menu and return the choice.
+# Globals:
+#   _LT_ESC (read)
+#   _LT_RAW_STTY (written)
+# Arguments:
+#   $1: question text
+#   $2: default 1-based selected index
+#   $3..: option labels
+# Outputs:
+#   Draws/redraws the menu and the final collapsed summary line to
+#   /dev/tty. Writes the chosen option's 1-based index to STDOUT.
+# Returns:
+#   None
+#######################################
 lt_arrow_menu() {
   local question="$1" selected="$2" n old_stty action i opt chosen
   shift 2
@@ -230,7 +359,11 @@ lt_arrow_menu() {
     tty_out "$question"
     i=1
     for opt in "$@"; do
-      if [ "$i" -eq "$selected" ]; then tty_out "  $i) $opt (default)"; else tty_out "  $i) $opt"; fi
+      if [ "$i" -eq "$selected" ]; then
+        tty_out "  $i) $opt (default)"
+      else
+        tty_out "  $i) $opt"
+      fi
       i=$((i + 1))
     done
     tty_prompt "  > "
@@ -253,10 +386,27 @@ lt_arrow_menu() {
   while :; do
     action="$(lt_read_menu_key "$n")"
     case "$action" in
-      UP)   if [ "$selected" -gt 1 ]; then selected=$((selected - 1)); else selected=$n; fi ;;
-      DOWN) if [ "$selected" -lt "$n" ]; then selected=$((selected + 1)); else selected=1; fi ;;
+      UP)
+        if [ "$selected" -gt 1 ]; then
+          selected=$((selected - 1))
+        else
+          selected=$n
+        fi
+        ;;
+      DOWN)
+        if [ "$selected" -lt "$n" ]; then
+          selected=$((selected + 1))
+        else
+          selected=1
+        fi
+        ;;
       ENTER) stty "$old_stty" < /dev/tty; _LT_RAW_STTY=""; break ;;
-      [1-9]) selected="$action"; stty "$old_stty" < /dev/tty; _LT_RAW_STTY=""; break ;;
+      [1-9])
+        selected="$action"
+        stty "$old_stty" < /dev/tty
+        _LT_RAW_STTY=""
+        break
+        ;;
     esac
     printf '%s[%dA' "$_LT_ESC" "$((n + 1))" > /dev/tty
     lt_draw_arrow_menu "$question" "$@"
@@ -275,6 +425,18 @@ lt_arrow_menu() {
 
 # ask_yes_no <label> (m-10/TASK-106): arrow-key Yes/No menu. Returns success
 # for yes, failure for no.
+#######################################
+# Ask a Yes/No question via the arrow-key menu.
+# Globals:
+#   None
+# Arguments:
+#   $1: label — the question text
+# Outputs:
+#   Draws the menu to /dev/tty (via lt_arrow_menu); nothing to this
+#   function's own STDOUT.
+# Returns:
+#   0 if the user chose "Yes"; 1 if "No".
+#######################################
 ask_yes_no() {
   [ "$(lt_arrow_menu "$1" 1 "Yes" "No")" = "1" ]
 }
@@ -286,9 +448,32 @@ ask_yes_no() {
 # guaranteed to exist yet (phases 1-2), and `list all` can be slow (network
 # fetch) even when they do — so this stays a plain default-vs-custom
 # choice, not a live version browser.
+#
+# The <default-version> this function is handed is itself dynamic as of
+# m-12/TASK-119 (decision-4): lt_offer_language() below resolves it via
+# lt_upstream_latest_version() (scripts/lib.sh) one level up, before ever
+# calling this function - a single upstream "latest" lookup per language
+# the user actually opts into, not the `asdf list all` full-catalog browse
+# the comment above rules out. That single lookup needs no asdf/plugin
+# state at all (it hits each language's own upstream API/index directly),
+# so it doesn't reintroduce the phase-0 problem this comment originally
+# described.
+#######################################
+# Ask for a version via the default-or-custom arrow-key menu.
+# Globals:
+#   None
+# Arguments:
+#   $1: default — the default version string to offer
+# Outputs:
+#   Draws the menu/prompt to /dev/tty (via lt_arrow_menu/tty_prompt).
+#   Writes the chosen version string to STDOUT.
+# Returns:
+#   None
+#######################################
 ask_version() {
   local default="$1" custom
-  if [ "$(lt_arrow_menu "Version:" 1 "$default (default)" "Enter a specific version")" = "2" ]; then
+  if [ "$(lt_arrow_menu "Version:" 1 "$default (default)" \
+    "Enter a specific version")" = "2" ]; then
     tty_prompt "  Version > "
     read -r custom < /dev/tty || custom=""
     [ -n "$custom" ] && printf '%s\n' "$custom" || printf '%s\n' "$default"
@@ -301,6 +486,7 @@ ask_version() {
 # predictable prefix under the system temp dir (e.g. /tmp on Linux,
 # $TMPDIR on macOS) with a random unique suffix.
 OUT_FILE="$(mktemp -t langtoolchain-selection)"
+readonly OUT_FILE
 # Clean up on every exit path except the one deliberate success below.
 # Emptiness alone isn't a reliable signal here: the interactive scope
 # prompt can `die` (e.g. on an invalid --local directory) *after*
@@ -323,7 +509,8 @@ if ! $INTERACTIVE || $SELECT_ALL; then
   # write to at all in this exact branch, and stdout is reserved for the
   # OUT_FILE path handoff below.
   if ! $INTERACTIVE && ! $SELECT_ALL; then
-    echo "No controlling terminal detected - installing every language in $DEFAULT_CONFIG (same as --all)." >&2
+    echo "No controlling terminal detected - installing every language" \
+      "in $DEFAULT_CONFIG (same as --all)." >&2
   fi
   write_with_scope "$DEFAULT_CONFIG" "$OUT_FILE"
   SUCCESS=true
@@ -345,6 +532,7 @@ tty_out "== Select languages to install (Enter = yes) =="
 # bash/ksh/zsh extension), so this writes each_tool's output to a temp
 # file first and reads that on fd 3 instead of the loop's own stdin (fd 0).
 EACH_TOOL_TMP="$(mktemp)"
+readonly EACH_TOOL_TMP
 each_tool "$DEFAULT_CONFIG" > "$EACH_TOOL_TMP"
 
 # Companion plugins (m-7/TASK-100, e.g. pnpm for nodejs, gradle for java —
@@ -365,13 +553,35 @@ done < "$EACH_TOOL_TMP"
 # companion tool(s) (if any). Extracted from the while loop below so the
 # loop itself reads as "for each candidate language, offer it" instead of
 # carrying the full per-language interaction inline.
+#######################################
+# Offer to install one language (and its companion tool(s), if accepted).
+# Globals:
+#   OUT_FILE (written)
+#   EACH_TOOL_TMP (read)
+# Arguments:
+#   $1: plugin — asdf plugin name
+#   $2: default_version — this plugin's static default version
+# Outputs:
+#   Draws prompts to /dev/tty (via tty_out/ask_yes_no/ask_version). Appends
+#   one "<plugin> <version>" line to $OUT_FILE per accepted language or
+#   companion.
+# Returns:
+#   None
+#######################################
 lt_offer_language() {
-  local plugin="$1" default_version="$2" cmd version companion companion_default companion_version
+  local plugin="$1" default_version="$2" cmd version companion
+  local companion_default companion_version
   # Just for a friendlier prompt line, e.g. "nodejs (node)".
   cmd="$(binary_for_plugin "$plugin")"
   tty_out ""
   if ask_yes_no "Install $plugin ($cmd)?"; then
-    version="$(ask_version "$default_version")"
+    # Fetched here, lazily - only for a language the user just said yes to,
+    # never eagerly for all of them up front (m-12/TASK-119.2's fetch-timing
+    # decision: waiting on this alongside a prompt the user is already
+    # answering is imperceptible; fetching for languages they end up
+    # declining would just be wasted network calls).
+    version="$(ask_version \
+      "$(lt_resolve_default_version "$plugin" "$default_version")")"
 
     # Record this language/version as one line of the selection file.
     printf '%s %s\n' "$plugin" "$version" >> "$OUT_FILE"
@@ -382,10 +592,12 @@ lt_offer_language() {
     # can pass - has nothing to offer, so silently skip rather than
     # prompting for a version with no default).
     for companion in $(lt_companion_for_plugin "$plugin"); do
-      companion_default="$(awk -v p="$companion" '$1 == p { print $2; exit }' "$EACH_TOOL_TMP")"
+      companion_default="$(awk -v p="$companion" \
+        '$1 == p { print $2; exit }' "$EACH_TOOL_TMP")"
       [ -n "$companion_default" ] || continue
       if ask_yes_no "  Also install $companion (companion to $plugin)?"; then
-        companion_version="$(ask_version "$companion_default")"
+        companion_version="$(ask_version \
+          "$(lt_resolve_default_version "$companion" "$companion_default")")"
         printf '%s %s\n' "$companion" "$companion_version" >> "$OUT_FILE"
       fi
     done
@@ -418,7 +630,8 @@ tty_out ""
 
 # Ask where to pin these versions, unless --local[=DIR] already decided it.
 if [ -z "$SCOPE" ]; then
-  if [ "$(lt_arrow_menu "Pin these versions:" 1 "Globally" "Only in this directory")" = "2" ]; then
+  if [ "$(lt_arrow_menu "Pin these versions:" 1 "Globally" \
+    "Only in this directory")" = "2" ]; then
     tty_prompt "  Which directory? [default: current directory] > "
     read -r scope_dir_answer < /dev/tty || scope_dir_answer=""
     SCOPE_DIR="$(resolve_scope_dir "${scope_dir_answer:-$(pwd)}")"
@@ -438,6 +651,7 @@ fi
 
 # Prepend the scope line now that it's finally settled (flag or prompt).
 SCOPE_TMP="$(mktemp)"
+readonly SCOPE_TMP
 write_with_scope "$OUT_FILE" "$SCOPE_TMP"
 mv "$SCOPE_TMP" "$OUT_FILE"
 

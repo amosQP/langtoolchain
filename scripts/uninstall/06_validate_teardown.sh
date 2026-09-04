@@ -2,6 +2,7 @@
 # No `set -e` — a test runner should evaluate every assertion, not stop at
 # the first failure.
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+readonly SCRIPT_DIR
 . "$SCRIPT_DIR/../lib.sh"
 
 step "Phase 6: Validating teardown"
@@ -21,6 +22,7 @@ OK=true
 # TASK-57) fall back via lt_asdf_data_dir() here instead of a literal, to
 # avoid false-FAILing a custom ASDF_DATA_DIR.
 ASDF_DATA_DIR="$(lt_asdf_data_dir)"
+readonly ASDF_DATA_DIR
 
 if command -v asdf >/dev/null 2>&1; then
   log "  FAIL: 'asdf' is still resolvable in PATH."
@@ -32,7 +34,10 @@ fi
 # Colons bracket the check so "$ASDF_DATA_DIR/shims" can't false-positive-match
 # a differently named path that merely contains that substring.
 case ":$PATH:" in
-  *":$ASDF_DATA_DIR/shims:"*) log "  FAIL: \$ASDF_DATA_DIR/shims is still in this session's PATH."; OK=false ;;
+  *":$ASDF_DATA_DIR/shims:"*)
+    log "  FAIL: \$ASDF_DATA_DIR/shims is still in this session's PATH."
+    OK=false
+    ;;
   *) log "  OK:   PATH has no asdf shims." ;;
 esac
 
@@ -58,6 +63,7 @@ else
   # A still-open shell keeps the OLD PATH/JAVA_HOME cached even after the
   # underlying files are gone — this isn't a real failure, just stale state
   # in the current process's environment.
-  log "The FAIL items above are cached state left in this shell session. Run 'exec \$SHELL' (or open a new terminal) and check again."
+  log "The FAIL items above are cached state left in this shell session." \
+    "Run 'exec \$SHELL' (or open a new terminal) and check again."
   exit 1
 fi

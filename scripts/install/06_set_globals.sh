@@ -9,25 +9,29 @@
 # defaults to global, matching the tool's original behavior.
 set -eu
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+readonly SCRIPT_DIR
 . "$SCRIPT_DIR/../lib.sh"
 ensure_asdf_on_path
 
 REPO_ROOT="$(repo_root_from "$0")"
-CONFIG_FILE="${TOOL_VERSIONS_FILE:-$REPO_ROOT/.tool-versions}"
+readonly REPO_ROOT
+readonly CONFIG_FILE="${TOOL_VERSIONS_FILE:-$REPO_ROOT/.tool-versions}"
 [ -f "$CONFIG_FILE" ] || die "Config file not found: $CONFIG_FILE"
 
 step "Phase 6: Setting versions"
 
 SCOPE_INFO="$(read_scope "$CONFIG_FILE")"
+readonly SCOPE_INFO
 
 # POSIX sh has no process substitution, so each_tool's output goes to a
 # temp file first — both branches below read from the same one.
 EACH_TOOL_TMP="$(mktemp)"
+readonly EACH_TOOL_TMP
 each_tool "$CONFIG_FILE" > "$EACH_TOOL_TMP"
 
 case "$SCOPE_INFO" in
   local:*)
-    TARGET_DIR="${SCOPE_INFO#local:}"
+    readonly TARGET_DIR="${SCOPE_INFO#local:}"
     log "Pinning versions locally in: $TARGET_DIR"
     # fd 3, not stdin — see 02_install_plugins.sh for why.
     while read -r plugin version <&3; do
@@ -36,7 +40,8 @@ case "$SCOPE_INFO" in
       # instead of the global ~/.tool-versions — subshell so the `cd` here
       # never affects this script's own cwd.
       ( cd "$TARGET_DIR" && run asdf set "$plugin" "$version" )
-      lt_report modified "$plugin -> $version (local, $TARGET_DIR/.tool-versions)"
+      lt_report modified \
+        "$plugin -> $version (local, $TARGET_DIR/.tool-versions)"
     done 3< "$EACH_TOOL_TMP"
     # Record this directory (TASK-83) so uninstall/01_uninstall_runtimes.sh
     # can find it later and asdf-uninstall whatever got pinned here — the
@@ -47,7 +52,7 @@ case "$SCOPE_INFO" in
     # `grep -qxF` dedupes: installing into the same directory twice must
     # not grow this file forever.
     if [ "$DRY_RUN" != "true" ]; then
-      LOCAL_PINS_FILE="$ASDF_DATA_DIR/$LT_LOCAL_PINS_FILE_NAME"
+      readonly LOCAL_PINS_FILE="$ASDF_DATA_DIR/$LT_LOCAL_PINS_FILE_NAME"
       grep -qxF "$TARGET_DIR" "$LOCAL_PINS_FILE" 2>/dev/null \
         || printf '%s\n' "$TARGET_DIR" >> "$LOCAL_PINS_FILE"
     fi

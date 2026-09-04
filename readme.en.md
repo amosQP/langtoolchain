@@ -144,10 +144,22 @@ their parent language.
 
 The Homebrew packages Python needs to compile (`openssl`, `readline`, `sqlite3`, `xz`, `zlib`, `tcl-tk`) are installed alongside it.
 
-This tool only touches the languages above (+ companions) and the 6 Homebrew packages they need —
-**on the install side**, it never touches other packages already on your Mac or installed later via
-`brew install`, or asdf plugins it didn't install itself. Uninstall is the exception: it purges `asdf`
-entirely, so any other asdf plugins you have get removed along with the rest of `~/.asdf/`.
+This tool only touches the languages above (+ companions) and the 6 Homebrew packages they need — it
+never touches other packages already on your Mac or installed later via `brew install`, or asdf plugins
+it didn't install itself, on either the install or the uninstall side. Uninstall checks the install-time
+snapshot before removing anything asdf-related — both each individual plugin it didn't install itself
+and the whole `~/.asdf/` data directory it still tries to purge along with `asdf` itself: **if
+install-time evidence shows a given plugin, or `~/.asdf/` as a whole, already existed before langtoolchain
+ever ran (or that can't be confirmed), it skips deleting that and just warns instead** — unlike the old
+behavior, which wiped everything unconditionally along with any other asdf plugins you had. Once uninstall
+finishes every phase without error, it also clears that install-time snapshot itself — so the next install
+re-baselines from the machine's actual state at that point.
+
+> **⚠️ Behavior change (m-13)**: if you installed with a version of this tool from before this change and
+> have only updated since, there's no install-time snapshot for uninstall to check — so uninstall now
+> skips removing individual asdf plugins as well as deleting `~/.asdf/` entirely, both by default for
+> safety (no evidence either way means "don't delete"). If you want a full clean including every runtime
+> langtoolchain installed, run uninstall and then remove it yourself as it instructs: `rm -rf ~/.asdf`.
 
 ```zsh
 curl -fsSL https://raw.githubusercontent.com/amosQP/langtoolchain/main/uninstall.sh | sh
@@ -165,19 +177,49 @@ fully gone.
 
 - **macOS only** — no Linux/Windows support.
 - **Fixed to 5 languages** — adding another language means editing code; there's no way to freely add arbitrary asdf plugins the way raw asdf allows.
-- **Companion tools exist only for nodejs/java** — pnpm (nodejs) and gradle (java) are the only ones; Rust/Go don't need one (cargo/the module system are already built in), and Python's ecosystem (`poetry`, `uv`, etc.) hasn't been evaluated.
+- **Companion tools exist only for nodejs/java/python** — pnpm (nodejs), gradle (java), and uv (python, adopted over poetry — decision-5) are the only ones; Rust/Go don't need one (cargo/the module system are already built in). Each language only ever gets one suggested companion by design, so poetry users need to pin it manually via the "enter a specific version" path or manage it outside this repo.
 - **Some features go beyond the core mission ("install compilers")** — global/local version pinning and the interactive picker are really a wrapper around asdf's own version management. This was reviewed once and deliberately kept as-is; no plan to trim it.
 - **No support for tooling outside Homebrew/asdf** — MacPorts (`/opt/local`) doesn't overlap paths, so no file conflicts, but a same-named binary it installs still wins if its rc entry loads later. `mise`, which reads `.tool-versions` directly and activates via its own PATH hook, is the more realistic risk — if it loads after langtoolchain in the rc file, it can silently shadow the asdf shim. Neither case is detected or warned about.
+- **A dynamic default can suggest a version asdf doesn't support yet** — language version defaults are now fetched live from each language's official source (e.g. cpython's tags, m-12); if the asdf plugin hasn't caught up to that version, the install can fail with "version not installable" (decision-12). This will be resolved structurally once m-15 (an install-picker built on the actual list of installable versions) ships, since an asdf-unsupported version would never appear as a choice in the first place.
+
+### Download/install chain trust boundary (m-11)
+
+Draws a line between what this repo actually verifies and what it delegates to Homebrew/asdf
+or simply can't reach. See
+[docs/download-points-inventory.md](docs/download-points-inventory.md) for the full per-point
+breakdown (file:line, current verification level), and
+[docs/download-integrity-techniques.md](docs/download-integrity-techniques.md) for the survey
+of verification techniques this was chosen from.
+
+**Points this repo verifies directly**
+
+| Point | How |
+|---|---|
+| `install.sh`/`uninstall.sh`'s self-clone | Pinned to a fixed commit SHA instead of a floating branch — a force-pushed branch can't change what a pinned commit fetches |
+| Homebrew's official install script (`curl \| bash`) | Pinned to a fixed commit + this project's own precomputed SHA-256 checksum, checked right after fetch — a mismatch refuses to execute |
+
+**Delegated / out of this repo's control**
+
+| Point | Delegated to / why it's out of reach |
+|---|---|
+| `brew install asdf`, `brew install <the 6 system deps>` | Homebrew's own bottle signing/checksum chain |
+| `asdf plugin add` (asdf-nodejs/asdf-python/etc. plugin sources) | asdf's CLI (0.20.0) has no way to pin a commit — reviewed and deliberately left unpinned; every install run refreshes already-added plugins to each plugin repo's latest HEAD |
+| `asdf install` (the actual language runtime download) | Internal to each asdf plugin — this repo has no hook into it |
+
+**Explicitly out of scope: a full takeover of the GitHub repo/account itself.** If an attacker
+fully controls the repo or maintainer account, they can rewrite the pinned commit SHA baked
+into install.sh too — no amount of self-referential pinning defends against that. That's
+GitHub's own account-level controls (branch protection, signed-commit requirements, 2FA), not
+something a shell installer can solve, so it's deliberately kept outside this milestone's scope.
 
 ### Testing limitations
 
-- **The local shellspec suite never touches a real Homebrew/asdf** — all 132 examples in `spec/` either mock `brew`/`asdf` or run under `DRY_RUN=true`, since a real compile/install is slow and would pollute a dev machine. So "does this actually install" isn't something the local suite proves — `.github/workflows/e2e-verify.yml` (GitHub-hosted macOS runners, arm64 + Intel) is the only real-hardware path, and it only auto-runs on push/PR to `main` when `scripts/**`/`install.sh`/`uninstall.sh`/`.tool-versions` change (everything else needs a manual `workflow_dispatch`).
+- **The local shellspec suite never touches a real Homebrew/asdf** — all 183 examples in `spec/` either mock `brew`/`asdf` or run under `DRY_RUN=true`, since a real compile/install is slow and would pollute a dev machine. So "does this actually install" isn't something the local suite proves — `.github/workflows/e2e-verify.yml` (GitHub-hosted macOS runners, arm64 + Intel) is the only real-hardware path, and it only auto-runs on push/PR to `main` when `scripts/**`/`install.sh`/`uninstall.sh`/`.tool-versions` change (everything else needs a manual `workflow_dispatch`).
 - **The arrow-key TUI has only been verified against standard terminals** — `lt_arrow_menu()` reads raw mode via `stty`/`dd`, and has been checked against a real pty driven by `expect` and ordinary terminal apps, but not against every terminal emulator, multiplexer (tmux/screen), or SSH-relayed session — anything sending non-standard key sequences outside the plain 3-byte ANSI escape (`ESC [ A/B`) this relies on could behave unexpectedly.
-- **The real `curl | sh` remote-clone path is hard to reproduce locally on demand** — `install.sh`/`uninstall.sh` hardcode `REPO_URL`/`BRANCH` (a deliberate choice to keep the curl entry point simple), with no environment-variable override to point at a different repo/branch for testing. The path itself has been verified against this actual repo via a real `curl | sh` run, but there's no way to build a regression test against a fork or another branch.
+- **The "default" `curl | sh` remote-clone path (the real GitHub target) is hard to reproduce locally** — the override path via `LANGTOOLCHAIN_REPO_URL`/`LANGTOOLCHAIN_BRANCH` (pointing at a fork or another branch) is covered locally as of TASK-117.6 by `spec/repo_override_spec.sh` against a throwaway local bare repo (`file://`), including the pinned-fetch mechanism's exact-ref behavior. What's still not covered locally is the no-override default path (the pinned commit SHA, against the real GitHub repo) — that's only exercised by a real `curl | sh` run against this actual repo and by `.github/workflows/e2e-verify.yml`'s `no-git-curl-pipe` job (which does pull the real `main` raw file from GitHub).
 
 ### Worth revisiting
 
-- Companion-tool support for the Python ecosystem (`pip` already ships with asdf-python, but `poetry`/`uv` haven't been considered).
 - Detection/warning logic for competing toolchains like MacPorts or mise (currently documented only, nothing automatic).
 - Linux support — not currently planned, but if it ever happens, the macOS-only Homebrew path logic and the rc-file list are the first things that would need rethinking.
 
@@ -188,6 +230,7 @@ fully gone.
 - To change languages/versions, edit `.tool-versions` — just one line.
 - Each install/uninstall step lives under `scripts/install/`, `scripts/uninstall/`, one responsibility per file, and every phase runs standalone too: `DRY_RUN=true sh scripts/install/05_install_runtimes.sh`
 - After changing code: `shellcheck -s sh` → `dash -n` (macOS's default `/bin/sh` is bash in posix mode, lenient enough to miss real POSIX violations) → `shellspec`/`shellspec --shell dash` for the `spec/` suite.
+- Style rules (indentation, naming, quoting, etc.) live in [docs/shell-style-guide.md](docs/shell-style-guide.md) — a Google Shell Style Guide baseline adapted for this repo's POSIX sh constraint.
 - To confirm the whole flow changes nothing: `./install.sh --dry-run --all --yes`, `./uninstall.sh --dry-run --yes`
 - Real-hardware scenarios (Homebrew bootstrap, Intel Mac, etc.) run via `.github/workflows/e2e-verify.yml` — it auto-runs on push/PR to `main` when `scripts/**`/`install.sh`/`uninstall.sh`/`.tool-versions` change, and can otherwise be triggered manually with `workflow_dispatch`. Runs on GitHub-hosted macOS runners (arm64 + Intel) — free on this public repo.
 

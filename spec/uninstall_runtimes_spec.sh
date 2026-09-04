@@ -21,7 +21,8 @@ Describe 'scripts/uninstall/01_uninstall_runtimes.sh'
   BeforeEach 'setup'
   AfterEach 'cleanup'
 
-  It 'uninstalls a version only ever pinned locally, listed only in the pins file'
+  It 'uninstalls a version only ever pinned locally, listed only'\
+' in the pins file'
     # No global ~/.tool-versions at all - the ONLY record of this plugin
     # existing is the local pin below, exactly the case this closes. Points
     # away from this repo's own real .tool-versions, which CONFIG_FILE would

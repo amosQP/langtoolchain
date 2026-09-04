@@ -1,11 +1,14 @@
 ---
 id: TASK-116.2
 title: 저장소 내 다운로드 지점 전수 매핑 및 현재 검증 상태 문서화
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-08-30 11:33'
+updated_date: '2026-09-03 01:07'
 labels: []
 dependencies: []
+documentation:
+  - docs/download-points-inventory.md
 parent_task_id: TASK-116
 type: spike
 ordinal: 134000
@@ -31,6 +34,12 @@ ordinal: 134000
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 저장소 내 모든 다운로드/설치 지점(파일:라인)이 표로 정리됨
-- [ ] #2 각 지점이 '하드닝 대상' 또는 '통제 밖(문서화만)'으로 분류됨
+- [x] #1 저장소 내 모든 다운로드/설치 지점(파일:라인)이 표로 정리됨
+- [x] #2 각 지점이 '하드닝 대상' 또는 '통제 밖(문서화만)'으로 분류됨
 <!-- AC:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+9개 지점(self-clone x2, Homebrew 설치 스크립트, asdf 자체, asdf 플러그인 소스, 시스템 의존성, 런타임 다운로드, reshim, PATH 섀도잉 체크)을 표로 정리하고 각각 '하드닝 대상'/'통제 밖(문서화만)'/'해당없음'으로 분류해 docs/download-points-inventory.md에 남김. TASK-117 하위 태스크와의 대응 관계도 명시.
+<!-- SECTION:FINAL_SUMMARY:END -->

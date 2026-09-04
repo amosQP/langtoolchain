@@ -11,6 +11,7 @@
 #                 of globally; also skips the interactive global/local prompt
 set -eu
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+readonly SCRIPT_DIR
 . "$SCRIPT_DIR/../lib.sh"
 
 # Exclusive lock (TASK-84): must be first, before anything else runs, so the
@@ -61,6 +62,23 @@ fi
 # reads as named steps (see the call right below this function) instead of
 # this whole block sitting inline between the disk-space check and the
 # phase loop.
+#######################################
+# Run 00_select.sh, capture its selection file, and export it for later phases.
+# Globals:
+#   SCRIPT_DIR (read)
+#   SELECT_OPTS (read)
+#   SELECTION_FILE (written — not declared local, so it becomes a script
+#     global; read by the EXIT trap this function registers)
+#   TOOL_VERSIONS_FILE (written/exported)
+# Arguments:
+#   None
+# Outputs:
+#   None of its own — 00_select.sh's own /dev/tty prompts happen as a side
+#   effect; only its final selection-file path is captured, not printed.
+# Returns:
+#   Does not return on failure — exits with status 1 (00_select.sh already
+#   explained why on STDOUT/STDERR/tty).
+#######################################
 run_language_selection() {
   # IFS=newline turns $SELECT_OPTS back into separate positional parameters
   # (splitting only on the newlines added above, not on spaces inside a
@@ -101,6 +119,14 @@ run_language_selection() {
 
 run_language_selection
 
+# lt_snapshot_prior_asdf_state (m-13/TASK-123): must run before the phase
+# loop below ever starts - specifically before 01_bootstrap_asdf.sh, the
+# first phase able to install asdf or create its data dir. Any later point
+# would risk recording state THIS run itself already created as if it had
+# pre-existed, which is exactly what uninstall (TASK-124) relies on this
+# NOT doing.
+lt_snapshot_prior_asdf_state
+
 # Each phase runs as its OWN `sh` process (not sourced) — this is what
 # makes them independent: none of them can accidentally rely on a variable
 # or exported PATH change that only happened in a sibling phase's process.
@@ -126,5 +152,6 @@ printf '\n'
 if [ "$DRY_RUN" = "true" ]; then
   printf '%s\n' "Dry run complete. Nothing was actually installed or changed."
 else
-  printf '%s\n' "Done. Run 'source ~/.zshrc' (or open a new terminal) to pick up the PATH changes."
+  printf '%s%s\n' "Done. Run 'source ~/.zshrc' (or open a new terminal)" \
+    " to pick up the PATH changes."
 fi

@@ -7,6 +7,7 @@
 # running uninstall.
 set -eu
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+readonly SCRIPT_DIR
 . "$SCRIPT_DIR/../lib.sh"
 
 step "Phase 3: Cleaning shell environment variables"

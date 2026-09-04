@@ -6,6 +6,7 @@
 #   --yes       skip the "are you sure?" confirmation
 set -eu
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+readonly SCRIPT_DIR
 . "$SCRIPT_DIR/../lib.sh"
 
 # Exclusive lock (TASK-84), shared with install/main.sh, so this can't race
@@ -32,11 +33,24 @@ done
 export DRY_RUN
 
 printf '%s\n' "langtoolchain uninstaller"
-printf '%s\n' "This will remove asdf, every asdf-managed runtime, the related Homebrew packages, and the shell config this tool added."
+printf '%s%s\n' "This will remove asdf, every asdf-managed runtime," \
+  " the related Homebrew packages, and the shell config this tool added."
 
 # confirm_uninstall (m-8): extracted so main.sh's own top-level flow reads
 # as a named step (see the call right below this function) instead of this
 # whole block sitting inline between the intro message and the phase loop.
+#######################################
+# Ask the user to confirm the uninstall, unless --yes or no tty.
+# Globals:
+#   AUTO_YES
+# Arguments:
+#   None
+# Outputs:
+#   Writes the "Continue? [y/N] > " prompt to STDOUT; on decline, writes
+#   "Cancelled." to STDOUT.
+# Returns:
+#   Does not return on decline — exits with status 1.
+#######################################
 confirm_uninstall() {
   local interactive=true reply
   # Probe for a controlling terminal first - same technique as
@@ -100,7 +114,7 @@ printf '\n'
 # letting `set -e` abort mid-way.
 set +e
 sh "$SCRIPT_DIR/06_validate_teardown.sh"
-VALIDATION_EXIT_CODE=$?
+readonly VALIDATION_EXIT_CODE=$?
 set -e
 
 # DRY_RUN-aware (found during a UX pass, m-6/TASK-94.3): under --dry-run,
