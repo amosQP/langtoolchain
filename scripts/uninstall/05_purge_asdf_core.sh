@@ -5,10 +5,13 @@
 #
 # The data-dir deletion below (TASK-124/decision-6) is conditional on the
 # install-time snapshot from TASK-123: it never removes a data dir that
-# looks like it pre-dates this tool. The `brew uninstall asdf` and
-# ~/.tool-versions removal above/below it are NOT gated the same way —
-# TASK-124.1's own scope is specifically "the rm -rf $TARGET_ASDF_DATA_DIR
-# block", not a general "leave everything alone if asdf pre-existed" pass.
+# looks like it pre-dates this tool. The `brew uninstall asdf` below is now
+# gated the same way (TASK-144 — an earlier version left it ungated, so a
+# pre-existing Homebrew-installed asdf with no other dependents got deleted
+# for real in UAT even though its data dir/plugins were correctly kept).
+# ~/.tool-versions removal below it is still NOT gated — that one is
+# machine-wide asdf config this tool itself always writes to, not something
+# that can pre-date this tool the way the asdf formula/data dir can.
 set -eu
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 readonly SCRIPT_DIR
@@ -21,9 +24,25 @@ ensure_brew_on_path
 step "Phase 5: Removing asdf core"
 
 if brew list asdf >/dev/null 2>&1; then
-  log "Uninstalling asdf (Homebrew) ..."
-  if run brew uninstall asdf; then
-    lt_report removed "asdf (Homebrew)"
+  # Same gating as the data dir below: lt_prior_state_get reads the
+  # install-time snapshot (TASK-123); only an explicit "false" (asdf was NOT
+  # there before this tool ran) clears it for deletion. A missing snapshot
+  # (pre-dates this feature, or --dry-run install) is indistinguishable from
+  # "don't know" and treated the same as "true" — safe-by-default, same as
+  # the data-dir check (TASK-144).
+  if [ "$(lt_prior_state_get asdf_preexisting || true)" = "false" ]; then
+    log "Uninstalling asdf (Homebrew) ..."
+    if run brew uninstall asdf; then
+      lt_report removed "asdf (Homebrew)"
+    fi
+  else
+    log "Skipping brew uninstall asdf — it looks like it existed before" \
+      "langtoolchain was installed (or that can't be confirmed from a" \
+      "missing snapshot), so it's being left in place rather than risk" \
+      "deleting an asdf install this tool didn't create. If you're sure" \
+      "it's safe, remove it yourself: brew uninstall asdf"
+    lt_report skipped "asdf (Homebrew)"' (looked pre-existing, or'\
+' unconfirmed — not removed; see README)'
   fi
 fi
 

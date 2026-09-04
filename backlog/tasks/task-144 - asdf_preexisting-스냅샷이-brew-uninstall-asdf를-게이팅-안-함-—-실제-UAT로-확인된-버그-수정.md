@@ -1,9 +1,10 @@
 ---
 id: TASK-144
 title: asdf_preexisting 스냅샷이 brew uninstall asdf를 게이팅 안 함 — 실제 UAT로 확인된 버그 수정
-status: To Do
+status: In Progress
 assignee: []
 created_date: '2026-09-04 08:56'
+updated_date: '2026-09-04 09:00'
 labels: []
 milestone: m-17
 dependencies: []
