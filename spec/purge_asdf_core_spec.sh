@@ -43,7 +43,8 @@ Describe 'scripts/uninstall/05_purge_asdf_core.sh'
     esac
   End
 
-  It 'removes the default $HOME/.asdf when the snapshot says it did NOT pre-exist'
+  It 'removes the default $HOME/.asdf when the snapshot says it did'\
+' NOT pre-exist'
     mkdir -p "$fake_home/.asdf/shims"
     printf 'asdf_data_dir_preexisting=false\n' > "$LT_PRIOR_STATE_FILE"
     export HOME="$fake_home" DRY_RUN=false
@@ -54,7 +55,8 @@ Describe 'scripts/uninstall/05_purge_asdf_core.sh'
     The path "$fake_home/.asdf" should not be exist
   End
 
-  It 'removes the custom ASDF_DATA_DIR instead of the default (TASK-70), snapshot says not pre-existing'
+  It 'removes the custom ASDF_DATA_DIR instead of the default (TASK-70),'\
+' snapshot says not pre-existing'
     custom_dir="$(mktemp -d)/custom-asdf-data"
     mkdir -p "$custom_dir/shims"
     mkdir -p "$fake_home/.asdf/shims"   # decoy default dir - must survive
@@ -77,7 +79,8 @@ Describe 'scripts/uninstall/05_purge_asdf_core.sh'
     The path "$fake_home/.asdf" should be exist
   End
 
-  It 'skips the data dir when the snapshot says it pre-existed langtoolchain (TASK-124.1 AC #1)'
+  It 'skips the data dir when the snapshot says it pre-existed'\
+' langtoolchain (TASK-124.1 AC #1)'
     mkdir -p "$fake_home/.asdf/shims"
     printf 'asdf_data_dir_preexisting=true\n' > "$LT_PRIOR_STATE_FILE"
     export HOME="$fake_home" DRY_RUN=false
@@ -87,7 +90,8 @@ Describe 'scripts/uninstall/05_purge_asdf_core.sh'
     The path "$fake_home/.asdf" should be exist
   End
 
-  It 'skips the data dir when the snapshot file is entirely missing (TASK-124.1 AC #2, safe default)'
+  It 'skips the data dir when the snapshot file is entirely missing'\
+' (TASK-124.1 AC #2, safe default)'
     mkdir -p "$fake_home/.asdf/shims"
     # No LT_PRIOR_STATE_FILE written at all - simulates a machine that
     # installed before this feature existed, or via --dry-run (which never
@@ -99,9 +103,11 @@ Describe 'scripts/uninstall/05_purge_asdf_core.sh'
     The path "$fake_home/.asdf" should be exist
   End
 
-  It 'skips the data dir when the snapshot exists but has no asdf_data_dir_preexisting key (safe default)'
+  It 'skips the data dir when the snapshot exists but has no'\
+' asdf_data_dir_preexisting key (safe default)'
     mkdir -p "$fake_home/.asdf/shims"
-    printf 'asdf_preexisting=false\n' > "$LT_PRIOR_STATE_FILE"   # no data-dir key
+    # no data-dir key
+    printf 'asdf_preexisting=false\n' > "$LT_PRIOR_STATE_FILE"
     export HOME="$fake_home" DRY_RUN=false
     unset -v ASDF_DATA_DIR
     When run "$SCRIPT"
@@ -109,7 +115,8 @@ Describe 'scripts/uninstall/05_purge_asdf_core.sh'
     The path "$fake_home/.asdf" should be exist
   End
 
-  It 'still uninstalls the asdf Homebrew formula even when the data dir is skipped (scope: only the rm -rf block is gated)'
+  It 'still uninstalls the asdf Homebrew formula even when the data'\
+' dir is skipped (scope: only the rm -rf block is gated)'
     mkdir -p "$fake_home/.asdf/shims"
     printf 'asdf_data_dir_preexisting=true\n' > "$LT_PRIOR_STATE_FILE"
     export HOME="$fake_home" DRY_RUN=false
@@ -132,7 +139,8 @@ Describe 'scripts/uninstall/05_purge_asdf_core.sh'
     The path "$LT_PRIOR_STATE_FILE" should not be exist
   End
 
-  It 'leaves LT_PRIOR_STATE_FILE in place under DRY_RUN (decision-8, same guard as lt_snapshot_prior_asdf_state())'
+  It 'leaves LT_PRIOR_STATE_FILE in place under DRY_RUN (decision-8,'\
+' same guard as lt_snapshot_prior_asdf_state())'
     mkdir -p "$fake_home/.asdf/shims"
     printf 'asdf_data_dir_preexisting=false\n' > "$LT_PRIOR_STATE_FILE"
     export HOME="$fake_home" DRY_RUN=true
