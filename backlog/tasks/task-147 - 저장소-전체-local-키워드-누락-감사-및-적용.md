@@ -1,9 +1,10 @@
 ---
 id: TASK-147
 title: 저장소 전체 local 키워드 누락 감사 및 적용
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-09-04 08:57'
+updated_date: '2026-09-04 14:53'
 labels: []
 milestone: m-17
 dependencies: []
@@ -28,3 +29,16 @@ POSIX 호환 셸이 지원해서 계속 쓰기로 결정, lib.sh만 해도 24회
 호출됨, POSIX for 루프가 반복 사이에 루프 변수를 다시 읽지 않음)까지 코드리뷰가 확인했지만,
 향후 다른 호출 패턴이 추가되면 조용히 깨질 수 있는 잠재 위험이다.
 <!-- SECTION:DESCRIPTION:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+147.1(스캔)+147.2(적용)로 완료. scripts/**/*.sh, install.sh, uninstall.sh 전체
+(트리비얼 원라이너 제외 59개 함수)를 대상으로 감사 — 저장소 전체에서 local 누락은
+2개 파일 3개 함수 16건뿐이었고(check-hardcoded-paths.sh의 is_allowlisted/check,
+uninstall/01_uninstall_runtimes.sh의 uninstall_from_config_file), 이 태스크의
+계기였던 check-hardcoded-paths.sh(TASK-125.3) 외 나머지 저장소는 TASK-71 관례를
+이미 잘 지키고 있었음을 확인. 전부 순수 스코핑 수정으로 적용, shellcheck 신규
+경고 0건(SC3043만 정확히 +2), 전체 shellspec 스위트 bash/dash 양쪽 수정 전후
+183 examples 0 failures로 동일 — 동작 변경 없음.
+<!-- SECTION:FINAL_SUMMARY:END -->
