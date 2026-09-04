@@ -20,13 +20,15 @@ Describe 'scripts/install/06_set_globals.sh'
     report_file="$(mktemp)"
     export LT_REPORT_FILE="$report_file"
   }
-  cleanup() { rm -rf "$(dirname "$data_dir")" "$target_dir" "$config_file" "$report_file"; }
+  cleanup() { rm -rf "$(dirname "$data_dir")" "$target_dir" "$config_file" \
+    "$report_file"; }
   BeforeEach 'setup'
   AfterEach 'cleanup'
 
   Describe 'local scope'
     It 'records the target directory in the local-pins file'
-      printf '# scope: local %s\npython 3.12.13\n' "$target_dir" > "$config_file"
+      printf '# scope: local %s\npython 3.12.13\n' "$target_dir" \
+        > "$config_file"
       export DRY_RUN=false
       Mock asdf
         case "$1" in
@@ -40,7 +42,8 @@ Describe 'scripts/install/06_set_globals.sh'
     End
 
     It 'does not record anything under DRY_RUN (nothing was really pinned)'
-      printf '# scope: local %s\npython 3.12.13\n' "$target_dir" > "$config_file"
+      printf '# scope: local %s\npython 3.12.13\n' "$target_dir" \
+        > "$config_file"
       export DRY_RUN=true
       When run "$SCRIPT"
       The output should include '+ asdf set'
@@ -48,7 +51,8 @@ Describe 'scripts/install/06_set_globals.sh'
     End
 
     It 'does not duplicate the directory when pinned twice'
-      printf '# scope: local %s\npython 3.12.13\n' "$target_dir" > "$config_file"
+      printf '# scope: local %s\npython 3.12.13\n' "$target_dir" \
+        > "$config_file"
       export DRY_RUN=false
       Mock asdf
         case "$1" in

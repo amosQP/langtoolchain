@@ -12,17 +12,21 @@ Describe 'install.sh / uninstall.sh entry points (TASK-105)'
     The file './uninstall.sh' should be executable
   End
 
-  It "install.sh has no code-level (non-comment) reference to uninstall.sh - not bundled"
+  It 'install.sh has no code-level (non-comment) reference to'\
+' uninstall.sh - not bundled'
     # Comments cross-referencing the sibling file for maintainers are fine
     # and expected (see both files' own header comments) - what this guards
     # against is an actual `sh uninstall.sh` / dispatch-on-mode-flag call.
-    When run command sh -c "grep -v '^[[:space:]]*#' install.sh | grep -c uninstall.sh"
+    When run command sh -c "grep -v '^[[:space:]]*#' install.sh |\
+ grep -c uninstall.sh"
     The status should be failure
     The output should eq '0'
   End
 
-  It "uninstall.sh has no code-level (non-comment) reference to install.sh - not bundled"
-    When run command sh -c "grep -v '^[[:space:]]*#' uninstall.sh | grep -c install.sh"
+  It 'uninstall.sh has no code-level (non-comment) reference to'\
+' install.sh - not bundled'
+    When run command sh -c "grep -v '^[[:space:]]*#' uninstall.sh |\
+ grep -c install.sh"
     The status should be failure
     The output should eq '0'
   End
