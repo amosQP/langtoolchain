@@ -1,9 +1,10 @@
 ---
 id: TASK-145.4
 title: asdf plugin add/update에 타임아웃 추가
-status: To Do
+status: In Progress
 assignee: []
 created_date: '2026-09-04 08:56'
+updated_date: '2026-09-04 14:09'
 labels: []
 dependencies: []
 parent_task_id: TASK-145
