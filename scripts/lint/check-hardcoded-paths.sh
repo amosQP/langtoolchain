@@ -110,16 +110,20 @@ if [ "$#" -eq 0 ]; then
   done
 fi
 
-# shellcheck disable=SC2016  # single-quoted labels/patterns deliberately keep their $ literal
-check '하드코딩된 .asdf 리터럴 — $ASDF_DATA_DIR/lt_asdf_data_dir()/$LT_ASDF_DATA_DIR_DEFAULT를 대신 사용하세요 (TASK-57/65 재발 패턴)' \
+# shellcheck disable=SC2016
+# single-quoted labels/patterns deliberately keep their $ literal
+check '하드코딩된 .asdf 리터럴 — $ASDF_DATA_DIR/lt_asdf_data_dir()/'\
+'$LT_ASDF_DATA_DIR_DEFAULT를 대신 사용하세요 (TASK-57/65 재발 패턴)' \
   '(^|[^A-Za-z0-9_/.])\.asdf(/|["'"'"']|$)' \
   "$ASDF_LITERAL_ALLOWLIST" "$@"
 
-check '하드코딩된 /opt/homebrew — lt_homebrew_prefix()를 대신 사용하세요 (TASK-61 재발 패턴, Intel Mac에서 깨짐)' \
+check '하드코딩된 /opt/homebrew — lt_homebrew_prefix()를 대신 사용하세요'\
+' (TASK-61 재발 패턴, Intel Mac에서 깨짐)' \
   '/opt/homebrew' \
   "$HOMEBREW_PREFIX_ALLOWLIST" "$@"
 
-# shellcheck disable=SC2016  # single-quoted label/pattern deliberately keep their $ literal
+# shellcheck disable=SC2016
+# single-quoted label/pattern deliberately keep their $ literal
 check '하드코딩된 $HOME/.asdf 또는 ~/.asdf — ASDF_DATA_DIR 헬퍼를 대신 사용하세요' \
   '(\$HOME/\.asdf|~/\.asdf)' \
   '' "$@"
