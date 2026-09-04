@@ -110,9 +110,12 @@ lt_asdf_data_dir() {
 # write. This install-picks-one vs. uninstall-sweeps-all asymmetry is
 # intentional, not an oversight.
 readonly LT_RC_FILE_ZSH=".zshrc"
-readonly LT_RC_FILE_BASH=".bash_profile"          # macOS Terminal runs login shells
-readonly LT_RC_FILE_BASH_INTERACTIVE=".bashrc"    # never picked by detect_rc_file; swept by uninstall only
-readonly LT_KNOWN_RC_FILES="$LT_RC_FILE_ZSH $LT_RC_FILE_BASH $LT_RC_FILE_BASH_INTERACTIVE"
+# macOS Terminal runs login shells.
+readonly LT_RC_FILE_BASH=".bash_profile"
+# Never picked by detect_rc_file; swept by uninstall only.
+readonly LT_RC_FILE_BASH_INTERACTIVE=".bashrc"
+readonly LT_KNOWN_RC_FILES="$LT_RC_FILE_ZSH $LT_RC_FILE_BASH \
+$LT_RC_FILE_BASH_INTERACTIVE"
 
 # LT_LOCAL_PINS_FILE_NAME (TASK-83): bare filename, under $ASDF_DATA_DIR, of
 # the registry 06_set_globals.sh appends a directory to every time it pins
@@ -162,7 +165,8 @@ LT_REPORT_FILE="${LT_REPORT_FILE:-$HOME/.langtoolchain-report.log}"
 #######################################
 lt_report() {
   [ "$DRY_RUN" = "true" ] && return
-  printf '%s [%s] %s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$1" "$2" >> "$LT_REPORT_FILE"
+  printf '%s [%s] %s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$1" "$2" \
+    >> "$LT_REPORT_FILE"
 }
 
 # LT_PRIOR_STATE_FILE (m-13/TASK-123, decision-6): records whether asdf/its
@@ -177,7 +181,8 @@ lt_report() {
 # placement as LT_REPORT_FILE and for the identical reason: a `rm -rf
 # $ASDF_DATA_DIR` during uninstall must never delete the very file
 # uninstall is about to consult to decide whether to run that rm -rf.
-LT_PRIOR_STATE_FILE="${LT_PRIOR_STATE_FILE:-$HOME/.langtoolchain-prior-asdf-state}"
+LT_PRIOR_STATE_FILE="${LT_PRIOR_STATE_FILE:-$HOME/\
+.langtoolchain-prior-asdf-state}"
 
 # lt_snapshot_prior_asdf_state: writes LT_PRIOR_STATE_FILE with whether asdf
 # (brew list asdf), its data directory (lt_asdf_data_dir), and any asdf
@@ -318,14 +323,25 @@ lt_env_var_defs() {
   local homebrew_prefix
   homebrew_prefix="$(lt_homebrew_prefix)"
   printf '%s\n' \
-    "brew shellenv|||prepend|||eval \"\$($homebrew_prefix/bin/brew shellenv)\"" \
-    "export ASDF_DATA_DIR=|||append|||export ASDF_DATA_DIR=\"\$HOME/$LT_ASDF_DATA_DIR_NAME\"" \
-    "ASDF_DATA_DIR/shims|||append|||export PATH=\"\$ASDF_DATA_DIR/shims:\$PATH\"" \
-    "set-java-home\.|||append|||. \$HOME/$LT_ASDF_DATA_DIR_NAME/plugins/java/$java_hook_file" \
-    "opt/sqlite/bin|||append|||export PATH=\"$homebrew_prefix/opt/sqlite/bin:\$PATH\"" \
-    "LDFLAGS.*openssl|||append|||export LDFLAGS=\"-L\$(brew --prefix openssl)/lib -L\$(brew --prefix readline)/lib -L\$(brew --prefix sqlite3)/lib -L\$(brew --prefix zlib)/lib\"" \
-    "CPPFLAGS.*openssl|||append|||export CPPFLAGS=\"-I\$(brew --prefix openssl)/include -I\$(brew --prefix readline)/include -I\$(brew --prefix sqlite3)/include -I\$(brew --prefix zlib)/include\"" \
-    "PKG_CONFIG_PATH.*openssl|||append|||export PKG_CONFIG_PATH=\"\$(brew --prefix openssl)/lib/pkgconfig:\$(brew --prefix readline)/lib/pkgconfig:\$(brew --prefix sqlite3)/lib/pkgconfig\""
+    "brew shellenv|||prepend|||eval \
+\"\$($homebrew_prefix/bin/brew shellenv)\"" \
+    "export ASDF_DATA_DIR=|||append|||export \
+ASDF_DATA_DIR=\"\$HOME/$LT_ASDF_DATA_DIR_NAME\"" \
+    "ASDF_DATA_DIR/shims|||append|||export \
+PATH=\"\$ASDF_DATA_DIR/shims:\$PATH\"" \
+    "set-java-home\.|||append|||. \
+\$HOME/$LT_ASDF_DATA_DIR_NAME/plugins/java/$java_hook_file" \
+    "opt/sqlite/bin|||append|||export \
+PATH=\"$homebrew_prefix/opt/sqlite/bin:\$PATH\"" \
+    "LDFLAGS.*openssl|||append|||export LDFLAGS=\"-L\$(brew --prefix \
+openssl)/lib -L\$(brew --prefix readline)/lib -L\$(brew --prefix \
+sqlite3)/lib -L\$(brew --prefix zlib)/lib\"" \
+    "CPPFLAGS.*openssl|||append|||export CPPFLAGS=\"-I\$(brew --prefix \
+openssl)/include -I\$(brew --prefix readline)/include -I\$(brew --prefix \
+sqlite3)/include -I\$(brew --prefix zlib)/include\"" \
+    "PKG_CONFIG_PATH.*openssl|||append|||export PKG_CONFIG_PATH=\"\$(brew \
+--prefix openssl)/lib/pkgconfig:\$(brew --prefix \
+readline)/lib/pkgconfig:\$(brew --prefix sqlite3)/lib/pkgconfig\""
 }
 
 # log <msg>: plain status line to stdout.
@@ -566,7 +582,9 @@ ensure_disk_space() {
   available_kb="$(df -Pk "$HOME" | awk 'NR==2 {print $4}')"
   available_gb=$((available_kb / 1024 / 1024))
   if [ "$available_gb" -lt "$min_gb" ]; then
-    die "Only ${available_gb}GB free on the filesystem containing \$HOME (need at least ${min_gb}GB for Homebrew + asdf runtime compiles). Free up space and try again."
+    die "Only ${available_gb}GB free on the filesystem containing \$HOME" \
+      "(need at least ${min_gb}GB for Homebrew + asdf runtime compiles)." \
+      "Free up space and try again."
   fi
 }
 
@@ -597,7 +615,8 @@ LT_CHILD_PID=""
 # failing phase under the caller's `set -eu` actually stops the run instead
 # of being silently treated as success.
 #######################################
-# Run a phase script as a backgrounded, waited-on child so signals interrupt it promptly.
+# Run a phase script as a backgrounded, waited-on child so signals
+# interrupt it promptly.
 # Globals:
 #   LT_CHILD_PID (written)
 # Arguments:
@@ -656,7 +675,8 @@ handle_interrupt() {
     kill "$LT_CHILD_PID" 2>/dev/null || true
   fi
   log ""
-  log "Interrupted. Anything already finished will be skipped on a re-run - just run the same command again to continue."
+  log "Interrupted. Anything already finished will be skipped on a" \
+    "re-run - just run the same command again to continue."
   exit 130
 }
 
@@ -678,9 +698,12 @@ handle_interrupt() {
 #######################################
 lt_die_if_lock_held() {
   local holder_pid=""
-  [ -f "$LT_LOCK_DIR/pid" ] && holder_pid="$(cat "$LT_LOCK_DIR/pid" 2>/dev/null)"
+  [ -f "$LT_LOCK_DIR/pid" ] &&
+    holder_pid="$(cat "$LT_LOCK_DIR/pid" 2>/dev/null)"
   if [ -n "$holder_pid" ] && kill -0 "$holder_pid" 2>/dev/null; then
-    die "Another langtoolchain install/uninstall (pid $holder_pid) appears to be running. If you're sure it isn't, remove $LT_LOCK_DIR and retry."
+    die "Another langtoolchain install/uninstall (pid $holder_pid)" \
+      "appears to be running. If you're sure it isn't, remove" \
+      "$LT_LOCK_DIR and retry."
   fi
 }
 
@@ -811,7 +834,8 @@ detect_rc_file() {
   case "$(basename "${SHELL:-}")" in
     zsh)  echo "$HOME/$LT_RC_FILE_ZSH" ;;
     bash) echo "$HOME/$LT_RC_FILE_BASH" ;;
-    *)    echo "$HOME/$LT_RC_FILE_ZSH" ;;  # unknown shell: default to zsh (macOS's own default since Catalina)
+    # unknown shell: default to zsh (macOS's own default since Catalina)
+    *)    echo "$HOME/$LT_RC_FILE_ZSH" ;;
   esac
 }
 
@@ -843,7 +867,8 @@ append_env_var() {
   # grep -q: no output, just an exit code. 2>/dev/null swallows the "no
   # such file" error the very first time this runs against a fresh rc file
   # (grep failing is also what makes `||` fall through to appending).
-  grep -q "$search" "$rc_file" 2>/dev/null || printf '%s\n' "$line" >> "$rc_file"
+  grep -q "$search" "$rc_file" 2>/dev/null ||
+    printf '%s\n' "$line" >> "$rc_file"
 }
 
 # prepend_env_var <rc_file> <search> <line>: like append_env_var, but
@@ -943,7 +968,8 @@ ensure_asdf_on_path() {
   # named sibling directory) can't produce a false positive.
   case ":$PATH:" in
     *":$ASDF_DATA_DIR/shims:"*) ;;                      # already present: no-op
-    *) export PATH="$ASDF_DATA_DIR/shims:$PATH" ;;      # not present: prepend it
+    # not present: prepend it
+    *) export PATH="$ASDF_DATA_DIR/shims:$PATH" ;;
   esac
 }
 
@@ -1014,7 +1040,8 @@ ensure_build_flags() {
   # swallowed — `export LDFLAGS="...$(cmd)..."` always "succeeds" as a
   # command even if the command substitution inside it failed, masking the
   # real error and leaving LDFLAGS built from an empty/wrong path.
-  local homebrew_prefix openssl_prefix readline_prefix sqlite_prefix zlib_prefix prefixes
+  local homebrew_prefix openssl_prefix readline_prefix sqlite_prefix
+  local zlib_prefix prefixes
   homebrew_prefix="$(lt_homebrew_prefix)"
   export PATH="$homebrew_prefix/opt/sqlite/bin:$PATH"
   # One `brew --prefix` call for all four formulas (each spawns brew's own
@@ -1030,9 +1057,12 @@ ensure_build_flags() {
   set -- $prefixes
   unset IFS
   openssl_prefix="$1" readline_prefix="$2" sqlite_prefix="$3" zlib_prefix="$4"
-  export LDFLAGS="-L$openssl_prefix/lib -L$readline_prefix/lib -L$sqlite_prefix/lib -L$zlib_prefix/lib"
-  export CPPFLAGS="-I$openssl_prefix/include -I$readline_prefix/include -I$sqlite_prefix/include -I$zlib_prefix/include"
-  export PKG_CONFIG_PATH="$openssl_prefix/lib/pkgconfig:$readline_prefix/lib/pkgconfig:$sqlite_prefix/lib/pkgconfig"
+  export LDFLAGS="-L$openssl_prefix/lib -L$readline_prefix/lib \
+-L$sqlite_prefix/lib -L$zlib_prefix/lib"
+  export CPPFLAGS="-I$openssl_prefix/include -I$readline_prefix/include \
+-I$sqlite_prefix/include -I$zlib_prefix/include"
+  export PKG_CONFIG_PATH="$openssl_prefix/lib/pkgconfig:\
+$readline_prefix/lib/pkgconfig:$sqlite_prefix/lib/pkgconfig"
 }
 
 # binary_for_plugin <asdf-plugin-name>: prints the primary CLI command that
@@ -1058,7 +1088,8 @@ binary_for_plugin() {
     python) echo python ;;
     rust)   echo rustc ;;
     golang) echo go ;;
-    *)      echo "$1" ;;   # unknown plugin: assume the plugin name IS the binary name
+    # unknown plugin: assume the plugin name IS the binary name
+    *)      echo "$1" ;;
   esac
 }
 
@@ -1151,7 +1182,8 @@ flag_for_binary() {
 #######################################
 version_core() {
   local result
-  result="$(printf '%s\n' "$1" | sed -n 's/[^0-9]*\([0-9][0-9]*\.[0-9][0-9]*\(\.[0-9][0-9]*\)*\).*/\1/p')"
+  result="$(printf '%s\n' "$1" |
+    sed -n 's/[^0-9]*\([0-9][0-9]*\.[0-9][0-9]*\(\.[0-9][0-9]*\)*\).*/\1/p')"
   [ -n "$result" ] || return 1
   printf '%s\n' "$result"
 }
@@ -1220,7 +1252,9 @@ lt_adoptium_arch() {
 #######################################
 lt_json_field() {
   local key="$1" prefix="${2:-}"
-  grep -o "\"$key\"[[:space:]]*:[[:space:]]*\"${prefix}[^\"]*\"" | head -1 | sed -E "s/.*\"${prefix}([^\"]*)\"\$/\1/"
+  grep -o "\"$key\"[[:space:]]*:[[:space:]]*\"${prefix}[^\"]*\"" |
+    head -1 |
+    sed -E "s/.*\"${prefix}([^\"]*)\"\$/\1/"
 }
 
 # lt_upstream_latest_version <plugin> (m-12/TASK-118 decision, decision-4):
@@ -1271,27 +1305,34 @@ lt_upstream_latest_version() {
     pnpm)
       # npm registry - the same place asdf-pnpm's own installer downloads
       # pnpm from.
-      body="$(curl -fsS --max-time "$LT_VERSION_FETCH_TIMEOUT" 'https://registry.npmjs.org/pnpm/latest' 2>/dev/null)" || return 1
+      body="$(curl -fsS --max-time "$LT_VERSION_FETCH_TIMEOUT" \
+        'https://registry.npmjs.org/pnpm/latest' 2>/dev/null)" || return 1
       printf '%s\n' "$body" | lt_json_field version
       ;;
     gradle)
       # Gradle's own official "current version" API - a single value, no
       # rc/milestone noise to filter (unlike asdf-gradle's list-all).
-      body="$(curl -fsS --max-time "$LT_VERSION_FETCH_TIMEOUT" 'https://services.gradle.org/versions/current' 2>/dev/null)" || return 1
+      body="$(curl -fsS --max-time "$LT_VERSION_FETCH_TIMEOUT" \
+        'https://services.gradle.org/versions/current' 2>/dev/null)" || return 1
       printf '%s\n' "$body" | lt_json_field version
       ;;
     golang)
       # go.dev's official download index - first array entry is the
       # current stable release.
-      body="$(curl -fsS --max-time "$LT_VERSION_FETCH_TIMEOUT" 'https://go.dev/dl/?mode=json' 2>/dev/null)" || return 1
+      body="$(curl -fsS --max-time "$LT_VERSION_FETCH_TIMEOUT" \
+        'https://go.dev/dl/?mode=json' 2>/dev/null)" || return 1
       printf '%s\n' "$body" | lt_json_field version go
       ;;
     rust)
       # Rust's official release channel manifest (TOML) - the [pkg.rust]
       # section's version field specifically, since the file also lists
       # cargo/rustfmt/etc.'s own versions under the same "version" key.
-      body="$(curl -fsS --max-time "$LT_VERSION_FETCH_TIMEOUT" 'https://static.rust-lang.org/dist/channel-rust-stable.toml' 2>/dev/null)" || return 1
-      printf '%s\n' "$body" | awk '/^\[pkg\.rust\]/{f=1; next} f && /^version/{print; exit}' | sed -E 's/version = "([0-9.]+).*/\1/'
+      body="$(curl -fsS --max-time "$LT_VERSION_FETCH_TIMEOUT" \
+        'https://static.rust-lang.org/dist/channel-rust-stable.toml' \
+        2>/dev/null)" || return 1
+      printf '%s\n' "$body" |
+        awk '/^\[pkg\.rust\]/{f=1; next} f && /^version/{print; exit}' |
+        sed -E 's/version = "([0-9.]+).*/\1/'
       ;;
     python)
       # No official JSON index with a working "just the latest" server-side
@@ -1311,8 +1352,17 @@ lt_upstream_latest_version() {
       # together rather than one replacing the other, since the lowSpeed*
       # flags cost nothing extra and still cover the "slow, not stalled"
       # case a bit more gracefully (git's own clean abort vs. a SIGTERM).
-      body="$(lt_run_with_timeout "$LT_VERSION_FETCH_TIMEOUT" git -c http.lowSpeedLimit=1000 -c http.lowSpeedTime="$LT_VERSION_FETCH_TIMEOUT" ls-remote --tags --refs https://github.com/python/cpython.git 2>/dev/null)" || return 1
-      printf '%s\n' "$body" | awk '{print $2}' | sed -n 's#^refs/tags/v##p' | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' | sort -t. -k1,1n -k2,2n -k3,3n | tail -1
+      body="$(lt_run_with_timeout "$LT_VERSION_FETCH_TIMEOUT" git \
+        -c http.lowSpeedLimit=1000 \
+        -c http.lowSpeedTime="$LT_VERSION_FETCH_TIMEOUT" \
+        ls-remote --tags --refs https://github.com/python/cpython.git \
+        2>/dev/null)" || return 1
+      printf '%s\n' "$body" |
+        awk '{print $2}' |
+        sed -n 's#^refs/tags/v##p' |
+        grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' |
+        sort -t. -k1,1n -k2,2n -k3,3n |
+        tail -1
       ;;
     java)
       # Two-step Eclipse Adoptium (Temurin) lookup: which major version is
@@ -1321,8 +1371,12 @@ lt_upstream_latest_version() {
       # exactly like asdf-java's own version strings (e.g.
       # "25.0.4+101.0.LTS"), so no reformatting is needed beyond prepending
       # "temurin-". os=mac is hardcoded - this repo is macOS-only.
-      body="$(curl -fsS --max-time "$LT_VERSION_FETCH_TIMEOUT" 'https://api.adoptium.net/v3/info/available_releases' 2>/dev/null)" || return 1
-      lts_major="$(printf '%s\n' "$body" | grep -o '"most_recent_lts"[[:space:]]*:[[:space:]]*[0-9]*' | grep -o '[0-9]*$')"
+      body="$(curl -fsS --max-time "$LT_VERSION_FETCH_TIMEOUT" \
+        'https://api.adoptium.net/v3/info/available_releases' \
+        2>/dev/null)" || return 1
+      lts_major="$(printf '%s\n' "$body" |
+        grep -o '"most_recent_lts"[[:space:]]*:[[:space:]]*[0-9]*' |
+        grep -o '[0-9]*$')"
       [ -n "$lts_major" ] || return 1
       body="$(curl -fsS --max-time "$LT_VERSION_FETCH_TIMEOUT" "https://api.adoptium.net/v3/assets/latest/$lts_major/hotspot?vendor=eclipse&os=mac&image_type=jdk&architecture=$(lt_adoptium_arch)" 2>/dev/null)" || return 1
       semver="$(printf '%s\n' "$body" | lt_json_field semver)"
@@ -1337,7 +1391,9 @@ lt_upstream_latest_version() {
       # API is the fallback decision-4 already set aside for exactly this
       # case. "tag_name" is already bare (e.g. "0.12.9", no leading "v"),
       # matching asdf-uv's own version strings directly - no reformatting.
-      body="$(curl -fsS --max-time "$LT_VERSION_FETCH_TIMEOUT" 'https://api.github.com/repos/astral-sh/uv/releases/latest' 2>/dev/null)" || return 1
+      body="$(curl -fsS --max-time "$LT_VERSION_FETCH_TIMEOUT" \
+        'https://api.github.com/repos/astral-sh/uv/releases/latest' \
+        2>/dev/null)" || return 1
       printf '%s\n' "$body" | lt_json_field tag_name
       ;;
     *)
@@ -1365,7 +1421,8 @@ lt_upstream_latest_version() {
 # freshness is already more current than the static .tool-versions it
 # replaces, without re-hitting every upstream API on every single run
 # during, say, a single afternoon of repeated installs while testing.
-LT_VERSION_CACHE_FILE="${LT_VERSION_CACHE_FILE:-$HOME/.langtoolchain-version-cache}"
+LT_VERSION_CACHE_FILE="${LT_VERSION_CACHE_FILE:-$HOME/\
+.langtoolchain-version-cache}"
 LT_VERSION_CACHE_TTL="${LT_VERSION_CACHE_TTL:-86400}"
 
 # lt_cached_version_lookup <plugin>: prints <plugin>'s cached version if
@@ -1396,7 +1453,8 @@ lt_cached_version_lookup() {
   [ -f "$LT_VERSION_CACHE_FILE" ] || return 1
   # grep finding nothing here is a normal cache miss, not an error - `|| true`
   # keeps that from tripping callers running under `set -e`.
-  line="$(grep "^$plugin|||" "$LT_VERSION_CACHE_FILE" 2>/dev/null | tail -1)" || true
+  line="$(grep "^$plugin|||" "$LT_VERSION_CACHE_FILE" 2>/dev/null |
+    tail -1)" || true
   [ -n "$line" ] || return 1
   ts="$(printf '%s\n' "$line" | awk -F'\\|\\|\\|' '{print $2}')"
   version="$(printf '%s\n' "$line" | awk -F'\\|\\|\\|' '{print $3}')"
