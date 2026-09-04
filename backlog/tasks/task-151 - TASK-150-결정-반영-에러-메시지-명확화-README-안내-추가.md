@@ -1,9 +1,10 @@
 ---
 id: TASK-151
 title: 'TASK-150 결정 반영: 에러 메시지 명확화 + README 안내 추가'
-status: To Do
+status: In Progress
 assignee: []
 created_date: '2026-09-04 14:33'
+updated_date: '2026-09-04 15:05'
 labels: []
 milestone: m-17
 dependencies: []
