@@ -59,6 +59,7 @@ violations=0
 is_allowlisted() {
   # $1 = file, $2 = line content, $3 = allowlist (newline-separated
   # "path:substring" entries)
+  local file line list old_ifs entry entry_file entry_substr
   file="$1"
   line="$2"
   list="$3"
@@ -82,6 +83,7 @@ is_allowlisted() {
 
 # check <label> <grep-pattern> <allowlist> <file...>
 check() {
+  local label pattern allowlist file lineno content trimmed
   label="$1"
   pattern="$2"
   allowlist="$3"
