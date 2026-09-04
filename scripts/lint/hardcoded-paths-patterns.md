@@ -58,3 +58,18 @@ scripts/uninstall/*.sh 전체(17개 파일)를 스캔한 결과: **위반 0건**
 전부 고쳐졌고 그 이후 재발이 없었다는 뜻이다.
 
 이 결과에 따라 TASK-125.4는 새 버그 태스크를 만들지 않고 종료한다.
+
+## TASK-148 추가 확인 (2026-09-04)
+
+/code-review high가 지적: 패턴 2의 실제 구현(check-hardcoded-paths.sh)이 `/opt/homebrew`만
+grep하고 `/usr/local`(Intel Homebrew prefix)은 검사하지 않아, 이 표가 명시한 "Intel 미고려"
+케이스 자체가 재발해도 lint를 통과하는 비대칭이 있었다. `/usr/local`도 같은 check()에 추가하고
+(허용목록에 `lib.sh`의 Intel 분기 정의부 한 줄 추가), 기본 스캔 대상(install.sh, uninstall.sh,
+scripts/lib.sh, scripts/install/*.sh, scripts/uninstall/*.sh) 전체에 재실행한 결과는 여전히
+**위반 0건**이었다.
+
+의도적으로 기본 스캔에서 제외된 두 범주(spec/*.sh, scripts/lint/*.sh)를 강제로 포함해 돌리면
+예상대로 오탐이 나온다 — 특히 `spec/lib_spec.sh:178`의 `export SHELL=/usr/local/bin/fish`가
+`/usr/local` 체크 추가로 새로 걸리는데, 같은 파일의 `/opt/homebrew` 오탐(233/240/242행,
+brew shellenv 예시)과 동일한 범주(스펙이 리터럴 값 자체를 테스트 대상으로 단언)라 기존 제외
+근거가 그대로 적용된다. 코드 변경이나 별도 태스크 없이 문서화만으로 충분하다고 판단.

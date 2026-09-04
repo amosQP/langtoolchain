@@ -1,9 +1,10 @@
 ---
 id: TASK-148
 title: check-hardcoded-paths.sh에 Intel(/usr/local) 하드코딩 케이스 추가
-status: To Do
+status: In Progress
 assignee: []
 created_date: '2026-09-04 08:57'
+updated_date: '2026-09-04 13:52'
 labels: []
 milestone: m-17
 dependencies: []
