@@ -152,5 +152,6 @@ printf '\n'
 if [ "$DRY_RUN" = "true" ]; then
   printf '%s\n' "Dry run complete. Nothing was actually installed or changed."
 else
-  printf '%s\n' "Done. Run 'source ~/.zshrc' (or open a new terminal) to pick up the PATH changes."
+  printf '%s%s\n' "Done. Run 'source ~/.zshrc' (or open a new terminal)" \
+    " to pick up the PATH changes."
 fi
