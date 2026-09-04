@@ -1467,6 +1467,12 @@ lt_cached_version_lookup() {
     '' | *[!0-9]*) return 1 ;;
   esac
   now="$(date +%s)"
+  # ts in the future (clock stepped back after a transient forward jump,
+  # e.g. NTP correction) would make `now - ts` negative, and a negative
+  # value is always "< TTL" - misreading a bogus-future entry as
+  # permanently fresh instead of treating it as stale like any other
+  # untrustworthy timestamp.
+  [ "$ts" -le "$now" ] || return 1
   [ $((now - ts)) -lt "$LT_VERSION_CACHE_TTL" ] || return 1
   printf '%s\n' "$version"
 }
