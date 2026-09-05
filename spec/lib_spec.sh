@@ -1254,6 +1254,65 @@ RUNNER_EOF
     End
   End
 
+  Describe 'lt_upstream_version_list() covers every companion plugin'\
+' lt_companion_for_plugin() can return (m-15/TASK-128.2)'
+    # 128.1 already gave pnpm/gradle/uv their own branches in
+    # lt_upstream_version_list() (they're plain asdf plugin names, same as
+    # any language) - this Describe block is the 128.2 deliverable itself:
+    # proof that the companion each language actually points to (not a
+    # hardcoded plugin name guessed by the test) resolves to a working
+    # branch, so the wiring between lt_companion_for_plugin() and
+    # lt_upstream_version_list() is what's under test, not the parsing
+    # logic already covered above.
+
+    It "resolves nodejs's companion (pnpm)"
+      companion="$(lt_companion_for_plugin nodejs)"
+      Mock curl
+        echo '{"name":"pnpm","versions":{"12.3.1":{"name":"pnpm"}}}'
+      End
+      When call lt_upstream_version_list "$companion"
+      The status should be success
+      The output should eq '12.3.1'
+    End
+
+    It "resolves java's companion (gradle)"
+      companion="$(lt_companion_for_plugin java)"
+      Mock curl
+        printf '%s\n' '[ {' \
+          '  "version" : "9.7.1",' \
+          '  "snapshot" : false,' \
+          '  "rcFor" : "",' \
+          '  "milestoneFor" : ""' \
+          '} ]'
+      End
+      When call lt_upstream_version_list "$companion"
+      The status should be success
+      The output should eq '9.7.1'
+    End
+
+    It "resolves python's companion (uv, decision-5)"
+      companion="$(lt_companion_for_plugin python)"
+      Mock curl
+        printf '%s\n' '[' \
+          '  {' \
+          '    "tag_name": "0.12.10",' \
+          '    "draft": false,' \
+          '    "prerelease": false' \
+          '  }' \
+          ']'
+      End
+      When call lt_upstream_version_list "$companion"
+      The status should be success
+      The output should eq '0.12.10'
+    End
+
+    It 'rust and golang have no companion (by design, see'\
+' lt_companion_for_plugin()) - nothing for this function to resolve'
+      When call lt_companion_for_plugin rust
+      The output should eq ''
+    End
+  End
+
   Describe 'lt_resolve_default_version() (m-12/TASK-119.2/TASK-119.3)'
     # Every example here points the cache at a scratch file, never the real
     # $HOME/.langtoolchain-version-cache - lt_resolve_default_version's

@@ -1520,6 +1520,18 @@ lt_github_release_tags() {
 # request has no equivalent alias to defer to, so this branch fetches
 # nodejs.org's own release index instead - "lts" is not a member of the
 # list this returns.
+#
+# Companion tools (m-15/TASK-128.2 - pnpm/gradle/uv, the ones
+# lt_companion_for_plugin() above can return): confirmed each one is
+# already just a plugin-name branch in the case below like any language -
+# 00_select.sh's own lt_offer_language() already calls lt_resolve_default_
+# version() (this function's single-value sibling) on a companion's plain
+# plugin name with no special-casing, so this function needs none either.
+# TASK-128.2's own description flags that a companion COULD be something
+# other than a real asdf plugin (see TASK-99/100) - that's not true for
+# any companion that exists today, so there's nothing further to branch
+# on here; a future companion that genuinely isn't a plugin would need its
+# own case below, same as any other new plugin would.
 #######################################
 # Fetch every version a plugin's official upstream index/API currently
 # lists as installable.
