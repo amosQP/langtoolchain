@@ -1,17 +1,17 @@
 ---
 id: TASK-127
 title: 실 버전 목록 fetch를 위한 phase 순서/아키텍처 결정
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-09-03 01:17'
-updated_date: '2026-09-05 04:40'
+updated_date: '2026-09-05 04:42'
 labels: []
 milestone: m-15
 dependencies:
   - TASK-119
 references:
-  - TASK-118
-  - TASK-119
+  - decision-15
+  - decision-16
 priority: medium
 type: task
 ordinal: 170000
@@ -37,3 +37,9 @@ brew update류의 "사전 갱신" 전략도 이 Story에서 설계한다: 목록
 시 매번? 별도 refresh 명령? TTL 캐시?), 네트워크 실패 시 폴백을 TASK-119.3(m-12)의 기본값
 폴백 로직과 통합할지 별도로 둘지 결정한다.
 <!-- SECTION:DESCRIPTION:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+127.1: phase 재배치 불필요 결정(decision-15) - 언어 공식 소스가 asdf 무관하게 phase 0에서 조회 가능함을 lib.sh 실측으로 확인. rust만 목록용 별도 소스 필요(TASK-128 위임). decision-12의 'asdf 미지원 버전' 갭은 이 결정으로 안 닫힘 - TASK-128/129에서 재검토 필요. 127.2: 버전 목록 캐싱을 기존 단일값 캐시와 분리하기로 결정(decision-16) - 별도 파일/함수, lazy 조회, 실패 시 기존 ask_version() 흐름 폴백.
+<!-- SECTION:FINAL_SUMMARY:END -->
