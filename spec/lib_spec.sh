@@ -1432,4 +1432,97 @@ RUNNER_EOF
       The contents of file "$LT_VERSION_CACHE_FILE" should include 'uv|||'
     End
   End
+
+  Describe 'lt_cached_version_list_lookup() / lt_cache_version_list()'\
+' (m-15/TASK-128.3, decision-16)'
+    # Own scratch file, never LT_VERSION_LIST_CACHE_FILE's real default
+    # ($HOME/.langtoolchain-version-list-cache) - same real-machine-state
+    # safety rule as lt_resolve_default_version()'s own Describe block
+    # above.
+    setup() {
+      LT_VERSION_LIST_CACHE_FILE="$(mktemp)"
+      rm -f "$LT_VERSION_LIST_CACHE_FILE"
+    }
+    cleanup() { rm -f "$LT_VERSION_LIST_CACHE_FILE"; }
+    BeforeEach 'setup'
+    AfterEach 'cleanup'
+
+    It 'writes a comma-joined line and reads it back split one'\
+' version per line - same shape lt_upstream_version_list() itself prints'
+      lt_cache_version_list pnpm "$(printf '12.3.1\n12.3.0\n9.5.0')"
+      When call lt_cached_version_list_lookup pnpm
+      The status should be success
+      The line 1 of output should eq '12.3.1'
+      The line 2 of output should eq '12.3.0'
+      The line 3 of output should eq '9.5.0'
+      The contents of file "$LT_VERSION_LIST_CACHE_FILE" should include \
+        'pnpm|||'
+      The contents of file "$LT_VERSION_LIST_CACHE_FILE" should include \
+        '|||12.3.1,12.3.0,9.5.0'
+    End
+
+    It 'misses (fails, nothing printed) when the cache file does not'\
+' exist yet'
+      When call lt_cached_version_list_lookup pnpm
+      The status should be failure
+      The output should eq ''
+    End
+
+    It 'misses for a plugin with no line in an existing cache file'
+      lt_cache_version_list pnpm "$(printf '12.3.1')"
+      When call lt_cached_version_list_lookup gradle
+      The status should be failure
+      The output should eq ''
+    End
+
+    It 'ignores a stale (past-TTL) entry and reports a miss'
+      LT_VERSION_LIST_CACHE_TTL=60
+      printf 'pnpm|||%s|||12.3.1,12.3.0\n' "$(($(date +%s) - 3600))" \
+        > "$LT_VERSION_LIST_CACHE_FILE"
+      When call lt_cached_version_list_lookup pnpm
+      The status should be failure
+      The output should eq ''
+    End
+
+    It 'treats a future-timestamped entry (clock skew) as stale'
+      printf 'pnpm|||%s|||12.3.1,12.3.0\n' "$(($(date +%s) + 3600))" \
+        > "$LT_VERSION_LIST_CACHE_FILE"
+      When call lt_cached_version_list_lookup pnpm
+      The status should be failure
+      The output should eq ''
+    End
+
+    It 'treats a corrupted (non-numeric) timestamp as a miss instead'\
+' of a hard arithmetic error'
+      printf 'pnpm|||not-a-timestamp|||12.3.1,12.3.0\n' \
+        > "$LT_VERSION_LIST_CACHE_FILE"
+      When call lt_cached_version_list_lookup pnpm
+      The status should be failure
+      The output should eq ''
+    End
+
+    It 'overwrites only the plugin it caches - other cached plugins'\
+' are left alone'
+      lt_cache_version_list pnpm "$(printf '9.9.9')"
+      lt_cache_version_list gradle "$(printf '9.7.1\n9.6.0')"
+      lt_cache_version_list pnpm "$(printf '12.3.1\n12.3.0')"
+      When call lt_cached_version_list_lookup pnpm
+      The status should be success
+      The line 1 of output should eq '12.3.1'
+      The line 2 of output should eq '12.3.0'
+      The contents of file "$LT_VERSION_LIST_CACHE_FILE" should include \
+        'gradle|||'
+      The contents of file "$LT_VERSION_LIST_CACHE_FILE" should include \
+        '|||9.7.1,9.6.0'
+    End
+
+    It 'is a completely separate file from the single-value cache'\
+' (LT_VERSION_CACHE_FILE) - decision-16'\''s whole point'
+      LT_VERSION_CACHE_FILE="$(mktemp)"
+      rm -f "$LT_VERSION_CACHE_FILE"
+      lt_cache_version_list pnpm "$(printf '12.3.1\n12.3.0')"
+      The path "$LT_VERSION_CACHE_FILE" should not be exist
+      rm -f "$LT_VERSION_CACHE_FILE"
+    End
+  End
 End

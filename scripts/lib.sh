@@ -1940,3 +1940,126 @@ lt_resolve_default_version() {
   fi
   printf '%s\n' "$static_default"
 }
+
+# LT_VERSION_LIST_CACHE_FILE / LT_VERSION_LIST_CACHE_TTL (m-15/TASK-128.3,
+# decision-16): the list-shaped sibling of LT_VERSION_CACHE_FILE/
+# LT_VERSION_CACHE_TTL above - a completely separate file/TTL, not a
+# reuse. decision-16 chose separation deliberately: the single-value cache
+# above already shipped with TASK-119.3's own tested behavior in real use,
+# and folding "sometimes a list" into it would mean a new branch inside an
+# already-proven function for every reader/caller to reason about, for a
+# concern (caching MANY versions) that a same-shaped-but-separate file/
+# pair of functions covers just as well with zero risk to the existing
+# path. Same "${VAR:-default}" override pattern as every other LT_* file/
+# TTL pair in this file (LT_LOCK_DIR, LT_REPORT_FILE, LT_VERSION_CACHE_FILE
+# itself) - not readonly, for the same test-can-override reason documented
+# next to those. 86400s TTL default matches LT_VERSION_CACHE_TTL's own
+# value today, but decision-16 keeps it a distinct variable rather than
+# reusing that one - same reasoning this file already applies to keeping
+# LT_VERSION_FETCH_TIMEOUT and LT_PYTHON_TAGS_TIMEOUT separate despite
+# both starting from a similar-looking budget: two independently-tunable
+# knobs cost nothing extra and avoid one setting silently doing double
+# duty for two different callers with potentially different freshness
+# needs later.
+LT_VERSION_LIST_CACHE_FILE="${LT_VERSION_LIST_CACHE_FILE:-$HOME/\
+.langtoolchain-version-list-cache}"
+LT_VERSION_LIST_CACHE_TTL="${LT_VERSION_LIST_CACHE_TTL:-86400}"
+
+# lt_cached_version_list_lookup <plugin>: prints <plugin>'s cached version
+# list (one version per line, same shape lt_upstream_version_list() itself
+# prints) if LT_VERSION_LIST_CACHE_FILE has a line for it written within
+# the last LT_VERSION_LIST_CACHE_TTL seconds; fails (nothing printed) on a
+# cache miss - no file yet, no line for this plugin, or a line older than
+# the TTL. Same structure as lt_cached_version_lookup() above (same clock-
+# skew/corrupted-timestamp guards, same reasoning for each), just reading
+# from the separate list cache file and splitting the stored comma-joined
+# value back into one line per version on a hit.
+#
+# Cache line format: "<plugin>|||<unix-epoch>|||<v1>,<v2>,<v3>,...", one
+# per plugin - same triple-pipe-delimited shape as
+# LT_VERSION_CACHE_FILE's own lines above, with the third field a comma-
+# joined list instead of a single version (decision-16's own chosen
+# format; none of this repo's version strings can contain a literal
+# comma, so it's a safe separator for every plugin lt_upstream_version_
+# list() supports).
+#######################################
+# Print a plugin's cached version list if it's still fresh.
+# Globals:
+#   LT_VERSION_LIST_CACHE_FILE
+#   LT_VERSION_LIST_CACHE_TTL
+# Arguments:
+#   $1: plugin name
+# Outputs:
+#   Writes the cached version list, one version per line, to STDOUT on a
+#   fresh cache hit; nothing on a miss.
+# Returns:
+#   None
+#######################################
+lt_cached_version_list_lookup() {
+  local plugin="$1" line ts joined now
+  [ -f "$LT_VERSION_LIST_CACHE_FILE" ] || return 1
+  # grep finding nothing here is a normal cache miss, not an error - `|| true`
+  # keeps that from tripping callers running under `set -e`.
+  line="$(grep "^$plugin|||" "$LT_VERSION_LIST_CACHE_FILE" 2>/dev/null |
+    tail -1)" || true
+  [ -n "$line" ] || return 1
+  ts="$(printf '%s\n' "$line" | awk -F'\\|\\|\\|' '{print $2}')"
+  joined="$(printf '%s\n' "$line" | awk -F'\\|\\|\\|' '{print $3}')"
+  [ -n "$joined" ] || return 1
+  # A non-numeric ts (hand-edited/corrupted cache file - this cache is
+  # never written with anything but a real `date +%s` epoch) would make the
+  # arithmetic comparison below a hard shell error, not just a false
+  # result - reject it as a miss instead of letting that abort the caller.
+  case "$ts" in
+    '' | *[!0-9]*) return 1 ;;
+  esac
+  now="$(date +%s)"
+  # ts in the future (clock stepped back after a transient forward jump,
+  # e.g. NTP correction) would make `now - ts` negative, and a negative
+  # value is always "< TTL" - misreading a bogus-future entry as
+  # permanently fresh instead of treating it as stale like any other
+  # untrustworthy timestamp.
+  [ "$ts" -le "$now" ] || return 1
+  [ $((now - ts)) -lt "$LT_VERSION_LIST_CACHE_TTL" ] || return 1
+  printf '%s\n' "$joined" | tr ',' '\n'
+}
+
+# lt_cache_version_list <plugin> <versions>: (over)writes <plugin>'s line
+# in LT_VERSION_LIST_CACHE_FILE with <versions> (one version per line, the
+# same shape lt_upstream_version_list() prints - e.g. called as
+# `lt_cache_version_list "$plugin" "$(lt_upstream_version_list "$plugin")"`)
+# and the current time, replacing any previous line for the same plugin
+# (never appending a stale duplicate). Same structure as lt_cache_version()
+# above, just joining the newline-separated input into the comma-joined
+# third field this cache's line format uses.
+#######################################
+# (Over)write a plugin's cached version list line in
+# LT_VERSION_LIST_CACHE_FILE.
+# Globals:
+#   LT_VERSION_LIST_CACHE_FILE
+# Arguments:
+#   $1: plugin name
+#   $2: versions — one version per line (e.g. lt_upstream_version_list()'s
+#       own output)
+# Outputs:
+#   None to STDOUT (rewrites LT_VERSION_LIST_CACHE_FILE with the new/
+#   updated line).
+# Returns:
+#   None
+#######################################
+lt_cache_version_list() {
+  local plugin="$1" versions="$2" tmp joined
+  joined="$(printf '%s\n' "$versions" | tr '\n' ',' | sed 's/,$//')"
+  tmp="$(mktemp)"
+  if [ -f "$LT_VERSION_LIST_CACHE_FILE" ]; then
+    # No existing line for this plugin is a normal case (first time it's
+    # ever been cached), not an error - `|| true` so `set -e` callers don't
+    # abort on grep's "found nothing" exit status.
+    grep -v "^$plugin|||" "$LT_VERSION_LIST_CACHE_FILE" > "$tmp" \
+      2>/dev/null || true
+  else
+    : > "$tmp"
+  fi
+  printf '%s|||%s|||%s\n' "$plugin" "$(date +%s)" "$joined" >> "$tmp"
+  mv "$tmp" "$LT_VERSION_LIST_CACHE_FILE"
+}
