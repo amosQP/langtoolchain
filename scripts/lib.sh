@@ -1430,6 +1430,354 @@ lt_upstream_latest_version() {
   esac
 }
 
+# lt_github_release_tags (m-15/TASK-128.1): reads a GitHub Releases API JSON
+# array from STDIN and prints every entry's tag_name, one per line, in the
+# array's own order (newest first, since that's how GitHub returns it) -
+# but only for entries that are neither a draft nor a prerelease. Factored
+# out because rust's and uv's lt_upstream_version_list() branches below
+# both need this exact same parse (same "one helper instead of two near-
+# duplicates" reasoning lt_json_field above was factored out for).
+#
+# GitHub's response is pretty-printed with tag_name/draft/prerelease as
+# sibling fields inside the same release object (confirmed against a live
+# fetch) but not reliably adjacent lines the way gradle's/golang's simpler
+# state machines below can assume - so this tracks all three per object
+# and only decides once "prerelease" (always the last of the three to
+# appear) is seen, rather than deciding on every field like those two.
+#######################################
+# Print every non-draft, non-prerelease tag_name from a GitHub Releases API
+# JSON body.
+# Globals:
+#   None
+# Arguments:
+#   None
+# Outputs:
+#   Reads a GitHub Releases API JSON array from STDIN. Writes one tag_name
+#   per line to STDOUT for each non-draft, non-prerelease entry.
+# Returns:
+#   None
+#######################################
+lt_github_release_tags() {
+  awk '
+    /"tag_name"[ \t]*:/ {
+      tag = $0
+      sub(/.*"tag_name"[ \t]*:[ \t]*"/, "", tag)
+      sub(/".*/, "", tag)
+      next
+    }
+    /"draft"[ \t]*:/ {
+      draft = $0
+      sub(/.*"draft"[ \t]*:[ \t]*/, "", draft)
+      sub(/,.*/, "", draft)
+      next
+    }
+    /"prerelease"[ \t]*:/ {
+      pre = $0
+      sub(/.*"prerelease"[ \t]*:[ \t]*/, "", pre)
+      sub(/,.*/, "", pre)
+      if (tag != "" && draft == "false" && pre == "false") print tag
+      tag = ""; draft = ""; pre = ""
+      next
+    }
+  '
+}
+
+# lt_upstream_version_list <plugin> (m-15/TASK-128.1, decision-15): fetches
+# EVERY version this plugin's official upstream index/API currently lists
+# as installable - not just the single latest one lt_upstream_latest_
+# version() above returns. Same "no asdf, no plugin required" property as
+# that function (decision-15 confirmed all 8 sources need nothing but curl/
+# git and the network, so this is just as safe to call from phase 0), and
+# the same case-dispatch plugin set, but deliberately kept as a fully
+# separate function rather than a second mode grafted onto
+# lt_upstream_latest_version() - that function already ships with TASK-
+# 119.3's shellspec coverage and is in real use by lt_resolve_default_
+# version() below; growing it with a second concern (one value vs. a list)
+# would risk a regression in an already-shipped, tested path for no
+# benefit a new function doesn't already give just as well.
+#
+# Prints one version per line, newest first, on success. Returns 1
+# (nothing printed) on any failure - same failure contract as
+# lt_upstream_latest_version(): missing curl/git, network/DNS failure,
+# non-2xx response, empty/unparseable body. Callers must be ready for a
+# failure here exactly like that function's callers already are (see
+# TASK-128.3, which layers caching on top, and TASK-129's UI, which falls
+# back to the existing default-vs-free-text flow on a miss rather than
+# growing a fallback into this layer).
+#
+# Known gap (decision-15's "닫히지 않는 갭", unchanged here since this
+# reuses the exact same sources): every version below is what the
+# LANGUAGE ITSELF calls installable, not what this repo's asdf plugin for
+# it can actually install today - decision-12 already found those two can
+# disagree (an asdf plugin can lag its language's own upstream index).
+# This function does not cross-check against `asdf list all` - that
+# range-fix (if TASK-129's UI needs one) is out of scope here.
+#
+# nodejs's branch is the one exception to "same plugin set as
+# lt_upstream_latest_version()": that function deliberately fetches
+# nothing for nodejs (asdf-nodejs resolves the "lts" alias itself at
+# install time - see its comment above), but a "list every version"
+# request has no equivalent alias to defer to, so this branch fetches
+# nodejs.org's own release index instead - "lts" is not a member of the
+# list this returns.
+#######################################
+# Fetch every version a plugin's official upstream index/API currently
+# lists as installable.
+# Globals:
+#   LT_VERSION_FETCH_TIMEOUT
+#   LT_PYTHON_TAGS_TIMEOUT
+# Arguments:
+#   $1: asdf plugin name
+# Outputs:
+#   Writes one version per line (newest first) to STDOUT on success;
+#   nothing on failure.
+# Returns:
+#   None
+#######################################
+lt_upstream_version_list() {
+  # Same no-up-front-`command -v` reasoning as lt_upstream_latest_version()
+  # above: every branch below already chains `|| return 1`/`|| continue`
+  # onto its own curl/git call, which catches a missing binary exactly
+  # like any other failure.
+  local plugin="$1" body ltses major semver found
+  case "$plugin" in
+    nodejs)
+      # No "lts" shortcut applies to a full list request (unlike the
+      # single-value branch above) - nodejs.org's own official release
+      # index is the direct equivalent of every other language's source
+      # here, so this is the one plugin whose list branch calls the
+      # network even though its default-version branch above never does.
+      body="$(curl -fsS --max-time "$LT_VERSION_FETCH_TIMEOUT" \
+        'https://nodejs.org/dist/index.json' 2>/dev/null)" || return 1
+      printf '%s\n' "$body" |
+        grep -o '"version":"v[0-9][0-9.]*"' |
+        sed -E 's/.*"v([0-9.]*)"/\1/'
+      ;;
+    pnpm)
+      # Sibling "everything ever published" endpoint to the /pnpm/latest
+      # single-value branch above: the same npm registry document, just
+      # without the /latest suffix. The "install-v1" Accept header asks
+      # npm for its abbreviated metadata format - still one full record
+      # per version (npm has no lighter "just the version numbers"
+      # endpoint), but noticeably smaller than the default full-manifest
+      # format for no loss here. grep pulls only clean X.Y.Z keys straight
+      # out of the "versions" object, dropping dev/beta/rc/pr channel tags
+      # (e.g. "6.23.7-202112041634"), then a numeric sort (macOS's BSD
+      # sort has no -V, same reason the python branch below needs one)
+      # puts them newest-first regardless of the registry's own publish-
+      # order listing.
+      body="$(curl -fsS --max-time "$LT_VERSION_FETCH_TIMEOUT" \
+        -H 'Accept: application/vnd.npm.install-v1+json' \
+        'https://registry.npmjs.org/pnpm' 2>/dev/null)" || return 1
+      printf '%s\n' "$body" |
+        grep -oE '"[0-9]+\.[0-9]+\.[0-9]+":\{"name":"pnpm"' |
+        sed -E 's/^"([^"]*)".*/\1/' |
+        sort -t. -k1,1nr -k2,2nr -k3,3nr
+      ;;
+    gradle)
+      # Sibling "every known build, including snapshots/RCs/milestones"
+      # endpoint to /versions/current above - each entry carries its own
+      # snapshot/rcFor/milestoneFor flags, so a genuine GA release is one
+      # with snapshot=false and both *For fields empty. "version" is
+      # always the first field inside each entry (confirmed against a
+      # live fetch), so this walks the pretty-printed JSON line by line
+      # and flushes/filters the previous entry each time a new "version"
+      # line starts the next one - the same "state machine over one awk
+      # pass" shape the rust branch above uses for its TOML sections,
+      # since this repo has no jq and RS-as-regex is a gawk extension it
+      # can't assume macOS's awk supports.
+      body="$(curl -fsS --max-time "$LT_VERSION_FETCH_TIMEOUT" \
+        'https://services.gradle.org/versions/all' 2>/dev/null)" || return 1
+      printf '%s\n' "$body" | awk '
+        function flush() {
+          if (ver != "" && snap == "false" && rc == "" && ms == "") {
+            print ver
+          }
+        }
+        /"version"[ \t]*:/ {
+          flush()
+          ver = $0
+          sub(/.*"version"[ \t]*:[ \t]*"/, "", ver)
+          sub(/".*/, "", ver)
+          snap = ""; rc = ""; ms = ""
+          next
+        }
+        /"snapshot"[ \t]*:/ {
+          snap = $0
+          sub(/.*"snapshot"[ \t]*:[ \t]*/, "", snap)
+          sub(/,.*/, "", snap)
+          next
+        }
+        /"rcFor"[ \t]*:/ {
+          rc = $0
+          sub(/.*"rcFor"[ \t]*:[ \t]*"/, "", rc)
+          sub(/".*/, "", rc)
+          next
+        }
+        /"milestoneFor"[ \t]*:/ {
+          ms = $0
+          sub(/.*"milestoneFor"[ \t]*:[ \t]*"/, "", ms)
+          sub(/".*/, "", ms)
+          next
+        }
+        END { flush() }
+      ' |
+        sort -t. -k1,1nr -k2,2nr -k3,3nr
+      ;;
+    golang)
+      # go.dev/dl/?mode=json alone (the single-value branch's own source
+      # above) is capped at just the 1-2 CURRENTLY stable releases;
+      # &include=all is the sibling switch returning every release this
+      # index has ever listed, stable and not. Each top-level release
+      # object's own "version"/"stable" fields sit at 2-space indent,
+      # while those same two field names also recur once per platform
+      # file nested inside that release's "files" array at 4-space indent
+      # - the 2-space anchor is what keeps this from picking up those
+      # nested duplicates. "version"/"stable" are adjacent lines in every
+      # release object (confirmed against a live fetch), so a version is
+      # held pending until its matching "stable" line resolves it.
+      body="$(curl -fsS --max-time "$LT_VERSION_FETCH_TIMEOUT" \
+        'https://go.dev/dl/?mode=json&include=all' 2>/dev/null)" ||
+        return 1
+      printf '%s\n' "$body" | awk '
+        /^  "version":/ {
+          v = $0
+          sub(/^  "version": "go/, "", v)
+          sub(/".*/, "", v)
+          pending = v
+          next
+        }
+        /^  "stable": true/ {
+          if (pending != "") print pending
+          pending = ""
+          next
+        }
+        /^  "stable": false/ { pending = ""; next }
+      '
+      ;;
+    rust)
+      # rust's single-value branch above reads the official channel
+      # manifest, but that TOML only ever names the CURRENT stable
+      # version - it has no equivalent of a full history, and decision-15
+      # explicitly left the full-list source for this task to pick.
+      # static.rust-lang.org's own dist/ prefix has no directory-listing
+      # endpoint to enumerate (confirmed via a live request - a bare GET
+      # there 416s, it's a raw S3 bucket with no index), so this uses
+      # rust-lang/rust's official GitHub Releases instead - the same
+      # "GitHub Releases as a stand-in for a missing JSON index" fallback
+      # decision-4 already set aside for uv below. tag_name comes back
+      # bare (e.g. "1.98.1", no "v" prefix, confirmed all-final/no-
+      # prerelease in the most recent 100 via a live fetch), matching this
+      # plugin's version format directly - no reformatting needed, same as
+      # the single-value branch's [pkg.rust] value.
+      #
+      # per_page=100 (GitHub's max per page) is one page - a couple of
+      # years of releases as of this writing, not literally every version
+      # rust has ever shipped back to 1.0. Not paginating further is a
+      # deliberate choice, not a shortcut: decision-16's own "lazy,
+      # occasional, no exhaustive prefetch" reasoning for this whole
+      # feature applies just as well to "don't walk 20+ pages of a
+      # personal installer's version picker to reach a decade-old
+      # release".
+      body="$(curl -fsS --max-time "$LT_VERSION_FETCH_TIMEOUT" \
+        'https://api.github.com/repos/rust-lang/rust/releases?per_page=100' \
+        2>/dev/null)" || return 1
+      printf '%s\n' "$body" | lt_github_release_tags
+      ;;
+    python)
+      # Same cpython tag source as the single-value branch above, but
+      # keeping every filtered final-release tag instead of the tail -1
+      # that branch takes - a descending numeric sort (BSD sort has no -V,
+      # same reasoning as that branch's own comment) puts the newest
+      # first.
+      body="$(lt_run_with_timeout "$LT_PYTHON_TAGS_TIMEOUT" git \
+        -c http.lowSpeedLimit=1000 \
+        -c http.lowSpeedTime="$LT_PYTHON_TAGS_TIMEOUT" \
+        ls-remote --tags --refs https://github.com/python/cpython.git \
+        2>/dev/null)" || return 1
+      printf '%s\n' "$body" |
+        awk '{print $2}' |
+        sed -n 's#^refs/tags/v##p' |
+        grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' |
+        sort -t. -k1,1nr -k2,2nr -k3,3nr
+      ;;
+    java)
+      # decision-15: "여러 LTS major 나열" - one entry per currently-
+      # supported LTS major (available_lts_releases - e.g. 8/11/17/21/25
+      # as of this writing), each resolved to its own latest GA build via
+      # the same two-step lookup the single-value branch above uses for
+      # just the newest major. The array can come back either pretty-
+      # printed (one number per line, confirmed via a live fetch) or as a
+      # single compact line, so the digits are pulled with a presence
+      # check per line rather than assuming one particular layout.
+      #
+      # A major with no build for this Mac's own architecture (e.g.
+      # Adoptium ships no aarch64 JDK for major 8 as of this writing -
+      # confirmed via a live request, x64-only) silently drops out of the
+      # list instead of failing the whole call, matching every other
+      # branch's "empty/unparseable = skip, not abort" contract. Iterated
+      # newest-major-first to match every other branch's newest-first
+      # convention (available_lts_releases itself comes back oldest-
+      # first) - the classic `sed '1!G;h;$!d'` line-reversal idiom, since
+      # macOS has no `tac`.
+      body="$(curl -fsS --max-time "$LT_VERSION_FETCH_TIMEOUT" \
+        'https://api.adoptium.net/v3/info/available_releases' \
+        2>/dev/null)" || return 1
+      ltses="$(printf '%s\n' "$body" | awk '
+        /"available_lts_releases"/ { grab = 1 }
+        grab && /[0-9]/ {
+          line = $0
+          gsub(/[^0-9]/, " ", line)
+          gsub(/^ +| +$/, "", line)
+          if (line != "") print line
+        }
+        grab && /\]/ { exit }
+      ')"
+      [ -n "$ltses" ] || return 1
+      ltses="$(printf '%s\n' "$ltses" | sed '1!G;h;$!d')"
+      found=false
+      for major in $ltses; do
+        body="$(curl -fsS --max-time "$LT_VERSION_FETCH_TIMEOUT" \
+          "https://api.adoptium.net/v3/assets/latest/$major/hotspot?vendor=eclipse&os=mac&image_type=jdk&architecture=$(lt_adoptium_arch)" \
+          2>/dev/null)" || continue
+        semver="$(printf '%s\n' "$body" | lt_json_field semver)"
+        # `if`, not `[ -n ... ] && printf` - the latter's own exit status
+        # (false whenever a major has no build, e.g. no aarch64 JDK for
+        # major 8 as of this writing) would otherwise become this whole
+        # function's exit status once it's the last thing the last loop
+        # iteration runs, wrongly reporting failure - and would abort a
+        # `set -eu` caller mid-loop on the exact same false, per this
+        # repo's own POSIX pitfall list (docs/shell-style-guide.md).
+        if [ -n "$semver" ]; then
+          printf 'temurin-%s\n' "$semver"
+          found=true
+        fi
+      done
+      # Every major came back empty/unreachable (e.g. a total Adoptium
+      # outage right after the available_releases call above somehow still
+      # succeeded) - fail like every other branch's "nothing usable ->
+      # return 1" contract instead of silently succeeding with no output.
+      [ "$found" = true ] || return 1
+      ;;
+    uv)
+      # Same GitHub Releases source as the single-value branch above, just
+      # the releases *list* endpoint instead of */releases/latest - see
+      # rust's branch above for why per_page=100 (one page) rather than
+      # paginating through this repo's full release history (300+ tags as
+      # of this writing).
+      body="$(curl -fsS --max-time "$LT_VERSION_FETCH_TIMEOUT" \
+        'https://api.github.com/repos/astral-sh/uv/releases?per_page=100' \
+        2>/dev/null)" || return 1
+      printf '%s\n' "$body" | lt_github_release_tags
+      ;;
+    *)
+      # Unknown plugin: no source to fetch from, same as the single-value
+      # branch above.
+      return 1
+      ;;
+  esac
+}
+
 # LT_VERSION_CACHE_FILE / LT_VERSION_CACHE_TTL (m-12/TASK-119.3): where
 # lt_resolve_default_version below remembers a plugin's last successfully
 # fetched upstream version, and how long (seconds) that memory stays fresh

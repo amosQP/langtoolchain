@@ -1014,6 +1014,246 @@ RUNNER_EOF
     End
   End
 
+  Describe 'lt_upstream_version_list() (m-15/TASK-128.1, decision-15)'
+    # Same "never touch the real network" rule as lt_upstream_latest_
+    # version() above - every example mocks curl/git with a trimmed
+    # real-shape fixture captured from the actual upstream API during
+    # this task's research, not an invented shape.
+
+    It 'fetches nodejs.org/dist/index.json and strips the "v" prefix -'\
+' unlike the single-value branch, this one DOES call the network'
+      Mock curl
+        echo '[{"version":"v26.8.1","lts":false},'\
+'{"version":"v26.8.0","lts":false},'\
+'{"version":"v24.10.0","lts":"Krypton"}]'
+      End
+      When call lt_upstream_version_list nodejs
+      The status should be success
+      The line 1 of output should eq '26.8.1'
+      The line 2 of output should eq '26.8.0'
+      The line 3 of output should eq '24.10.0'
+    End
+
+    It 'extracts clean semver keys from the pnpm registry doc and sorts'\
+' them newest-first, dropping dev/beta channel tags'
+      Mock curl
+        echo '{"name":"pnpm","versions":{'\
+'"9.5.0":{"name":"pnpm"},'\
+'"12.3.1":{"name":"pnpm"},'\
+'"6.23.7-202112041634":{"name":"pnpm"}'\
+'}}'
+      End
+      When call lt_upstream_version_list pnpm
+      The status should be success
+      The line 1 of output should eq '12.3.1'
+      The line 2 of output should eq '9.5.0'
+      The lines of output should eq 2
+    End
+
+    It 'keeps only final GA gradle releases (snapshot=false, no rcFor/'\
+'milestoneFor) and sorts them newest-first'
+      Mock curl
+        printf '%s\n' '[ {' \
+          '  "version" : "9.6.0",' \
+          '  "snapshot" : false,' \
+          '  "rcFor" : "",' \
+          '  "milestoneFor" : ""' \
+          '}, {' \
+          '  "version" : "9.8.0-20260905023534+0000",' \
+          '  "snapshot" : true,' \
+          '  "rcFor" : "",' \
+          '  "milestoneFor" : ""' \
+          '}, {' \
+          '  "version" : "9.8.0-rc-1",' \
+          '  "snapshot" : false,' \
+          '  "rcFor" : "9.8.0",' \
+          '  "milestoneFor" : ""' \
+          '}, {' \
+          '  "version" : "9.7.1",' \
+          '  "snapshot" : false,' \
+          '  "rcFor" : "",' \
+          '  "milestoneFor" : ""' \
+          '} ]'
+      End
+      When call lt_upstream_version_list gradle
+      The status should be success
+      The line 1 of output should eq '9.7.1'
+      The line 2 of output should eq '9.6.0'
+      The lines of output should eq 2
+    End
+
+    It 'keeps only stable golang releases from the ?include=all index,'\
+' ignoring "version" fields nested inside each files[] entry'
+      Mock curl
+        printf '%s\n' '[' \
+          ' {' \
+          '  "version": "go1.27.1",' \
+          '  "stable": true,' \
+          '  "files": [' \
+          '   {' \
+          '    "filename": "go1.27.1.src.tar.gz",' \
+          '    "version": "go1.27.1"' \
+          '   }' \
+          '  ]' \
+          ' },' \
+          ' {' \
+          '  "version": "go1.27.0-rc1",' \
+          '  "stable": false,' \
+          '  "files": []' \
+          ' },' \
+          ' {' \
+          '  "version": "go1.26.8",' \
+          '  "stable": true,' \
+          '  "files": []' \
+          ' }' \
+          ']'
+      End
+      When call lt_upstream_version_list golang
+      The status should be success
+      The line 1 of output should eq '1.27.1'
+      The line 2 of output should eq '1.26.8'
+      The lines of output should eq 2
+    End
+
+    It 'lists rust-lang/rust GitHub release tags, dropping drafts/'\
+'prereleases (rust has no full-history JSON index of its own, decision-15)'
+      Mock curl
+        printf '%s\n' '[' \
+          '  {' \
+          '    "tag_name": "1.98.1",' \
+          '    "draft": false,' \
+          '    "prerelease": false' \
+          '  },' \
+          '  {' \
+          '    "tag_name": "1.98.0",' \
+          '    "draft": false,' \
+          '    "prerelease": false' \
+          '  },' \
+          '  {' \
+          '    "tag_name": "1.99.0-beta.1",' \
+          '    "draft": false,' \
+          '    "prerelease": true' \
+          '  }' \
+          ']'
+      End
+      When call lt_upstream_version_list rust
+      The status should be success
+      The line 1 of output should eq '1.98.1'
+      The line 2 of output should eq '1.98.0'
+      The lines of output should eq 2
+    End
+
+    It 'lists every final cpython tag (not just the highest one) sorted'\
+' newest-first, still filtering pre-releases like the single-value branch'
+      Mock git
+        printf 'aaa\trefs/tags/v3.9.9\n'
+        printf 'bbb\trefs/tags/v3.14.7\n'
+        printf 'ccc\trefs/tags/v3.14.7rc1\n'
+        printf 'ddd\trefs/tags/v3.14.10\n'
+        printf 'eee\trefs/tags/v3.14.7a1\n'
+        printf 'fff\trefs/tags/v3.14.2\n'
+      End
+      When call lt_upstream_version_list python
+      The status should be success
+      The line 1 of output should eq '3.14.10'
+      The line 2 of output should eq '3.14.7'
+      The line 3 of output should eq '3.14.2'
+      The line 4 of output should eq '3.9.9'
+      The lines of output should eq 4
+    End
+
+    It 'lists one entry per available LTS major (newest major first),'\
+' silently skipping a major with no build for this Mac (e.g. no aarch64'\
+' JDK for major 8, confirmed against a live Adoptium fetch)'
+      Mock curl
+        case "$*" in
+          *available_releases*)
+            printf '%s\n' '{' \
+              '    "available_lts_releases": [' \
+              '        8,' \
+              '        11,' \
+              '        17' \
+              '    ]' \
+              '}'
+            ;;
+          */assets/latest/17/*) echo '{"version":{"semver":"17.0.20+101"}}' ;;
+          */assets/latest/11/*) echo '{"version":{"semver":"11.0.32+101"}}' ;;
+          */assets/latest/8/*) echo '[]' ;;
+          *) exit 1 ;;
+        esac
+      End
+      When call lt_upstream_version_list java
+      The status should be success
+      The line 1 of output should eq 'temurin-17.0.20+101'
+      The line 2 of output should eq 'temurin-11.0.32+101'
+      The lines of output should eq 2
+    End
+
+    It 'fails (not succeeds with empty output) when every LTS major'\
+' comes back empty - never lets a per-major skip leak into the overall'\
+' exit status (would also abort a set -eu caller mid-loop otherwise)'
+      Mock curl
+        case "$*" in
+          *available_releases*)
+            printf '%s\n' '{' \
+              '    "available_lts_releases": [' \
+              '        8' \
+              '    ]' \
+              '}'
+            ;;
+          *) echo '[]' ;;
+        esac
+      End
+      When call lt_upstream_version_list java
+      The status should be failure
+      The output should eq ''
+    End
+
+    It 'lists astral-sh/uv GitHub release tags the same way as rust'\
+' above (m-12/TASK-121, decision-5 companion pick for python)'
+      Mock curl
+        printf '%s\n' '[' \
+          '  {' \
+          '    "tag_name": "0.12.10",' \
+          '    "draft": false,' \
+          '    "prerelease": false' \
+          '  },' \
+          '  {' \
+          '    "tag_name": "0.12.9",' \
+          '    "draft": false,' \
+          '    "prerelease": false' \
+          '  },' \
+          '  {' \
+          '    "tag_name": "0.13.0-rc.1",' \
+          '    "draft": false,' \
+          '    "prerelease": true' \
+          '  }' \
+          ']'
+      End
+      When call lt_upstream_version_list uv
+      The status should be success
+      The line 1 of output should eq '0.12.10'
+      The line 2 of output should eq '0.12.9'
+      The lines of output should eq 2
+    End
+
+    It 'fails without printing anything for an unknown plugin'
+      When call lt_upstream_version_list some-unmapped-plugin
+      The status should be failure
+      The output should eq ''
+    End
+
+    It 'fails cleanly (not a script abort) when the network call itself'\
+' fails'
+      Mock curl
+        exit 1
+      End
+      When call lt_upstream_version_list pnpm
+      The status should be failure
+      The output should eq ''
+    End
+  End
+
   Describe 'lt_resolve_default_version() (m-12/TASK-119.2/TASK-119.3)'
     # Every example here points the cache at a scratch file, never the real
     # $HOME/.langtoolchain-version-cache - lt_resolve_default_version's
