@@ -4,7 +4,7 @@ title: SonarCloud CI 통합 스캐폴딩
 status: Done
 assignee: []
 created_date: '2026-09-04 20:02'
-updated_date: '2026-09-05 04:27'
+updated_date: '2026-09-05 04:32'
 labels: []
 milestone: m-16
 dependencies: []
@@ -47,5 +47,5 @@ sonar-project.properties 스캐폴딩을 추가해서 PR/push마다 SonarCloud �
 ## Final Summary
 
 <!-- SECTION:FINAL_SUMMARY:BEGIN -->
-TASK-152 완료 후 사용자가 SONAR_TOKEN 등록 + Automatic Analysis 비활성화를 실제로 마쳤음을 확인하는 과정에서, sonarcloud.yml에 workflow_dispatch 트리거가 없어 수동 검증이 불가능했던 걸 발견해 추가(e2e-verify.yml과 일관성).
+sonarcloud.yml의 job 조건문이 workflow_dispatch 이벤트를 안 걸러서(github.event_name == 'push' || pull_request 체크만 있었음) 수동 실행이 매번 skip되던 버그 수정 — 'workflow_dispatch' 케이스 추가.
 <!-- SECTION:FINAL_SUMMARY:END -->
