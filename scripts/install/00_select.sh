@@ -441,45 +441,89 @@ ask_yes_no() {
   [ "$(lt_arrow_menu "$1" 1 "Yes" "No")" = "1" ]
 }
 
-# ask_version <default-version> (m-10/TASK-106): arrow-key default-or-
-# custom menu. Prints the chosen version. A real "pick from actually-
-# installable versions" menu (`asdf list all <plugin>`) isn't reliable
-# here: this script runs as phase 0, before asdf/the plugin are even
-# guaranteed to exist yet (phases 1-2), and `list all` can be slow (network
-# fetch) even when they do — so this stays a plain default-vs-custom
-# choice, not a live version browser.
+# ask_version <plugin> <default> (m-15/TASK-129.1, decision-17): arrow-key
+# menu over the plugin's actual installable version list. Replaces m-10/
+# TASK-106's default-vs-free-text-input menu entirely - that comment used
+# to explain why a live version browser wasn't reliable from phase 0 (asdf/
+# the plugin not guaranteed to exist yet); decision-15 already established
+# every source this repo fetches from (language-official APIs/indexes) is
+# reachable from phase 0 without asdf at all, which is exactly what makes
+# a real list-based menu possible here now.
 #
-# The <default-version> this function is handed is itself dynamic as of
-# m-12/TASK-119 (decision-4): lt_offer_language() below resolves it via
-# lt_upstream_latest_version() (scripts/lib.sh) one level up, before ever
-# calling this function - a single upstream "latest" lookup per language
-# the user actually opts into, not the `asdf list all` full-catalog browse
-# the comment above rules out. That single lookup needs no asdf/plugin
-# state at all (it hits each language's own upstream API/index directly),
-# so it doesn't reintroduce the phase-0 problem this comment originally
-# described.
+# lt_resolve_version_list() (fresh cache -> live fetch -> failure, with a
+# session-wide circuit breaker so one offline plugin doesn't make every
+# later one pay its own full LT_VERSION_FETCH_TIMEOUT) and
+# lt_version_menu_options() (caps/dedupes the fetched list against
+# <default> into the menu's option labels) both live in lib.sh, not here -
+# unlike this function, neither touches /dev/tty, so lib.sh's Include-based
+# shellspec pattern (see spec/lib_spec.sh) can unit-test them directly; no
+# other scripts/install/*.sh script is tested that way (they all run with
+# top-level side effects, so specs only ever exec them as a subprocess -
+# see spec/select_spec.sh's own comment on why the interactive parts of
+# this exact script aren't covered).
+#
+# <default> is the same fully-resolved value callers already had before
+# this task (lt_resolve_default_version() in lib.sh, unchanged) - it's
+# always shown as the first, highlighted option, never re-derived from the
+# list fetched here (see decision-17: merging that into a single fetch was
+# considered and rejected, since nodejs's default is the "lts" alias,
+# which never appears as a member of its own version list).
+#
+# If the list can't be resolved at all (offline, cache miss + live fetch
+# failure, unmapped plugin), <default> is still the only option ever
+# offered - decision-17's replacement for the old free-text path is a
+# single-option confirm through this exact same widget, not a separate
+# manual-entry prompt. Installation is never blocked by a list-fetch
+# failure either way.
 #######################################
-# Ask for a version via the default-or-custom arrow-key menu.
+# Ask for a version via the real-version-list arrow-key menu.
 # Globals:
 #   None
 # Arguments:
-#   $1: default — the default version string to offer
+#   $1: plugin — asdf plugin name (used to fetch the version list)
+#   $2: default — the already-resolved default version string to offer
 # Outputs:
-#   Draws the menu/prompt to /dev/tty (via lt_arrow_menu/tty_prompt).
-#   Writes the chosen version string to STDOUT.
+#   Draws the menu to /dev/tty (via lt_arrow_menu). Writes the chosen
+#   version string to STDOUT.
 # Returns:
 #   None
 #######################################
 ask_version() {
-  local default="$1" custom
-  if [ "$(lt_arrow_menu "Version:" 1 "$default (default)" \
-    "Enter a specific version")" = "2" ]; then
-    tty_prompt "  Version > "
-    read -r custom < /dev/tty || custom=""
-    [ -n "$custom" ] && printf '%s\n' "$custom" || printf '%s\n' "$default"
-  else
-    printf '%s\n' "$default"
+  local plugin="$1" default="$2" list_tmp options_tmp opt chosen i
+  list_tmp="$(mktemp)"
+  if ! lt_resolve_version_list "$plugin" > "$list_tmp"; then
+    tty_out "  (couldn't fetch $plugin's version list - offering $default only)"
   fi
+
+  options_tmp="$(mktemp)"
+  lt_version_menu_options "$default" < "$list_tmp" > "$options_tmp"
+  rm -f "$list_tmp"
+
+  # Load the option labels into this function's own positional params
+  # (fd redirection, not a pipe, so this loop runs in the current shell -
+  # same reasoning as the EACH_TOOL_TMP/fd-3 loop further below).
+  set --
+  while IFS= read -r opt; do
+    set -- "$@" "$opt"
+  done < "$options_tmp"
+  rm -f "$options_tmp"
+
+  chosen="$(lt_arrow_menu "Version:" 1 "$@")"
+  i=1
+  for opt in "$@"; do
+    if [ "$i" -eq "$chosen" ]; then
+      # Option 1 always carries the "(default)" suffix cosmetically added
+      # by lt_version_menu_options() above - print the bare $default
+      # instead of that decorated label.
+      if [ "$i" -eq 1 ]; then
+        printf '%s\n' "$default"
+      else
+        printf '%s\n' "$opt"
+      fi
+      break
+    fi
+    i=$((i + 1))
+  done
 }
 
 # Create the file the selection will be written to. `-t` gives it a
@@ -494,7 +538,15 @@ readonly OUT_FILE
 # "successful" to an emptiness check and leak the file. SUCCESS is only
 # ever set true right before the two real `echo "$OUT_FILE"` handoffs.
 SUCCESS=false
-trap 'lt_restore_raw_stty; $SUCCESS || rm -f "$OUT_FILE"' EXIT
+# The version-list circuit breaker marker (m-15/TASK-129.2, decision-17,
+# see LT_VERSION_LIST_UNREACHABLE_FILE's own comment in lib.sh) is cleaned
+# up unconditionally, unlike $OUT_FILE - it's scoped to this one process
+# ($$-named) regardless of whether the run ends up succeeding, so there's
+# nothing to preserve on any exit path. A no-op `rm -f` if ask_version()
+# was never called at all (--all/non-interactive) or never hit a fetch
+# failure.
+trap 'lt_restore_raw_stty; $SUCCESS || rm -f "$OUT_FILE"; \
+  rm -f "$LT_VERSION_LIST_UNREACHABLE_FILE"' EXIT
 
 # Non-interactive session, or the caller explicitly asked for everything:
 # skip the language menu entirely and use the default config as-is. Scope
@@ -580,7 +632,7 @@ lt_offer_language() {
     # decision: waiting on this alongside a prompt the user is already
     # answering is imperceptible; fetching for languages they end up
     # declining would just be wasted network calls).
-    version="$(ask_version \
+    version="$(ask_version "$plugin" \
       "$(lt_resolve_default_version "$plugin" "$default_version")")"
 
     # Record this language/version as one line of the selection file.
@@ -596,7 +648,7 @@ lt_offer_language() {
         '$1 == p { print $2; exit }' "$EACH_TOOL_TMP")"
       [ -n "$companion_default" ] || continue
       if ask_yes_no "  Also install $companion (companion to $plugin)?"; then
-        companion_version="$(ask_version \
+        companion_version="$(ask_version "$companion" \
           "$(lt_resolve_default_version "$companion" "$companion_default")")"
         printf '%s %s\n' "$companion" "$companion_version" >> "$OUT_FILE"
       fi

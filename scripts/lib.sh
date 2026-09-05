@@ -2063,3 +2063,133 @@ lt_cache_version_list() {
   printf '%s|||%s|||%s\n' "$plugin" "$(date +%s)" "$joined" >> "$tmp"
   mv "$tmp" "$LT_VERSION_LIST_CACHE_FILE"
 }
+
+# LT_VERSION_LIST_UNREACHABLE_FILE (m-15/TASK-129.2, decision-17): a marker
+# file whose mere EXISTENCE (its content is never read) is this whole
+# script process's circuit breaker for lt_resolve_version_list() below -
+# "some earlier plugin in this run already failed a live list fetch, stop
+# trying for the rest of them".
+#
+# A plain in-memory shell variable cannot do this job here, unlike every
+# other "${VAR:-default}" tunable in this file: scripts/install/
+# 00_select.sh's ask_version() calls lt_resolve_version_list() through a
+# command substitution (`version="$(ask_version ...)"`, needed to capture
+# the chosen version off ask_version()'s own STDOUT) for every single
+# language the user opts into, and POSIX command substitution always runs
+# in its own subshell whose variable assignments never propagate back to
+# the caller - a variable tripped inside one call would already have
+# evaporated by the time the next call starts, defeating the whole point.
+# A file on disk has no such boundary: any subshell can create it, and
+# every later subshell (including ones from completely separate command
+# substitutions) sees it immediately.
+#
+# $$ - not mktemp - names the default path: mktemp would create (and need
+# cleaning up) a file on every single source of this library, even for
+# processes that never call lt_resolve_version_list() at all; $$ is stable
+# for the whole script's lifetime (POSIX: a subshell/command substitution
+# inherits its parent's $$ unchanged - only a real new process gets a new
+# one) and this costs nothing until actually tripped for the first time.
+# scripts/install/00_select.sh removes this file from its own EXIT trap
+# alongside its other temp files. Overridable like every other LT_* file
+# path in this file, so a test can point it at its own scratch path.
+LT_VERSION_LIST_UNREACHABLE_FILE="${LT_VERSION_LIST_UNREACHABLE_FILE:-\
+${TMPDIR:-/tmp}/langtoolchain-version-list-unreachable.$$}"
+
+# lt_resolve_version_list <plugin> (m-15/TASK-129.1, decision-17): the
+# list-shaped counterpart to lt_resolve_default_version() above - fresh
+# cache, else live fetch (cached on success), else failure. Unlike that
+# function, a total miss here prints nothing and returns 1 rather than
+# falling back to a static value - there is no static "full list" in
+# .tool-versions to fall back to (it only ever carries one version per
+# plugin), so a miss is purely the caller's problem. scripts/install/
+# 00_select.sh's ask_version() is the only caller today, and decision-17
+# covers how it handles a miss (a single-option menu offering just its own
+# already-resolved default, replacing the old free-text-input fallback).
+#######################################
+# Resolve a plugin's full version list: fresh cache, else live fetch.
+# Globals:
+#   LT_VERSION_LIST_UNREACHABLE_FILE (read, written - see its own comment
+#     above for why this is a file and not a variable)
+# Arguments:
+#   $1: plugin name
+# Outputs:
+#   Writes the version list, one per line (newest first), to STDOUT on
+#   success; nothing on failure.
+# Returns:
+#   0 on success (cache hit or live fetch); 1 if both missed.
+#######################################
+lt_resolve_version_list() {
+  local plugin="$1" cached fetched
+  cached="$(lt_cached_version_list_lookup "$plugin" 2>/dev/null)" || cached=""
+  if [ -n "$cached" ]; then
+    printf '%s\n' "$cached"
+    return 0
+  fi
+  # Session circuit breaker (decision-17): see LT_VERSION_LIST_UNREACHABLE_
+  # FILE's own comment above for why this has to be a file, not a variable.
+  if [ -f "$LT_VERSION_LIST_UNREACHABLE_FILE" ]; then
+    return 1
+  fi
+  fetched="$(lt_upstream_version_list "$plugin" 2>/dev/null)" || fetched=""
+  if [ -n "$fetched" ]; then
+    lt_cache_version_list "$plugin" "$fetched"
+    printf '%s\n' "$fetched"
+    return 0
+  fi
+  : > "$LT_VERSION_LIST_UNREACHABLE_FILE"
+  return 1
+}
+
+# LT_VERSION_MENU_MAX (m-15/TASK-129.2, decision-17): the most version
+# options scripts/install/00_select.sh's ask_version() will ever show in
+# one lt_arrow_menu() call, enforced by lt_version_menu_options() below.
+# lt_arrow_menu() redraws its whole option block in place on every
+# keypress, which only stays legible up to roughly a screen's worth of
+# lines - node/java's real upstream catalogs run into the hundreds, so
+# without a cap the menu would be unusable long before the list ran out.
+# lt_upstream_version_list() already returns its list newest-first by
+# contract, so capping to the first N is exactly "show the N most recent
+# versions", not a random sample. Not readonly, same override-for-tests
+# reasoning as every other plain-global tunable in this file.
+LT_VERSION_MENU_MAX=15
+
+# lt_version_menu_options <default> (m-15/TASK-129.2, decision-17): reads a
+# version list from STDIN (newest first, e.g. lt_resolve_version_list()'s
+# own output) and prints the capped, deduped set of ask_version() menu
+# option labels - <default> first (suffixed "(default)"), then up to
+# LT_VERSION_MENU_MAX - 1 more versions, skipping any entry equal to
+# <default> itself so it's never offered twice.
+#
+# Always returns 0 regardless of whether the read loop below ran zero,
+# some, or LT_VERSION_MENU_MAX - 1 times - a `while ... read` whose last
+# evaluation is the failing (EOF) read still exits the whole `while`
+# construct at 0 per POSIX (a loop's exit status is that of the last
+# *body* run, not the failing controlling command), but this is stated
+# explicitly rather than left implicit, since ask_version() calls this
+# under `set -eu` and any other outcome here would abort that whole
+# script.
+#######################################
+# Build the capped, deduped list of version-menu option labels.
+# Globals:
+#   LT_VERSION_MENU_MAX
+# Arguments:
+#   $1: default — the version to pin as the first, highlighted option
+# Inputs:
+#   STDIN: versions, one per line, newest-first
+# Outputs:
+#   Writes one menu option label per line to STDOUT.
+# Returns:
+#   Always 0.
+#######################################
+lt_version_menu_options() {
+  local default="$1" v count
+  printf '%s (default)\n' "$default"
+  count=1
+  while [ "$count" -lt "$LT_VERSION_MENU_MAX" ] && IFS= read -r v; do
+    if [ "$v" != "$default" ]; then
+      printf '%s\n' "$v"
+      count=$((count + 1))
+    fi
+  done
+  return 0
+}

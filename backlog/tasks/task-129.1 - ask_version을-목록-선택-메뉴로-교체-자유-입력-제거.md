@@ -1,11 +1,14 @@
 ---
 id: TASK-129.1
 title: ask_version()을 목록 선택 메뉴로 교체 + 자유 입력 제거
-status: To Do
+status: In Progress
 assignee: []
 created_date: '2026-09-03 01:18'
+updated_date: '2026-09-05 09:33'
 labels: []
 dependencies: []
+references:
+  - decision-17
 parent_task_id: TASK-129
 type: task
 ordinal: 178000

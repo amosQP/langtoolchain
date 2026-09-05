@@ -1525,4 +1525,141 @@ RUNNER_EOF
       rm -f "$LT_VERSION_CACHE_FILE"
     End
   End
+
+  Describe 'lt_resolve_version_list() (m-15/TASK-129.1, decision-17)'
+    # Own scratch files (never the real $HOME/$$-named defaults) and a
+    # not-yet-tripped breaker before every case, same isolation rules as
+    # the Describe blocks above. LT_VERSION_LIST_UNREACHABLE_FILE is a
+    # *marker* (existence, not content, is what matters - see its own
+    # comment in lib.sh for why this is a file and not a variable: the
+    # real caller, ask_version(), invokes this through a command
+    # substitution subshell, where a plain variable's mutations would
+    # never survive back to the next call), so setup only needs to make
+    # sure it starts out absent.
+    setup() {
+      LT_VERSION_LIST_CACHE_FILE="$(mktemp)"
+      rm -f "$LT_VERSION_LIST_CACHE_FILE"
+      LT_VERSION_LIST_UNREACHABLE_FILE="$(mktemp -u)"
+    }
+    cleanup() {
+      rm -f "$LT_VERSION_LIST_CACHE_FILE" "$LT_VERSION_LIST_UNREACHABLE_FILE"
+    }
+    BeforeEach 'setup'
+    AfterEach 'cleanup'
+
+    It 'returns a fresh cache hit without calling curl at all'
+      lt_cache_version_list nodejs "$(printf '24.5.0\n22.1.0')"
+      Mock curl
+        exit 1
+      End
+      When call lt_resolve_version_list nodejs
+      The status should be success
+      The line 1 of output should eq '24.5.0'
+      The line 2 of output should eq '22.1.0'
+    End
+
+    It 'fetches live and caches the result on a cold cache'
+      Mock curl
+        echo '"version":"v24.5.0","version":"v22.1.0"'
+      End
+      When call lt_resolve_version_list nodejs
+      The status should be success
+      The output should include '24.5.0'
+      The output should include '22.1.0'
+      The contents of file "$LT_VERSION_LIST_CACHE_FILE" should include \
+        'nodejs|||'
+      The path "$LT_VERSION_LIST_UNREACHABLE_FILE" should not be exist
+    End
+
+    It 'fails (nothing printed) and trips the circuit breaker marker'\
+' file when the live fetch fails on a cold cache'
+      Mock curl
+        exit 1
+      End
+      When call lt_resolve_version_list nodejs
+      The status should be failure
+      The output should eq ''
+      The path "$LT_VERSION_LIST_UNREACHABLE_FILE" should be exist
+    End
+
+    It 'skips the live fetch entirely once the circuit breaker marker'\
+' file already exists, even though a fetch would otherwise succeed'
+      : > "$LT_VERSION_LIST_UNREACHABLE_FILE"
+      Mock curl
+        echo '"version":"v24.5.0"'
+      End
+      When call lt_resolve_version_list nodejs
+      The status should be failure
+      The output should eq ''
+    End
+
+    It 'still checks the cache first even after the circuit breaker has'\
+' tripped - a fresh cache hit for a different plugin is not blocked'
+      : > "$LT_VERSION_LIST_UNREACHABLE_FILE"
+      lt_cache_version_list golang "$(printf '1.26.1\n1.25.0')"
+      Mock curl
+        exit 1
+      End
+      When call lt_resolve_version_list golang
+      The status should be success
+      The line 1 of output should eq '1.26.1'
+    End
+  End
+
+  Describe 'lt_version_menu_options() (m-15/TASK-129.2, decision-17)'
+    # lt_version_menu_options reads its version list from STDIN, but
+    # `When call` has no built-in way to pipe stdin into the function under
+    # test - this thin wrapper (itself Include'd, so it sees the same
+    # lt_version_menu_options() as everything else in this file) does the
+    # piping so each It below can just pass the list as a plain argument.
+    version_menu_options_from() {
+      # The `[ -n ]` guard matters for the empty-list case below: an
+      # unconditional `printf '%s\n' "$1"` would still emit one blank
+      # line for $1="" , which lt_version_menu_options would then read as
+      # a real (empty-string) version entry instead of zero entries.
+      if [ -n "$1" ]; then
+        printf '%s\n' "$1"
+      fi | lt_version_menu_options "$2"
+    }
+
+    setup() { LT_VERSION_MENU_MAX=15; }
+    BeforeEach 'setup'
+
+    It 'puts the default first, suffixed "(default)", ahead of the'\
+' fetched list (newest first, unchanged)'
+      When call version_menu_options_from \
+        "$(printf '1.2.0\n1.1.0\n1.0.0')" '1.3.0'
+      The line 1 of output should eq '1.3.0 (default)'
+      The line 2 of output should eq '1.2.0'
+      The line 3 of output should eq '1.1.0'
+      The line 4 of output should eq '1.0.0'
+    End
+
+    It 'skips a list entry equal to the default instead of listing it'\
+' twice'
+      When call version_menu_options_from \
+        "$(printf '1.3.0\n1.2.0\n1.1.0')" '1.3.0'
+      The line 1 of output should eq '1.3.0 (default)'
+      The line 2 of output should eq '1.2.0'
+      The line 3 of output should eq '1.1.0'
+      The lines of output should eq 3
+    End
+
+    It 'caps the total option count at LT_VERSION_MENU_MAX (m-15/TASK-129.2)'
+      LT_VERSION_MENU_MAX=5
+      When call version_menu_options_from \
+        "$(awk 'BEGIN { for (i = 50; i >= 1; i--) print "1." i ".0" }')" \
+        '9.9.9'
+      The lines of output should eq 5
+      The line 1 of output should eq '9.9.9 (default)'
+    End
+
+    It 'always succeeds even when the input list is empty (no live/cached'\
+' versions at all - decision-17 offline fallback)'
+      When call version_menu_options_from '' '9.9.9'
+      The status should be success
+      The lines of output should eq 1
+      The line 1 of output should eq '9.9.9 (default)'
+    End
+  End
 End
