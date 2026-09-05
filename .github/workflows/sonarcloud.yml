@@ -8,6 +8,7 @@ name: SonarCloud analysis
 # fork에서 온 PR은 secrets.SONAR_TOKEN에 접근 못 하므로(GitHub Actions의 기본 보안
 # 정책), 그 경우는 스캔을 건너뛴다 - 실패로 표시하면 외부 기여자에게 혼란만 준다.
 on:
+  workflow_dispatch: {}
   push:
     branches: [main]
   pull_request:
