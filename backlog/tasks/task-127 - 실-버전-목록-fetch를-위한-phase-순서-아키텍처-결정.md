@@ -1,9 +1,10 @@
 ---
 id: TASK-127
 title: 실 버전 목록 fetch를 위한 phase 순서/아키텍처 결정
-status: To Do
+status: In Progress
 assignee: []
 created_date: '2026-09-03 01:17'
+updated_date: '2026-09-05 04:40'
 labels: []
 milestone: m-15
 dependencies:
