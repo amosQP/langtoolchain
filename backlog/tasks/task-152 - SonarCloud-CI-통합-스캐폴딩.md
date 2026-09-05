@@ -1,10 +1,10 @@
 ---
 id: TASK-152
 title: SonarCloud CI 통합 스캐폴딩
-status: To Do
+status: In Progress
 assignee: []
 created_date: '2026-09-04 20:02'
-updated_date: '2026-09-05 03:06'
+updated_date: '2026-09-05 03:15'
 labels: []
 milestone: m-16
 dependencies: []
