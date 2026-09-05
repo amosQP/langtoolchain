@@ -8,6 +8,7 @@
 [![Platform](https://img.shields.io/badge/platform-macOS-000000?logo=apple&logoColor=white)](#-prerequisites)
 [![Shell](https://img.shields.io/badge/shell-POSIX%20sh-4EAA25)](#-contributing)
 [![Powered by asdf](https://img.shields.io/badge/powered%20by-asdf-F16436)](https://asdf-vm.com)
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=amosQP_langtoolchain&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=amosQP_langtoolchain)
 
 [한국어](readme.md) | **English**
 
@@ -242,6 +243,7 @@ something a shell installer can solve, so it's deliberately kept outside this mi
 - Style rules (indentation, naming, quoting, etc.) live in [docs/shell-style-guide.md](docs/shell-style-guide.md) — a Google Shell Style Guide baseline adapted for this repo's POSIX sh constraint.
 - To confirm the whole flow changes nothing: `./install.sh --dry-run --all --yes`, `./uninstall.sh --dry-run --yes`
 - Real-hardware scenarios (Homebrew bootstrap, Intel Mac, etc.) run via `.github/workflows/e2e-verify.yml` — it auto-runs on push/PR to `main` when `scripts/**`/`install.sh`/`uninstall.sh`/`.tool-versions` change, and can otherwise be triggered manually with `workflow_dispatch`. Runs on GitHub-hosted macOS runners (arm64 + Intel) — free on this public repo.
+- Static analysis runs via [SonarCloud](https://sonarcloud.io/summary/new_code?id=amosQP_langtoolchain) (decision-13) on every push/PR — for it to actually run, `SONAR_TOKEN` must be registered under repo Settings → Secrets and variables → Actions, and SonarCloud's own Automatic Analysis must be turned off in the project settings (it can't run alongside CI-based analysis). Findings get published once a day as [GitHub Issues](../../issues?q=is%3Aissue+label%3Asonarcloud) labeled `sonarcloud` (decision-14) — a separate notification channel from backlog tasks.
 
 <br>
 

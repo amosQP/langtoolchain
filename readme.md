@@ -8,6 +8,7 @@
 [![Platform](https://img.shields.io/badge/platform-macOS-000000?logo=apple&logoColor=white)](#-사전-요구사항)
 [![Shell](https://img.shields.io/badge/shell-POSIX%20sh-4EAA25)](#-기여하기)
 [![Powered by asdf](https://img.shields.io/badge/powered%20by-asdf-F16436)](https://asdf-vm.com)
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=amosQP_langtoolchain&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=amosQP_langtoolchain)
 
 **한국어** | [English](readme.en.md)
 
@@ -237,6 +238,7 @@ install.sh/uninstall.sh가 각각 어떤 phase를 순서대로 거치는지, uni
 - 스타일 규칙(들여쓰기/네이밍/따옴표 등)은 [docs/shell-style-guide.md](docs/shell-style-guide.md) 참고 — Google Shell Style Guide를 기반으로 이 저장소의 POSIX sh 제약에 맞게 조정한 버전입니다.
 - 전체 흐름만 확인: `./install.sh --dry-run --all --yes`, `./uninstall.sh --dry-run --yes`
 - 실기기 검증(Homebrew 부트스트랩, Intel Mac 등)은 `.github/workflows/e2e-verify.yml` — `scripts/**`/`install.sh`/`uninstall.sh`/`.tool-versions`가 바뀐 채로 `main`에 push/PR되면 자동 실행되고, 그 외에는 `workflow_dispatch`로 수동 실행. GitHub 호스팅 macOS 러너(arm64+Intel)에서 검증, 공개 저장소라 무료.
+- 코드 품질 정적분석은 [SonarCloud](https://sonarcloud.io/summary/new_code?id=amosQP_langtoolchain)(decision-13)가 push/PR마다 돕니다 — 실제로 분석이 돌려면 저장소 Settings → Secrets and variables → Actions에 `SONAR_TOKEN`을 등록해야 하고, SonarCloud 프로젝트 설정의 Automatic Analysis는 꺼야 합니다(CI 기반 분석과 동시에 못 씀). 발견된 이슈는 매일 한 번 `sonarcloud` 라벨을 달고 [GitHub Issues](../../issues?q=is%3Aissue+label%3Asonarcloud)로 자동 발행됩니다(decision-14) — backlog 태스크와는 별개의 알림 채널입니다.
 
 <br>
 
